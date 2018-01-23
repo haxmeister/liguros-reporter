@@ -1,0 +1,96 @@
+#!/usr/bin/env perl
+
+## Author : Joshua S. Day (haxmeister)
+## Purpose : A anonymous funtoo data reporting tool
+
+## written with the following additional packages 
+## from gentoo/funtoo repository:
+##
+## dev-perl/JSON-2.900.0
+
+## version 1.0
+
+use strict;
+use warnings;
+use JSON;
+use Term::ANSIColor;
+use lib "$ENV{PWD}/modules";
+use Report;
+
+if (@ARGV) {
+    if ( $ARGV[0] eq 'show-json' ) {
+        my %report      = report_from_config();
+        my $json        = JSON->new->allow_nonref;
+        my $json_pretty = $json->pretty->encode( \%report );
+        print $json_pretty;
+    }
+
+    if ( $ARGV[0] eq 'send' ) {
+        print "\n\nReporter is not currently capable of sending the report anywyhere\n\n";
+    }
+
+    if ( $ARGV[0] eq 'help' ) {
+        show_help();
+    }
+
+}
+else {
+    show_help();
+}
+
+sub show_help {
+    print color('bold');
+    print "Funtoo anonymous data reporting tool usage: \n\n";
+    print color('bold blue');
+    print "report send";
+    print color('reset');
+    print "\t\t Send the report to funtoo's data collection\n";
+    print color('bold blue');
+    print "report show-json";
+    print color('reset');
+    print " \t Show the output that will be sent, in JSON format\n";
+    print color('bold blue');
+    print "report help";
+    print color('reset');
+    print " \t\t Show this help list\n";
+    print color('bold');
+    print "\nOutput can be ommitted by modifying the /etc/report.conf file\n";
+    print color('reset');
+    return 0;
+}
+
+sub report_from_config {
+    my %config = Report::user_config();
+    my %hash;
+
+    if ( $config{'cpu-info'} eq 'y' ) {
+        $hash{'cpu-info'} = { Report::get_cpu_info() };
+    }
+
+    if ( $config{'mem-info'} eq 'y' ) {
+        $hash{'mem-info'} = { Report::get_mem_info() };
+    }
+
+    if ( $config{'kernel-info'} eq 'y' ) {
+        $hash{'kernel-info'} = { Report::get_kernel_info() };
+    }
+
+    if ( $config{'boot-dir-info'} eq 'y' ) {
+        $hash{'boot-dir-info'} = { Report::get_boot_dir_info() };
+    }
+
+    if ( $config{'version-info'} eq 'y' ) {
+        $hash{'version-info'} = { Report::get_version_info() };
+    }
+
+    if ( $config{'world-info'} eq 'y' ) {
+        $hash{'world-file'} = \@{ Report::get_world_info() };
+    }
+    if ( $config{'profile-info'} eq 'y' ) {
+        $hash{'profile-info'} = { Report::get_profile_info() };
+    }
+    if ( $config{'kit-info'} eq 'y' ) {
+        $hash{'kit-info'} = { Report::get_kit_info() };
+    }
+    return %hash;
+}
