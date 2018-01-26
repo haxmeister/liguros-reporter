@@ -63,33 +63,39 @@ sub report_from_config {
     my %config = Report::user_config();
     my %hash;
 
-    if ( $config{'cpu-info'} eq 'y' ) {
+    if ( exists $config{'UUID'} ) {
+        $hash{'_id'} = $config{'UUID'};
+    }
+    else{
+        $hash{'_id'} = Report::add_uuid();
+    }
+    if ( (exists $config{'cpu-info'}) and ($config{'cpu-info'} eq 'y') ) {
         $hash{'cpu-info'} = { Report::get_cpu_info() };
     }
 
-    if ( $config{'mem-info'} eq 'y' ) {
+    if ( (exists $config{'mem-info'}) and ($config{'mem-info'} eq 'y') ) {
         $hash{'mem-info'} = { Report::get_mem_info() };
     }
 
-    if ( $config{'kernel-info'} eq 'y' ) {
+    if ( (exists $config{'kernel-info'}) and ($config{'kernel-info'} eq 'y') ) {
         $hash{'kernel-info'} = { Report::get_kernel_info() };
     }
 
-    if ( $config{'boot-dir-info'} eq 'y' ) {
+    if ( (exists $config{'boot-dir-info'}) and ($config{'boot-dir-info'} eq 'y') ) {
         $hash{'boot-dir-info'} = { Report::get_boot_dir_info() };
     }
 
-    if ( $config{'version-info'} eq 'y' ) {
+    if ( (exists $config{'version-info'}) and ($config{'version-info'} eq 'y') ) {
         $hash{'version-info'} = { Report::get_version_info() };
     }
 
-    if ( $config{'world-info'} eq 'y' ) {
+    if ( (exists $config{'world-info'}) and ($config{'world-info'} eq 'y') ) {
         $hash{'world-file'} = \@{ Report::get_world_info() };
     }
-    if ( $config{'profile-info'} eq 'y' ) {
+    if ( (exists $config{'profile-info'}) and ($config{'profile-info'} eq 'y') ) {
         $hash{'profile-info'} = { Report::get_profile_info() };
     }
-    if ( $config{'kit-info'} eq 'y' ) {
+    if ( (exists $config{'kit-info'}) and ($config{'kit-info'} eq 'y') ) {
         $hash{'kit-info'} = { Report::get_kit_info() };
     }
     return %hash;
