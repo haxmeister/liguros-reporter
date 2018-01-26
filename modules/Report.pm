@@ -124,8 +124,7 @@ sub get_cpu_info {
             chomp $row;
             if ($row) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $row;
-                if (   ( $key eq 'cpu MHz' )
-                    or ( $key eq 'model name' )
+                if (   ( $key eq 'model name' )
                     or ( $key eq 'cpu cores' ) )
                 {
                     $hash{$key} = $value;
@@ -133,6 +132,9 @@ sub get_cpu_info {
                 elsif ( $key eq 'flags' ) {
                     my @cpu_flags = split / /, $value;
                     $hash{$key} = \@cpu_flags;
+                }
+                elsif($key eq 'cpu MHz'){
+                    $hash{$key} = $value * 1;
                 }
                 else {next}
             }
@@ -162,7 +164,8 @@ sub get_mem_info {
                     or ( $key eq 'MemAvailable' )
                     or ( $key eq 'SwapTotal' )
                     or ( $key eq 'SwapFree' ) ){
-                    $hash{$key} = $value;
+                    $value =~ /(\d+)/msx;
+                    $hash{$key} = $1 * 1;
                 }
             }
         }
