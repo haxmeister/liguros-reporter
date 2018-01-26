@@ -98,5 +98,8 @@ sub report_from_config {
     if ( (exists $config{'kit-info'}) and ($config{'kit-info'} eq 'y') ) {
         $hash{'kit-info'} = { Report::get_kit_info() };
     }
+    my $date = localtime();
+    $hash{'timestamp'} = $date;
+    
     return %hash;
 }
