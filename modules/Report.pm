@@ -135,12 +135,12 @@ sub get_cpu_info {
                     $hash{$key} = \@cpu_flags;
                 }
                 else {next}
-            }    #end if
-        }    #end while
-    }    #end if
+            }
+        }
+    }
     else { warn "Could not open file ' $cpu_file' $!"; }
     return %hash;
-}    # end sub
+}
 
 ###
 ### fetching a few lines from /proc/meminfo
@@ -169,7 +169,7 @@ sub get_mem_info {
     }
     else { warn "Could not open file ' $mem_file' $!"; }
     return %hash;
-}    # end sub
+}
 
 ###
 ### fetching kernel information from /proc/sys/kernel
@@ -215,7 +215,7 @@ sub get_boot_dir_info {
     foreach my $file ( readdir(DIR) ) {
         next unless ( -f "$boot_dir/$file" );    #only want files
         chomp $file;
-        if ( $file =~ m/^kernel|^vmlinuz/msx ) {
+        if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
             push @kernel_list, $file;
         }
     }
