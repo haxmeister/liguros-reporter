@@ -81,9 +81,17 @@ package Report;
 sub get_profile_info {
     my $json_from_epro = `epro show-json`;
     my %profiles;
+    my %sorted;
     my $data = decode_json($json_from_epro);
     %profiles = %$data;
-    return %profiles;
+    foreach my $item ( keys(%profiles) ){
+        foreach my $final ($profiles{$item}){
+            foreach my $array_item (@{$final}){
+                push @{$sorted{$item}}, $array_item->{"shortname"};
+            }
+        }
+    } 
+    return %sorted;
 }
 
 ###
