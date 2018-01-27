@@ -61,11 +61,12 @@ sub add_uuid{
 
     open(my $fh, '<', '/proc/sys/kernel/random/uuid') or die $!;
     my $UUID = <$fh>;
+    chomp $UUID;
     close $fh;
     
     open( $fh, '>>', $config_file ) or die $!;
     print $fh "\n# A unique identifier for this reporting machine \n";
-    print $fh "UUID:$UUID\n";
+    print $fh "UUID:$UUID \n";
     close $fh;
     
     return $UUID;
