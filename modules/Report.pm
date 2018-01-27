@@ -132,16 +132,18 @@ sub get_cpu_info {
             chomp $row;
             if ($row) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $row;
-                if (   ( $key eq 'model name' )
-                    or ( $key eq 'cpu cores' ) )
-                {
+                
+                if    ($key eq 'model name'){
                     $hash{$key} = $value;
                 }
-                elsif ( $key eq 'flags' ) {
+                elsif ( $key eq 'flags' ){
                     my @cpu_flags = split / /, $value;
                     $hash{$key} = \@cpu_flags;
                 }
                 elsif($key eq 'cpu MHz'){
+                    $hash{$key} = $value * 1;
+                }
+                elsif($key eq 'siblings'){
                     $hash{$key} = $value * 1;
                 }
                 else {next}
