@@ -92,7 +92,7 @@ sub get_profile_info {
             }
         }
     } 
-    return %sorted;
+    return \%sorted;
 }
 
 ###
@@ -107,7 +107,7 @@ sub get_kit_info {
         chomp $line;
         $line =~ s/^\s+|\s+$//g;
         if ( $line =~ /NOTE/){
-            return %hash;
+            return \%hash;
         }
         if ( $line =~ /^\w/msx){
             my ($key, $value) = split(' ',$line);
@@ -115,7 +115,7 @@ sub get_kit_info {
             $hash{$key} = $value;
         }
     }
-    return %hash;
+    return \%hash;
 }
 
 ###
@@ -152,7 +152,7 @@ sub get_cpu_info {
         }
     }
     else { warn "Could not open file ' $cpu_file' $!"; }
-    return %hash;
+    return \%hash;
 }
 
 ###
@@ -182,7 +182,7 @@ sub get_mem_info {
         }
     }
     else { warn "Could not open file ' $mem_file' $!"; }
-    return %hash;
+    return \%hash;
 }
 
 ###
@@ -213,7 +213,7 @@ sub get_kernel_info {
             else { warn "could not open file '$file' $!"; }
         }
     }
-    return %hash;
+    return \%hash;
 }    #end sub
 
 ###
@@ -235,7 +235,7 @@ sub get_boot_dir_info {
     }
     $hash{'available kernels'} = \@kernel_list;
     closedir(DIR);
-    return %hash;
+    return \%hash;
 }    #end sub
 
 ###
@@ -346,7 +346,7 @@ sub get_version_info {
             $hash{'glibc versions'} = \@glibc_versions;
         }
     }
-    return %hash;
+    return \%hash;
 }
 
 1;

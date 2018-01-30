@@ -16,17 +16,30 @@ use JSON;
 use Term::ANSIColor;
 use lib "$ENV{PWD}/modules";
 use Report;
+use Search::Elasticsearch;
+
+my %es_config;
+$es_config{node} = 'http://elk.liguros.net:9200';
 
 if (@ARGV) {
     if ( $ARGV[0] eq 'show-json' ) {
         my %report      = report_from_config();
+        print %report;
         my $json        = JSON->new->allow_nonref;
         my $json_pretty = $json->pretty->encode( \%report );
         print $json_pretty;
     }
 
     if ( $ARGV[0] eq 'send' ) {
-        print "\n\nReporter is not currently capable of sending the report anywyhere\n\n";
+        my %report      = report_from_config();
+        my $e = Search::Elasticsearch->new( nodes => $es_config{node}, debug => 1 );
+        $e->index(
+                # load params for elastic search into report
+            index => 'funtoo',
+            type  => 'user',
+            id    => $es_config{'id'},
+            body  => \%report );
+     
     }
 
     if ( $ARGV[0] eq 'help' ) {
@@ -64,42 +77,30 @@ sub report_from_config {
     my %hash;
 
     if ( exists $config{'UUID'} ) {
-        $hash{'_id'} = $config{'UUID'};
+        $es_config{'id'} = $config{'UUID'};
     }
     else{
-        $hash{'_id'} = Report::add_uuid();
+        $es_config{'id'} = Report::add_uuid();
     }
-    if ( (exists $config{'cpu-info'}) and ($config{'cpu-info'} eq 'y') ) {
-        $hash{'cpu-info'} = { Report::get_cpu_info() };
-    }
+	my %reports = (
+		'boot-dir-info' => \&Report::get_boot_dir_info,
+		'cpu-info'      => \&Report::get_cpu_info,
+		'kernel-info'   => \&Report::get_kernel_info,
+		'kit-info'      => \&Report::get_kit_info,
+		'mem-info'      => \&Report::get_mem_info,
+		'profile-info'  => \&Report::get_profile_info,
+		'version-info'  => \&Report::get_version_info,
+		'world-file'    => \&Report::get_world_info
+	);
 
-    if ( (exists $config{'mem-info'}) and ($config{'mem-info'} eq 'y') ) {
-        $hash{'mem-info'} = { Report::get_mem_info() };
-    }
+	for my $report(sort keys %reports){
+		exists $config{$report} or next;
+		$config{$report} eq 'y' or next;
+		$hash{$report} = $reports{$report}->();
+	}
 
-    if ( (exists $config{'kernel-info'}) and ($config{'kernel-info'} eq 'y') ) {
-        $hash{'kernel-info'} = { Report::get_kernel_info() };
-    }
-
-    if ( (exists $config{'boot-dir-info'}) and ($config{'boot-dir-info'} eq 'y') ) {
-        $hash{'boot-dir-info'} = { Report::get_boot_dir_info() };
-    }
-
-    if ( (exists $config{'version-info'}) and ($config{'version-info'} eq 'y') ) {
-        $hash{'version-info'} = { Report::get_version_info() };
-    }
-
-    if ( (exists $config{'world-info'}) and ($config{'world-info'} eq 'y') ) {
-        $hash{'world-file'} = \@{ Report::get_world_info() };
-    }
-    if ( (exists $config{'profile-info'}) and ($config{'profile-info'} eq 'y') ) {
-        $hash{'profile-info'} = { Report::get_profile_info() };
-    }
-    if ( (exists $config{'kit-info'}) and ($config{'kit-info'} eq 'y') ) {
-        $hash{'kit-info'} = { Report::get_kit_info() };
-    }
     my $date = localtime();
     $hash{'timestamp'} = $date;
-    
+
     return %hash;
 }
