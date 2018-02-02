@@ -88,7 +88,7 @@ sub get_profile_info {
     foreach my $item ( keys(%profiles) ){
         foreach my $final ($profiles{$item}){
             foreach my $array_item (@{$final}){
-                push @{$sorted{$item}}, $array_item->{"shortname"};
+                push @{$sorted{$item}}, $array_item->{'shortname'};
             }
         }
     } 

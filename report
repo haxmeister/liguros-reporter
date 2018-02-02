@@ -17,6 +17,7 @@ use Term::ANSIColor;
 use lib "$ENV{PWD}/modules";
 use Report;
 use Search::Elasticsearch;
+use Data::Dumper;
 
 my %es_config;
 $es_config{node} = 'http://elk.liguros.net:9200';
@@ -24,10 +25,10 @@ $es_config{node} = 'http://elk.liguros.net:9200';
 if (@ARGV) {
     if ( $ARGV[0] eq 'show-json' ) {
         my %report      = report_from_config();
-        print %report;
         my $json        = JSON->new->allow_nonref;
         my $json_pretty = $json->pretty->encode( \%report );
         print $json_pretty;
+      
     }
 
     if ( $ARGV[0] eq 'send' ) {
@@ -39,8 +40,9 @@ if (@ARGV) {
             type  => 'user',
             id    => $es_config{'id'},
             body  => \%report );
-     
+        
     }
+    
 
     if ( $ARGV[0] eq 'help' ) {
         show_help();
@@ -99,8 +101,8 @@ sub report_from_config {
 		$hash{$report} = $reports{$report}->();
 	}
 
-    my $date = localtime();
-    $hash{'timestamp'} = $date;
+   # my $date = localtime();
+   # $hash{'timestamp'} = $date;
 
     return %hash;
 }
