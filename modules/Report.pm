@@ -126,6 +126,7 @@ sub get_cpu_info {
     my $cpu_file = '/proc/cpuinfo';
     my %hash;
     my @cpu_file_contents;
+    my $proc_count = 0;
     if ( open( my $fh, '<:encoding(UTF-8)', $cpu_file ) ) {
         @cpu_file_contents = <$fh>;
         close $fh;
@@ -144,14 +145,16 @@ sub get_cpu_info {
                 elsif($key eq 'cpu MHz'){
                     $hash{$key} = $value * 1;
                 }
-                elsif($key eq 'siblings'){
-                    $hash{$key} = $value * 1;
+                elsif($key eq 'processor'){
+                    $proc_count = $proc_count + 1;
                 }
                 else {next}
             }
         }
     }
+    
     else { warn "Could not open file ' $cpu_file' $!"; }
+    $hash{"processors"} = $proc_count;
     return \%hash;
 }
 
