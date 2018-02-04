@@ -105,8 +105,8 @@ sub report_from_config {
         $hash{$report} = $reports{$report}->();
     }
 
-    # my $date = localtime();
-    # $hash{'timestamp'} = $date;
+    my $date = localtime();
+    $hash{'timestamp'} = $date;
 
     return %hash;
 }
