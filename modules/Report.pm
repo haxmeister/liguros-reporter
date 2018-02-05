@@ -18,7 +18,8 @@ our @EXPORT_OK = qw(user_config
                     get_world_info
                     get_profile_info
                     get_kit_info
-                    add_uuid);
+                    add_uuid
+					version);
 
 my $config_file = '/etc/report.conf';
 
@@ -66,13 +67,19 @@ sub add_uuid{
     
     open( $fh, '>>', $config_file ) or die $!;
     print $fh "\n# A unique identifier for this reporting machine \n";
-    print $fh "UUID:$UUID \n";
+    print $fh "UUID:$UUID\n";
     close $fh;
     
     return $UUID;
 }
-package Report;
 
+###
+### reporting version number
+###
+sub version{
+
+return $VERSION;
+}
 
 
 ###

@@ -104,9 +104,15 @@ sub report_from_config {
         $config{$report} eq 'y' or next;
         $hash{$report} = $reports{$report}->();
     }
-
+	
+	## adding timestamp to report
+	#
     my $date = localtime();
     $hash{'timestamp'} = $date;
+	
+	## adding version number to report
+	#
+	$hash{'version'} = Report::version();
 
     return %hash;
 }
