@@ -36,13 +36,20 @@ sub user_config {
         close $fh;
         foreach my $line (@lines) {
             chomp $line;
+            
+            # skip lines that start with '#'
             if ( $line =~ /^\#/msx ) {
                 next;
             }
+            
+            # split the line on the colon
+            # left side becomes a key, right side a value
             elsif ($line) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
                 $hash{$key} = $value;
             }
+            
+            # skip the empty lines also
             else {
                 next;
             }
@@ -60,11 +67,13 @@ sub user_config {
 ###
 sub add_uuid{
 
+    # lets just get a random identifier from the system
     open(my $fh, '<', '/proc/sys/kernel/random/uuid') or die $!;
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
     
+    # open the config file and append the UUID properly into the file
     open( $fh, '>>', $config_file ) or die $!;
     print $fh "\n# A unique identifier for this reporting machine \n";
     print $fh "UUID:$UUID\n";
@@ -77,8 +86,7 @@ sub add_uuid{
 ### reporting version number
 ###
 sub version{
-
-return $VERSION;
+    return $VERSION;
 }
 
 
@@ -87,11 +95,18 @@ return $VERSION;
 ### reconst output of epro show-json command
 ###
 sub get_profile_info {
+    
+    # execute 'epro show-json' and capture it's output
     my $json_from_epro = `epro show-json`;
     my %profiles;
     my %sorted;
+    
+    # convert the output from json to a perl data structure
     my $data = decode_json($json_from_epro);
     %profiles = %$data;
+    
+    # we are going to reconstruct the epro output without the extra
+    # 'shortname' keys, so that it is more easily used in elasticsearch
     foreach my $item ( keys(%profiles) ){
         foreach my $final ($profiles{$item}){
             foreach my $array_item (@{$final}){
@@ -107,17 +122,33 @@ sub get_profile_info {
 ### resorting to parsing output of ego
 ###
 sub get_kit_info {
+
+    # execute 'ego kit status' and capture it's output
     my @status_info = `ego kit status`;
     my %hash;
     
+    # this output needs a lot of work to get the data into a hash
     for my $line (@status_info){
         chomp $line;
+        
+        # lets remove leading and trailing white space from the line
         $line =~ s/^\s+|\s+$//g;
+        
+        # done parsing lines if we hit the NOTE line
         if ( $line =~ /NOTE/){
             return \%hash;
         }
+        
+        # lets dodge that line with the underlined words in it
         if ( $line =~ /^\w/msx){
+            
+            # split the line on whitespace and grab the first 2 values
+            # which are 'kit' and 'active branch'
             my ($key, $value) = split(' ',$line);
+            
+            # this will also remove the terminal color encoding
+            # that is present but not normally visible
+            # otherwise you see  \u001b[94m and other such nonsense
             $value =~ s/^\W\[\d.m//;
             $hash{$key} = $value;
         }
@@ -137,11 +168,17 @@ sub get_cpu_info {
     if ( open( my $fh, '<:encoding(UTF-8)', $cpu_file ) ) {
         @cpu_file_contents = <$fh>;
         close $fh;
+        
         foreach my $row (@cpu_file_contents) {
             chomp $row;
             if ($row) {
+                
+                # lets split each line on the colon, left is the key
+                # right is the value
                 my ( $key, $value ) = split /\s*:\s*/msx, $row;
                 
+                # now we will just look for the values we want and 
+                # add them to the hash
                 if    ($key eq 'model name'){
                     $hash{$key} = $value;
                 }
@@ -153,6 +190,10 @@ sub get_cpu_info {
                     $hash{$key} = $value * 1;
                 }
                 elsif($key eq 'processor'){
+                    
+                    # counting lines that are labeled 'processor' which
+                    # should give us a number that users expect to see
+                    # including logical and physical cores
                     $proc_count = $proc_count + 1;
                 }
                 else {next}
@@ -169,6 +210,7 @@ sub get_cpu_info {
 ### fetching a few lines from /proc/meminfo
 ###
 sub get_mem_info {
+
     # pulling relevent info from /proc/meminfo
     my %hash;
     my $mem_file = '/proc/meminfo';
@@ -178,14 +220,23 @@ sub get_mem_info {
         close $fh;
         foreach my $row (@mem_file_contents) {
             chomp $row;
+            
             if ($row) {
+                
+                # splitting on the colon again
                 my ( $key, $value ) = split /\s*:\s*/msx, $row;
+                
+                # look for all these values
                 if (   ( $key eq 'MemTotal' )
                     or ( $key eq 'MemFree' )
                     or ( $key eq 'MemAvailable' )
                     or ( $key eq 'SwapTotal' )
                     or ( $key eq 'SwapFree' ) ){
+                    
+                    # capture just digit characters in the value
                     $value =~ /(\d+)/msx;
+                    
+                    # simple math to force perl to type this as a number
                     $hash{$key} = $1 * 1;
                 }
             }
@@ -208,13 +259,20 @@ sub get_kernel_info {
     opendir( DIR, $directory ) or die $!;
     @dir_contents = readdir(DIR);
     closedir(DIR);
+    
+    # let's search the directory tree and find the files we want
     foreach my $file (@dir_contents) {
         next unless ( -f "$directory/$file" );    #only want files
+        
+        # could be easy to add another file here
         if (   ( $file eq 'ostype' )
             or ( $file eq 'osrelease' )
             or ( $file eq 'version' ) )
         {
+            # lets open the file we found and get it's contents
             if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) ) {
+                
+                # just want the first line (there shouldn't be anything else)
                 my $row = <$fh>;
                 close $fh;
                 chomp $row;
@@ -227,7 +285,7 @@ sub get_kernel_info {
 }    #end sub
 
 ###
-### fetching files in /boot that start with "kernel" or "vmlinuz"
+### finding kernel files in boot
 ###
 sub get_boot_dir_info {
     my %hash;
@@ -239,6 +297,9 @@ sub get_boot_dir_info {
     foreach my $file ( readdir(DIR) ) {
         next unless ( -f "$boot_dir/$file" );    #only want files
         chomp $file;
+        
+        # lets grab the names of any files that start with 
+        # kernel, vmlinuz or bzImage
         if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
             push @kernel_list, $file;
         }

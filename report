@@ -4,59 +4,92 @@
 ## Purpose : A anonymous funtoo data reporting tool
 
 ## written with the following additional packages
-## from gentoo/funtoo repository:
 ##
+## from gentoo/funtoo repository:
 ## dev-perl/JSON-2.900.0
+##
+## and from CPAN
+## Search::Elasticsearch
+##
+## also from Github
+## The accompanying "Report" module placed in 
+## modules folder relative to the report script
+## this is until the whole thing is properly packaged for 
+## distribution on funtoo or wherever and the module can go 
+## in a more proper place
 
-## version 1.0
 
 use strict;
 use warnings;
+
 use JSON;
 use Term::ANSIColor;
 use lib "$ENV{PWD}/modules";
 use Report;
 use Search::Elasticsearch;
 
-
+## elasticsearch node to send the report too:
 my %es_config;
 $es_config{node} = 'http://elk.liguros.net:9200';
 
+## let's parse the command line args
 if (@ARGV) {
     if ( $ARGV[0] eq 'show-json' ) {
-        my %report      = report_from_config();
+        
+        # get the entire report
+        my %report      = report_from_config(); 
+        
+        # generate a json object that we can use to convert to json
         my $json        = JSON->new->allow_nonref;
+        
+        # send the report to the json object to be encoded to json
+        # and print the results with proper indents (pretty)
         my $json_pretty = $json->pretty->encode( \%report );
         print $json_pretty;
 
     }
 
     if ( $ARGV[0] eq 'send' ) {
+    
+        # get the entire report
         my %report = report_from_config();
-        my $e      = Search::Elasticsearch->new(
-            nodes => $es_config{node},
-            debug => 1
-        );
+        
+        # generate an elasticsearch object we can send a report to
+        my $e = Search::Elasticsearch->new(
+            nodes => $es_config{node}, 
+            debug => 1);
+            
+        # let's set the elasticsearch params so that the 
+        # recieving end knows what to do with this data
         $e->index(
 
             # load params for elastic search into report
             index => 'funtoo',
             type  => 'user',
+            
+            # plugging in our UUID 
             id    => $es_config{'id'},
-            body  => \%report
+            
+            # the report data structure goes straight into the body key
+            # where it will be converted to json on the fly 
+            body  => \%report 
         );
 
     }
-
+    
+    # for people who ask for help
     if ( $ARGV[0] eq 'help' ) {
         show_help();
     }
-
 }
+
+# for people who don't ask for help
 else {
     show_help();
 }
 
+## if you don't understand this function.. you need to just close this 
+## file now before you mess something up
 sub show_help {
     print color('bold');
     print "Funtoo anonymous data reporting tool usage: \n\n";
@@ -78,16 +111,23 @@ sub show_help {
     return 0;
 }
 
+## let's read the config file and generate the report
 sub report_from_config {
-    my %config = Report::user_config();
+    my %config = Report::user_config(); # fetch/parse the user config
     my %hash;
-
+    
+    # look for a UUID in the config file and
+    # if it's not there, add one
     if ( exists $config{'UUID'} ) {
         $es_config{'id'} = $config{'UUID'};
     }
     else {
         $es_config{'id'} = Report::add_uuid();
     }
+    
+    # let's load a hash with the possible config file options as keys
+    # and the values will be a pointer to the function that generates
+    # the associated information
     my %reports = (
         'boot-dir-info' => \&Report::get_boot_dir_info,
         'cpu-info'      => \&Report::get_cpu_info,
@@ -98,10 +138,16 @@ sub report_from_config {
         'version-info'  => \&Report::get_version_info,
         'world-info'    => \&Report::get_world_info
     );
-
+    
+    # check each key and see if it's in the config file
     for my $report ( sort keys %reports ) {
         exists $config{$report} or next;
+        
+        # does the key have a 'y' in the config?
         $config{$report} eq 'y' or next;
+        
+        # if so, call the function and add the returned
+        # hash table to the report
         $hash{$report} = $reports{$report}->();
     }
 	
