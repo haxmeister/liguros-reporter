@@ -107,7 +107,7 @@ sub report_from_config {
 	
 	## adding timestamp to report
 	#
-    my $date = localtime();
+    my $date = time();
     $hash{'timestamp'} = $date;
 	
 	## adding version number to report
