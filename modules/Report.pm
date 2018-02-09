@@ -19,7 +19,9 @@ our @EXPORT_OK = qw(user_config
                     get_profile_info
                     get_kit_info
                     add_uuid
-					version);
+					version
+                    get_chassis_info
+                    get_all_installed_pkg);
 
 my $config_file = '/etc/report.conf';
 
@@ -56,7 +58,10 @@ sub user_config {
         }
     }
     else {
-        warn "Could not open file ' $config_file' \n$!";
+        warn "\nCould not open file the configuration file at $config_file \n";
+        print "Attempting to create one... \n";
+        gen_config();
+        
         exit;
     }
     return %hash;
@@ -334,6 +339,22 @@ sub get_world_info {
 }    #end sub
 
 ###
+### getting the full list of installed packages
+###
+sub get_all_installed_pkg{
+    my %hash;
+    my @results = `equery list -F='\$cpv' "*"`;
+    for my $line (@results){
+        chomp $line;
+        $line =~ s/^=//s;
+        push @{$hash{'pkgs'}},$line;
+    }
+    $hash{'pkg-count'} = scalar @results;
+    return \%hash;
+}
+
+
+###
 ### fetching versions of key softwares
 ###
 sub get_version_info {
@@ -418,6 +439,119 @@ sub get_version_info {
         }
     }
     return \%hash;
+}
+
+##
+## fetch information about the system chassi
+##
+sub get_chassis_info{
+    my %hash;
+    my $folder = "/sys/class/dmi/id/";
+    my @id_files = ('chassis_type', 
+                    'chassis_vendor', 
+                    'product_name');
+
+    my @possible_id = ( 'N/A',
+                        'Other',
+                        'Unknown',
+                        'Desktop',
+                        'Low Profile Desktop',
+                        'Pizza Box',
+                        'Mini Tower',
+                        'Tower',
+                        'Portable',
+                        'Laptop',
+                        'Notebook',
+                        'Hand Held',
+                        'Docking Station',
+                        'All in One',
+                        'Sub Notebook',
+                        'Space-Saving',
+                        'Lunch Box',
+                        'Main System Chassis',
+                        'Expansion Chassis',
+                        'Bus Expansion Chassis',
+                        'Peripheral Chassis',
+                        'Rack Mount Chassis',
+                        'Sealed-Case PC');
+
+    for my $file (@id_files){
+        if (open( my $fh, '<', "$folder$file" )){
+            my $content  = <$fh>;
+            chomp $content;
+            if ($file eq "chassis_type"){
+                $hash{$file} = $possible_id[$content];
+            }
+            else{
+                $hash{$file} = $content;
+            }
+            close $fh;
+        }
+        else{
+            $hash{$file} = $possible_id[0];
+        }
+    }
+    return \%hash;
+
+}
+
+
+##
+## Generate a configuration file in /etc/report.conf
+##
+sub gen_config {
+    my $conf_file = "/etc/report.conf";
+    open( my $fh, '>', $conf_file ) or die "Could not create file $conf_file\n$!\n";
+    
+    print $fh '## Configuration for selecting and deselecting which data'."\n";
+    print $fh '## is reported by the funtoo anonymous reporting tool'."\n\n";
+
+    print $fh '## All options are defaulted to report, you can change an item'."\n";
+    print $fh '## by altering the "y" and "n" to indicate either yes (y) report it'."\n";
+    print $fh '## or no (n) do not report it.'."\n\n\n";
+
+    print $fh '# To report cpu info which includes clock speed, model name,'."\n";
+    print $fh '# and cpu cores'."\n";
+    print $fh 'cpu-info:y'."\n\n";
+
+    print $fh '# To report memory info which includes the amount of free memory,'."\n";
+    print $fh '# the amount of memory available, total amount of swap space,'."\n";
+    print $fh '# and the amount of free swap space'."\n";
+    print $fh 'mem-info:y'."\n\n";
+
+    print $fh '# To report kernel info including O.S. type, release and version'."\n";
+    print $fh 'kernel-info:y'."\n\n";
+
+    print $fh '# Allows the reporter to search your /boot directory and list'."\n";
+    print $fh '# any kernels it finds'."\n";
+    print $fh '# (limited to kernel names that start with "kernel" or "vmlinuz")'."\n";
+    print $fh 'boot-dir-info:y'."\n\n";
+
+    print $fh '# To report versions of key softwares on your system including'."\n";
+    print $fh '# portage, ego, python, gcc, and glibc'."\n";
+    print $fh 'version-info:y'."\n\n";
+
+    print $fh '# To report the contents of /var/lib/portage/world'."\n";
+    print $fh 'world-info:y'."\n\n";
+
+    print $fh '# To report profiles information'."\n";
+    print $fh '# the same as epro show-json'."\n";
+    print $fh 'profile-info:y'."\n\n";
+
+    print $fh '# To report kit versions as reported by ego'."\n";
+    print $fh '# extracted from ego kit show'."\n";
+    print $fh 'kit-info:y'."\n\n";
+    
+    print $fh '# To report system chassis type and model'."\n";
+    print $fh 'chassis-info:y'."\n\n";
+    
+    print $fh '# To report all installed packages (takes a few secs)'."\n";
+    print $fh 'installed-pkgs:y'."\n";
+    close $fh;
+    
+    
+    print "\nA config file has been generated at $conf_file \n";
+    print "Please review this file for errors.\n";
 }
 
 1;

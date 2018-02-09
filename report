@@ -136,7 +136,9 @@ sub report_from_config {
         'mem-info'      => \&Report::get_mem_info,
         'profile-info'  => \&Report::get_profile_info,
         'version-info'  => \&Report::get_version_info,
-        'world-info'    => \&Report::get_world_info
+        'world-info'    => \&Report::get_world_info,
+        'chassis-info'  => \&Report::get_chassis_info,
+        'installed-pkgs'=> \&Report::get_all_installed_pkg
     );
     
     # check each key and see if it's in the config file
