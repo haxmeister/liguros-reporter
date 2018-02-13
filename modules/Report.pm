@@ -468,12 +468,26 @@ sub get_chassis_info{
                         'Sub Notebook',
                         'Space-Saving',
                         'Lunch Box',
-                        'Main System Chassis',
+                        'Main Server Chassis',
                         'Expansion Chassis',
+						'SubChassis',
                         'Bus Expansion Chassis',
                         'Peripheral Chassis',
+						'RAID Chassis',
                         'Rack Mount Chassis',
-                        'Sealed-Case PC');
+                        'Sealed-Case PC',
+						'Multi-system Chassis',
+						'Compact PCI',
+						'Advanced TCA',
+						'Blade',
+						'Blade Enclosure',
+						'Tablet',
+						'Convertible',
+						'Detachable',
+						'IoT Gateway',
+						'Embedded PC',
+						'Mini PC',
+						'Stick PC');
 
     for my $file (@id_files){
         if (open( my $fh, '<', "$folder$file" )){
