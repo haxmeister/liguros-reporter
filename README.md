@@ -7,6 +7,13 @@ After cloning this git certain modules will need to be installed for perl
 1. 'Search::Elasticsearch' which is available in CPAN
 2. JSON which is available in CPAN or in the gentoo and funtoo repositories as 'dev-perl/JSON'
 
+```
+# Install JSON and cpanminus (will be used to install Search::Elasticsearch)
+emerge -av dev-perl/JSON App-cpanminus
+# Install Search::Elasticsearch using cpanminus
+cpanm Search::Elasticsearch
+```
+
 ### Operation:
 **The reporting tool is intended to run with root privileges for access to key system files. Use the method most appropriate on your system**
 
@@ -91,3 +98,28 @@ chassis-info:y
 installed-pkgs:y
 
 ```
+
+### Uninstall
+We are sorry to see you go!
+
+You can uninstall individual modules with cpanplus (ships with Perl) like this:
+
+```
+cpanp uninstall SQL::Abstract
+```
+
+You can view all modules installed with the cpan script like this:
+
+```
+perldoc perllocal
+```
+
+Putting the two together (if all your other perl modules are comming from portage):
+
+```
+for module in $(perldoc -u perllocal | grep -F 'C<Module> L<' | sed 's/^.*L<\(.*\)|.*>$/\1/') ; do
+    cpanp uninstall "$module"
+done
+```
+
+
