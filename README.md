@@ -102,10 +102,10 @@ installed-pkgs:y
 ### Uninstall
 We are sorry to see you go!
 
-You can uninstall individual modules with cpanplus (ships with Perl) like this:
+You can uninstall individual modules with cpanminus like this:
 
 ```
-cpanp uninstall SQL::Abstract
+cpanm -U SQL::Abstract
 ```
 
 You can view all modules installed with the cpan script like this:
@@ -118,7 +118,7 @@ Putting the two together (if all your other perl modules are comming from portag
 
 ```
 for module in $(perldoc -u perllocal | grep -F 'C<Module> L<' | sed 's/^.*L<\(.*\)|.*>$/\1/') ; do
-    cpanp uninstall "$module"
+    cpanm -U "$module"
 done
 ```
 
