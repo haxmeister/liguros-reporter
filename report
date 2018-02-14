@@ -12,10 +12,10 @@
 ## Search::Elasticsearch
 ##
 ## also from Github
-## The accompanying "Report" module placed in 
+## The accompanying "Report" module placed in
 ## modules folder relative to the report script
-## this is until the whole thing is properly packaged for 
-## distribution on funtoo or wherever and the module can go 
+## this is until the whole thing is properly packaged for
+## distribution on funtoo or wherever and the module can go
 ## in a more proper place
 
 
@@ -24,7 +24,7 @@ use warnings;
 
 use JSON;
 use Term::ANSIColor;
-use lib "$ENV{PWD}/lib";
+#use lib "$ENV{PWD}/lib";
 use Funtoo::Report;
 use Search::Elasticsearch;
 
@@ -35,13 +35,13 @@ $es_config{node} = 'http://elk.liguros.net:9200';
 ## let's parse the command line args
 if (@ARGV) {
     if ( $ARGV[0] eq 'show-json' ) {
-        
+
         # get the entire report
-        my %report      = report_from_config(); 
-        
+        my %report      = report_from_config();
+
         # generate a json object that we can use to convert to json
         my $json        = JSON->new->allow_nonref;
-        
+
         # send the report to the json object to be encoded to json
         # and print the results with proper indents (pretty)
         my $json_pretty = $json->pretty->encode( \%report );
@@ -50,33 +50,33 @@ if (@ARGV) {
     }
 
     if ( $ARGV[0] eq 'send' ) {
-    
+
         # get the entire report
         my %report = report_from_config();
-        
+
         # generate an elasticsearch object we can send a report to
         my $e = Search::Elasticsearch->new(
-            nodes => $es_config{node}, 
+            nodes => $es_config{node},
             debug => 1);
-            
-        # let's set the elasticsearch params so that the 
+
+        # let's set the elasticsearch params so that the
         # recieving end knows what to do with this data
         $e->index(
 
             # load params for elastic search into report
             index => 'funtoo',
             type  => 'user',
-            
-            # plugging in our UUID 
+
+            # plugging in our UUID
             id    => $es_config{'id'},
-            
+
             # the report data structure goes straight into the body key
-            # where it will be converted to json on the fly 
-            body  => \%report 
+            # where it will be converted to json on the fly
+            body  => \%report
         );
 
     }
-    
+
     # for people who ask for help
     if ( $ARGV[0] eq 'help' ) {
         show_help();
@@ -88,7 +88,7 @@ else {
     show_help();
 }
 
-## if you don't understand this function.. you need to just close this 
+## if you don't understand this function.. you need to just close this
 ## file now before you mess something up
 sub show_help {
     print color('bold');
@@ -115,7 +115,7 @@ sub show_help {
 sub report_from_config {
     my %config = Funtoo::Report::user_config(); # fetch/parse the user config
     my %hash;
-    
+
     # look for a UUID in the config file and
     # if it's not there, add one
     if ( exists $config{'UUID'} ) {
@@ -124,7 +124,7 @@ sub report_from_config {
     else {
         $es_config{'id'} = Funtoo::Report::add_uuid();
     }
-    
+
     # let's load a hash with the possible config file options as keys
     # and the values will be a pointer to the function that generates
     # the associated information
@@ -140,24 +140,24 @@ sub report_from_config {
         'chassis-info'  => \&Funtoo::Report::get_chassis_info,
         'installed-pkgs'=> \&Funtoo::Report::get_all_installed_pkg
     );
-    
+
     # check each key and see if it's in the config file
     for my $report ( sort keys %reports ) {
         exists $config{$report} or next;
-        
+
         # does the key have a 'y' in the config?
         $config{$report} eq 'y' or next;
-        
+
         # if so, call the function and add the returned
         # hash table to the report
         $hash{$report} = $reports{$report}->();
     }
-	
+
 	## adding timestamp to report
 	#
     my $date = time();
     $hash{'timestamp'} = $date;
-	
+
 	## adding version number to report
 	#
 	$hash{'version'} = Funtoo::Report::version();
