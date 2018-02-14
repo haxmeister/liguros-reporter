@@ -1,5 +1,5 @@
 Makefile.PL
 MANIFEST
 README.md
-report
+funtoo-report
 lib/Funtoo/Report.pm
