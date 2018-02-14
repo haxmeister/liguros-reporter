@@ -8,6 +8,13 @@ echo "=dev-perl/Funtoo-Report-9999 **" >> /etc/portage/package.accept_keywords
 emerge -av Funtoo-Report
 ```
 
+```
+# Install JSON and cpanminus (will be used to install Search::Elasticsearch)
+emerge -av dev-perl/JSON App-cpanminus
+# Install Search::Elasticsearch using cpanminus
+cpanm Search::Elasticsearch
+```
+
 ### Operation:
 **The reporting tool is intended to run with root privileges for access to key system files. Use the method most appropriate on your system**
 
@@ -92,3 +99,28 @@ chassis-info:y
 installed-pkgs:y
 
 ```
+
+### Uninstall
+We are sorry to see you go!
+
+You can uninstall individual modules with cpanminus like this:
+
+```
+cpanm -U SQL::Abstract
+```
+
+You can view all modules installed with the cpan script like this:
+
+```
+perldoc perllocal
+```
+
+Putting the two together (if all your other perl modules are comming from portage):
+
+```
+for module in $(perldoc -u perllocal | grep -F 'C<Module> L<' | sed 's/^.*L<\(.*\)|.*>$/\1/') ; do
+    cpanm -U "$module"
+done
+```
+
+
