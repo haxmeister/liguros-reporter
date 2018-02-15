@@ -95,15 +95,15 @@ sub show_help {
     print color('bold');
     print "Funtoo anonymous data reporting tool usage: \n\n";
     print color('bold blue');
-    print "report send";
+    print "funtoo-report send";
     print color('reset');
     print "\t\t Send the report to funtoo's data collection\n";
     print color('bold blue');
-    print "report show-json";
+    print "funtoo-report show-json";
     print color('reset');
     print " \t Show the output that will be sent, in JSON format\n";
     print color('bold blue');
-    print "report help";
+    print "funtoo-report help";
     print color('reset');
     print " \t\t Show this help list\n";
     print color('bold');
