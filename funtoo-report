@@ -2,7 +2,8 @@
 
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : A anonymous funtoo data reporting tool
-
+##
+## With code from: 
 ## written with the following additional packages
 ##
 ## from gentoo/funtoo repository:
@@ -68,7 +69,7 @@ if (@ARGV) {
             type  => 'user',
 
             # plugging in our UUID
-            id    => $es_config{'id'},
+            id    => '',
 
             # the report data structure goes straight into the body key
             # where it will be converted to json on the fly
@@ -152,6 +153,9 @@ sub report_from_config {
         # hash table to the report
         $hash{$report} = $reports{$report}->();
     }
+	## adding UUID to the body of the report
+	#
+	$hash{'funtoo-report'}{'UUID'} = $config{'UUID'};
 
 	## adding timestamp to report
 	#
@@ -160,7 +164,7 @@ sub report_from_config {
 
 	## adding version number to report
 	#
-	$hash{'version'} = Funtoo::Report::version();
+	$hash{'funtoo-report'}{'version'} = Funtoo::Report::version();
 
     return %hash;
 }
