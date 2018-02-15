@@ -8,36 +8,29 @@ echo "=dev-perl/Funtoo-Report-9999 **" >> /etc/portage/package.accept_keywords
 emerge -av Funtoo-Report
 ```
 
-```
-# Install JSON and cpanminus (will be used to install Search::Elasticsearch)
-emerge -av dev-perl/JSON App-cpanminus
-# Install Search::Elasticsearch using cpanminus
-cpanm Search::Elasticsearch
-```
-
 ### Operation:
 **The reporting tool is intended to run with root privileges for access to key system files. Use the method most appropriate on your system**
 
 **Just launching the program will show you a help menu:**
 
-'./report'
+'funtoo-report'
 
 ```
 Funtoo anonymous data reporting tool usage:
 
-report send              Send the report to funtoo's data collection
-report show-json         Show the output that will be sent, in JSON format
-report help              Show this help list
+funtoo-report send              Send the report to funtoo's data collection
+funtoo-report show-json         Show the output that will be sent, in JSON format
+funtoo-report help              Show this help list
 
 Output can be ommitted by modifying the /etc/report.conf file
 ```
 **help shows you the same output:**
 
-'./report help'
+'funtoo-report help'
 
 **To see what data the report is generating use the show-json option:**
 
-'./report show-json'
+'funtoo-report show-json'
 
 **You may get an error that no config file is found at /etc/report.conf and it will then try to create one with all available options turned on:**
 
@@ -51,7 +44,7 @@ Please review this file for errors.
 ```
 **You can send your report to the elastic search database using the send option which will output nothing on the console if it is successful:**
 
-'./report send'
+'funtoo-report send'
 
 ### Configuration:
 
@@ -103,24 +96,8 @@ installed-pkgs:y
 ### Uninstall
 We are sorry to see you go!
 
-You can uninstall individual modules with cpanminus like this:
+You can uninstall the tool by running:
 
 ```
-cpanm -U SQL::Abstract
+emerge -C Funtoo-Report
 ```
-
-You can view all modules installed with the cpan script like this:
-
-```
-perldoc perllocal
-```
-
-Putting the two together (if all your other perl modules are comming from portage):
-
-```
-for module in $(perldoc -u perllocal | grep -F 'C<Module> L<' | sed 's/^.*L<\(.*\)|.*>$/\1/') ; do
-    cpanm -U "$module"
-done
-```
-
-
