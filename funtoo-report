@@ -2,7 +2,11 @@
 
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : A anonymous funtoo data reporting tool
-
+##
+## With code from: Palica, and Tom Ryder
+##
+## Special thanks to ShadowMoon for his continued critique of this perl code
+##
 ## written with the following additional packages
 ##
 ## from gentoo/funtoo repository:
@@ -68,7 +72,7 @@ if (@ARGV) {
             type  => 'user',
 
             # plugging in our UUID
-            id    => $es_config{'id'},
+            id    => '',
 
             # the report data structure goes straight into the body key
             # where it will be converted to json on the fly
@@ -94,15 +98,15 @@ sub show_help {
     print color('bold');
     print "Funtoo anonymous data reporting tool usage: \n\n";
     print color('bold blue');
-    print "report send";
+    print "funtoo-report send";
     print color('reset');
     print "\t\t Send the report to funtoo's data collection\n";
     print color('bold blue');
-    print "report show-json";
+    print "funtoo-report show-json";
     print color('reset');
     print " \t Show the output that will be sent, in JSON format\n";
     print color('bold blue');
-    print "report help";
+    print "funtoo-report help";
     print color('reset');
     print " \t\t Show this help list\n";
     print color('bold');
@@ -152,6 +156,9 @@ sub report_from_config {
         # hash table to the report
         $hash{$report} = $reports{$report}->();
     }
+	## adding UUID to the body of the report
+	#
+	$hash{'funtoo-report'}{'UUID'} = $config{'UUID'};
 
 	## adding timestamp to report
 	#
@@ -160,7 +167,7 @@ sub report_from_config {
 
 	## adding version number to report
 	#
-	$hash{'version'} = Funtoo::Report::version();
+	$hash{'funtoo-report'}{'version'} = Funtoo::Report::version();
 
     return %hash;
 }

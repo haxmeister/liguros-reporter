@@ -13,24 +13,24 @@ emerge -av Funtoo-Report
 
 **Just launching the program will show you a help menu:**
 
-'./report'
+'funtoo-report'
 
 ```
 Funtoo anonymous data reporting tool usage:
 
-report send              Send the report to funtoo's data collection
-report show-json         Show the output that will be sent, in JSON format
-report help              Show this help list
+funtoo-report send              Send the report to funtoo's data collection
+funtoo-report show-json         Show the output that will be sent, in JSON format
+funtoo-report help              Show this help list
 
 Output can be ommitted by modifying the /etc/report.conf file
 ```
 **help shows you the same output:**
 
-'./report help'
+'funtoo-report help'
 
 **To see what data the report is generating use the show-json option:**
 
-'./report show-json'
+'funtoo-report show-json'
 
 **You may get an error that no config file is found at /etc/report.conf and it will then try to create one with all available options turned on:**
 
@@ -44,7 +44,7 @@ Please review this file for errors.
 ```
 **You can send your report to the elastic search database using the send option which will output nothing on the console if it is successful:**
 
-'./report send'
+'funtoo-report send'
 
 ### Configuration:
 
@@ -91,4 +91,13 @@ chassis-info:y
 # To report all installed packages (takes a few secs)
 installed-pkgs:y
 
+```
+
+### Uninstall
+We are sorry to see you go!
+
+You can uninstall the tool by running:
+
+```
+emerge -C Funtoo-Report
 ```
