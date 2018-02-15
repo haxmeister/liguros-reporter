@@ -3,7 +3,10 @@
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : A anonymous funtoo data reporting tool
 ##
-## With code from: 
+## With code from: Palica, and Tom Ryder
+##
+## Special thanks to ShadowMoon for his continued critique of this perl code
+##
 ## written with the following additional packages
 ##
 ## from gentoo/funtoo repository:
