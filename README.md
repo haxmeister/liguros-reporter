@@ -4,7 +4,6 @@
 
 ### Installation:
 ```
-echo "=dev-perl/Funtoo-Report-9999 **" >> /etc/portage/package.accept_keywords
 emerge -av Funtoo-Report
 ```
 
