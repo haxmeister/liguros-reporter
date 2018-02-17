@@ -470,8 +470,8 @@ sub get_version_info {
 
     # retrieving glibc versions
     my @glibc_versions;
-    opendir( DIR, ( $ebuild_dirs{'gcc'} ) )
-        or die "could not open $ebuild_dirs{'gcc'} ", $!;
+    opendir( DIR, ( $ebuild_dirs{'glibc'} ) )
+        or die "could not open $ebuild_dirs{'glibc'} ", $!;
     my @glibc_dir = readdir(DIR);
     closedir(DIR);
     foreach my $folder (@glibc_dir) {
