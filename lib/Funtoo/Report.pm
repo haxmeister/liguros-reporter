@@ -97,6 +97,11 @@ sub version{
     return $VERSION;
 }
 
+## returns a long date string for the report body or
+## returns a string that is like 'funtoo-year-week' that is
+## suitable for elasticsearch historical data management
+##
+## with special date formatting by request
 sub report_time{
     my $option = shift;
     
@@ -112,7 +117,7 @@ sub report_time{
     my $r_sec   = sprintf("%02d",$time[0]);
     my $gmt_offset_hours = (timegm(@time) - timelocal(@time))/60/60;                                                
     my $gmt_offset_mins  = ($gmt_offset_hours - int($gmt_offset_hours)) * 60;
-    my $gmt_offset_str   = sprintf("%02d",$gmt_offset_hours).":"
+    my $gmt_offset_str   = sprintf("%03d",$gmt_offset_hours).":"
                                       .sprintf("%02d",$gmt_offset_mins);
     
     if ($option eq "long"){
