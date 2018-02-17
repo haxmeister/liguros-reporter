@@ -7,7 +7,9 @@ use strict;
 use warnings;
 use Exporter;
 use JSON;
-our $VERSION = '1.2';
+use POSIX;
+use Time::Local;
+our $VERSION = '1.3';
 
 our @EXPORT_OK = qw(user_config
                     get_cpu_info
@@ -21,7 +23,8 @@ our @EXPORT_OK = qw(user_config
                     add_uuid
 					version
                     get_chassis_info
-                    get_all_installed_pkg);
+                    get_all_installed_pkg
+                    report_time);
 
 my $config_file = '/etc/report.conf';
 
@@ -94,6 +97,35 @@ sub version{
     return $VERSION;
 }
 
+sub report_time{
+    my $option = shift;
+    
+    #      0    1    2     3     4    5     6     7     8
+    #     sec  min  hour  mday  mon  year wday  yday  isdst
+    my @time = localtime(time);
+    my $r_year  = $time[5] + 1900;
+    my $r_month = sprintf("%02d", $time[4] + 1);
+    my $r_week  = sprintf("%02d", ceil($time[7] / 7));
+    my $r_mday  = sprintf("%02d",$time[3]);
+    my $r_hr    = sprintf("%02d",$time[2]);
+    my $r_min   = sprintf("%02d",$time[1]);
+    my $r_sec   = sprintf("%02d",$time[0]);
+    my $gmt_offset_hours = (timegm(@time) - timelocal(@time))/60/60;                                                
+    my $gmt_offset_mins  = ($gmt_offset_hours - int($gmt_offset_hours)) * 60;
+    my $gmt_offset_str   = sprintf("%02d",$gmt_offset_hours).":"
+                                      .sprintf("%02d",$gmt_offset_mins);
+    
+    if ($option eq "long"){
+        return "$r_year"."-"."$r_month"."-"."$r_mday".
+        "T"."$r_hr:$r_min:$r_sec"."$gmt_offset_str";
+    }
+    elsif ($option eq 'short'){
+        return "funtoo-$r_year.$r_week";
+    }
+    else{
+        return "no time";
+    }
+}
 
 ###
 ### fetching active profiles

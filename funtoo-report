@@ -25,16 +25,18 @@
 
 use strict;
 use warnings;
-
 use JSON;
 use Term::ANSIColor;
-#use lib "$ENV{PWD}/lib";
+use lib "$ENV{PWD}/lib";
 use Funtoo::Report;
 use Search::Elasticsearch;
 
 ## elasticsearch node to send the report too:
 my %es_config;
 $es_config{node} = 'http://elk.liguros.net:9200';
+
+## elasticsearch index to send the report too:
+$es_config{index}= Funtoo::Report::report_time('short');
 
 ## let's parse the command line args
 if (@ARGV) {
@@ -68,7 +70,7 @@ if (@ARGV) {
         $e->index(
 
             # load params for elastic search into report
-            index => 'funtoo',
+            index => $es_config{index},
             type  => 'user',
 
             # plugging in our UUID
@@ -162,8 +164,7 @@ sub report_from_config {
 
 	## adding timestamp to report
 	#
-    my $date = time();
-    $hash{'timestamp'} = $date;
+    $hash{'timestamp'} = Funtoo::Report::report_time('long');
 
 	## adding version number to report
 	#
