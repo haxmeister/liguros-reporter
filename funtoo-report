@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use JSON;
 use Term::ANSIColor;
-use lib "$ENV{PWD}/lib";
+#use lib "$ENV{PWD}/lib";
 use Funtoo::Report;
 use Search::Elasticsearch;
 
