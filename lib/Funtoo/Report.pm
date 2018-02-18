@@ -169,7 +169,7 @@ sub add_uuid{
     # if we recieved the 'new' argument then we just want to return
     # the UUID without modifying the file. i.e. we came here from the
     # config-update function
-    if ($arg eq 'new'){
+    if ($arg and ($arg eq 'new')){
         return $UUID;
     }
     else{
