@@ -25,7 +25,7 @@ use strict;
 use warnings;
 use JSON;
 use Term::ANSIColor;
-#use lib "$ENV{PWD}/lib";
+use lib "$ENV{PWD}/lib";
 use Funtoo::Report;
 use Search::Elasticsearch;
 
@@ -85,6 +85,9 @@ if (@ARGV) {
     if ( $ARGV[0] eq 'help' ) {
         show_help();
     }
+    if ( $ARGV[0] eq 'config-update' ){
+        Funtoo::Report::config_update();
+    }
 }
 
 # for people who don't ask for help
@@ -96,21 +99,38 @@ else {
 ## file now before you mess something up
 sub show_help {
     print color('bold');
-    print "Funtoo anonymous data reporting tool usage: \n\n";
+    print "\n\nFuntoo anonymous data reporting tool usage: \n\n";
+    
+    
     print color('bold blue');
     print "funtoo-report send";
     print color('reset');
     print "\t\t Send the report to funtoo's data collection\n";
+    
     print color('bold blue');
     print "funtoo-report show-json";
     print color('reset');
     print " \t Show the output that will be sent, in JSON format\n";
+    
+    print color('bold blue');
+    print "funtoo-report config-update";
+    print color('reset');
+    print " \t Generate, reconfigure or update the config file";
+    print color('reset')." /etc/funtoo-report.conf\n"; 
+       
     print color('bold blue');
     print "funtoo-report help";
     print color('reset');
     print " \t\t Show this help list\n";
+
     print color('bold');
-    print "\nOutput can be ommitted by modifying the /etc/report.conf file\n";
+    print "\nOutput can be ommitted by modifying ";
+    print color('reset');
+    print "/etc/funtoo-report.conf ";
+    print color('bold'); 
+    print "manually or using ";
+    print color('reset');
+    print "funtoo-report config-update\n\n";
     print color('reset');
     return 0;
 }

@@ -8,6 +8,7 @@ use warnings;
 use Exporter;
 use JSON;
 use POSIX;
+use Term::ANSIColor;
 use Time::Local;
 our $VERSION = '1.3';
 
@@ -24,16 +25,17 @@ our @EXPORT_OK = qw(user_config
 					version
                     get_chassis_info
                     get_all_installed_pkg
-                    report_time);
+                    report_time
+                    config_update);
 
-my $config_file = '/etc/report.conf';
+my $config_file = '/etc/funtoo-report.conf';
 
-###
-### finds the config file in /etc/report.conf and loads it's contents
-### into a hash and returns it
-###
+##
+## finds the config file in /etc/funtoo-report.conf and loads it's contents
+## into a hash and returns it
+#
 sub user_config {
-
+    my $args = shift;
     my %hash;
 
     if ( open( my $fh, '<:encoding(UTF-8)', $config_file ) ) {
@@ -60,39 +62,131 @@ sub user_config {
             }
         }
     }
-    else {
-        warn "\nCould not open file the configuration file at $config_file \n";
-        print "Attempting to create one... \n";
-        gen_config();
-        
+    elsif($args and ($args eq 'new')) {
+        # if we arrived here due to config-update() and there isn't
+        # a config file then we return a UUID without editing the file
+        if ($args){
+            if($args eq 'new'){
+                $hash{'UUID'} = 'none';
+                return;
+            }
+        }
+    }
+    else{
+        # if we arrived here from the command line and there is no 
+        # config file then tell the user what to do
+        print color('red', 'bold');
+        print "\nWarning!";
+        print color('reset');
+        print "\nCould not open the configuration file at $config_file \n";
+        print "To generate a new configuration file use 'funtoo-report config-update' \n\n";
         exit;
     }
     return %hash;
 }
 
-###
-### adds a uuid to /etc/report.conf and returns it as a string
-###
-sub add_uuid{
+## retrieves UUID from the config file if present and then 
+## prompts user as it generates settings for a new config file
+## insures all new possibilities are in the config file from previous
+## versions, etc.
+#
+sub config_update{
+    # check for existing config
+    my %old_config = user_config('new'); 
+    my %new_config;
+    
+    # see if we picked up a current UUID from the old config
+    if ($old_config{'UUID'}){
 
+        #since it's there we will add it to the new config file
+        $new_config{'UUID'} = $old_config{'UUID'};
+    }
+    else{
+
+        # since there is no previous UUID we will go get a new one
+        $new_config{'UUID'} = add_uuid('new');
+    }
+    
+    # let's ask the user about each report setting
+    $new_config{'cpu-info'} = 
+            get_y_or_n('Report information about your CPU?');
+
+    $new_config{'mem-info'} = 
+            get_y_or_n('Report information about your RAM?');
+
+    $new_config{'kernel-info'} = 
+            get_y_or_n('Report information about your active kernel?');
+
+    $new_config{'boot-dir-info'} = 
+            get_y_or_n('Report available kernels in /boot ?');
+
+    $new_config{'version-info'} = 
+            get_y_or_n('Report versions of key system softwares?');
+
+    $new_config{'chassis-info'} = 
+            get_y_or_n('Report information about your computer\'s chassis?');
+
+    $new_config{'installed-pkgs'} = 
+            get_y_or_n('Report all packages installed on the system?');
+
+    $new_config{'world-info'} = 
+            get_y_or_n('Report the contents of your world file?');
+
+    $new_config{'profile-info'} = 
+            get_y_or_n('Report the output of "epro show-json"?');
+
+    $new_config{'kit-info'} = 
+            get_y_or_n('Report the output of "ego kit show"?');
+
+    $new_config{'hardware-info'} = 
+            get_y_or_n('Report information about your hardware and drivers?');
+    
+    # let's create or replace /etc/funtoo-report.conf
+    print "Creating or replacing /etc/funtoo-report.conf\n";
+    open( my $fh, '>:encoding(UTF-8)', $config_file )
+                        or die "could not open $config_file", $!;
+    foreach my $key (keys %new_config){
+        print $fh "$key".":"."$new_config{$key}\n";
+    }
+    close $fh;
+    
+    
+}
+
+##
+## adds a uuid to /etc/funtoo-report.conf and/or returns it as a string
+##
+sub add_uuid{
+    
+    my $arg = shift;
+    
     # lets just get a random identifier from the system
     open(my $fh, '<', '/proc/sys/kernel/random/uuid') or die $!;
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
     
+    # if we recieved the 'new' argument then we just want to return
+    # the UUID without modifying the file. i.e. we came here from the
+    # config-update function
+    if ($arg eq 'new'){
+        return $UUID;
+    }
+    else{
+    
+    # since we got here because a UUID isn't present in the config
     # open the config file and append the UUID properly into the file
     open( $fh, '>>', $config_file ) or die $!;
     print $fh "\n# A unique identifier for this reporting machine \n";
     print $fh "UUID:$UUID\n";
     close $fh;
-    
+    }
     return $UUID;
 }
 
-###
-### reporting version number
-###
+##
+## reporting version number
+##
 sub version{
     return $VERSION;
 }
@@ -139,10 +233,10 @@ sub report_time{
     }
 }
 
-###
-### fetching active profiles
-### reconst output of epro show-json command
-###
+##
+## fetching active profiles
+## reconst output of epro show-json command
+##
 sub get_profile_info {
     
     # execute 'epro show-json' and capture it's output
@@ -166,10 +260,10 @@ sub get_profile_info {
     return \%sorted;
 }
 
-###
-### fetching active kits
-### resorting to parsing output of ego
-###
+##
+## fetching active kits
+## resorting to parsing output of ego
+##
 sub get_kit_info {
 
     # execute 'ego kit status' and capture it's output
@@ -205,9 +299,9 @@ sub get_kit_info {
     return \%hash;
 }
 
-###
-### fetching lines from /proc/cpuinfo
-###
+##
+## fetching lines from /proc/cpuinfo
+##
 sub get_cpu_info {
 
     my $cpu_file = '/proc/cpuinfo';
@@ -255,9 +349,9 @@ sub get_cpu_info {
     return \%hash;
 }
 
-###
-### fetching a few lines from /proc/meminfo
-###
+##
+## fetching a few lines from /proc/meminfo
+##
 sub get_mem_info {
 
     # pulling relevent info from /proc/meminfo
@@ -295,9 +389,9 @@ sub get_mem_info {
     return \%hash;
 }
 
-###
-### fetching kernel information from /proc/sys/kernel
-###
+##
+## fetching kernel information from /proc/sys/kernel
+##
 sub get_kernel_info {
 
     my $directory = '/proc/sys/kernel';
@@ -333,9 +427,9 @@ sub get_kernel_info {
     return \%hash;
 }    #end sub
 
-###
-### finding kernel files in boot
-###
+##
+## finding kernel files in boot
+##
 sub get_boot_dir_info {
     my %hash;
     my $boot_dir = "/boot";
@@ -358,9 +452,9 @@ sub get_boot_dir_info {
     return \%hash;
 }    #end sub
 
-###
-### fetching contents of /var/lib/portage/world
-###
+##
+## fetching contents of /var/lib/portage/world
+##
 sub get_world_info {
 
     # reading in world file
@@ -382,9 +476,9 @@ sub get_world_info {
     return \@world_array;
 }    #end sub
 
-###
-### getting the full list of installed packages
-###
+##
+## getting the full list of installed packages
+##
 sub get_all_installed_pkg{
     my %hash;
     my @results = `equery list -F='\$cpv' "*"`;
@@ -398,9 +492,9 @@ sub get_all_installed_pkg{
 }
 
 
-###
-### fetching versions of key softwares
-###
+##
+## fetching versions of key softwares
+##
 sub get_version_info {
 
     my %hash;
@@ -554,62 +648,37 @@ sub get_chassis_info{
 }
 
 
-##
-## Generate a configuration file in /etc/report.conf
-##
-sub gen_config {
-    my $conf_file = "/etc/report.conf";
-    open( my $fh, '>', $conf_file ) or die "Could not create file $conf_file\n$!\n";
+###########################################
+############ misc functions ############### 
+
+## accepts a string that is the question
+## returns only a proper y or n or continues to prompt user
+## until they answer correctly
+sub get_y_or_n{
+    my $arg = shift;
     
-    print $fh '## Configuration for selecting and deselecting which data'."\n";
-    print $fh '## is reported by the funtoo anonymous reporting tool'."\n\n";
-
-    print $fh '## All options are defaulted to report, you can change an item'."\n";
-    print $fh '## by altering the "y" and "n" to indicate either yes (y) report it'."\n";
-    print $fh '## or no (n) do not report it.'."\n\n\n";
-
-    print $fh '# To report cpu info which includes clock speed, model name,'."\n";
-    print $fh '# and cpu cores'."\n";
-    print $fh 'cpu-info:y'."\n\n";
-
-    print $fh '# To report memory info which includes the amount of free memory,'."\n";
-    print $fh '# the amount of memory available, total amount of swap space,'."\n";
-    print $fh '# and the amount of free swap space'."\n";
-    print $fh 'mem-info:y'."\n\n";
-
-    print $fh '# To report kernel info including O.S. type, release and version'."\n";
-    print $fh 'kernel-info:y'."\n\n";
-
-    print $fh '# Allows the reporter to search your /boot directory and list'."\n";
-    print $fh '# any kernels it finds'."\n";
-    print $fh '# (limited to kernel names that start with "kernel" or "vmlinuz")'."\n";
-    print $fh 'boot-dir-info:y'."\n\n";
-
-    print $fh '# To report versions of key softwares on your system including'."\n";
-    print $fh '# portage, ego, python, gcc, and glibc'."\n";
-    print $fh 'version-info:y'."\n\n";
-
-    print $fh '# To report the contents of /var/lib/portage/world'."\n";
-    print $fh 'world-info:y'."\n\n";
-
-    print $fh '# To report profiles information'."\n";
-    print $fh '# the same as epro show-json'."\n";
-    print $fh 'profile-info:y'."\n\n";
-
-    print $fh '# To report kit versions as reported by ego'."\n";
-    print $fh '# extracted from ego kit show'."\n";
-    print $fh 'kit-info:y'."\n\n";
+    # ask the question
+    print "$arg yes or no?\n";
+    my $answer = <STDIN>;
+    chomp $answer;
     
-    print $fh '# To report system chassis type and model'."\n";
-    print $fh 'chassis-info:y'."\n\n";
+    # convert to lower case for easy matching
+    my $answer_lc = lc $answer ;
     
-    print $fh '# To report all installed packages (takes a few secs)'."\n";
-    print $fh 'installed-pkgs:y'."\n";
-    close $fh;
+    # checking for valid yes responses
+    if ($answer_lc =~ /y|yes/){
+        return 'y';
+    }
     
+    # checking for valid no responses
+    elsif ($answer_lc =~ /n|no/){
+        return 'n';
+    }
     
-    print "\nA config file has been generated at $conf_file \n";
-    print "Please review this file for errors.\n";
+    # if a valid response is not given
+    else{
+        print "$answer is not a valid answer\n";
+        return get_y_or_n($arg);
+    }
 }
-
 1;
