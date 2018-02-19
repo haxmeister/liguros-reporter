@@ -254,13 +254,23 @@ sub report_time {
 sub get_hardware_info {
     my %hash;
 
-    # fetching sound info from data structure
+    
     for my $hw_item ( @{ $lspci{'PCI-Device'} } ) {
+        
+        # fetching sound info from data structure
         if ( $hw_item->{'Class'} =~ /Audio|audio/msx ) {
 
             # have to push it on an array because there may be
             # more than one
             push @{ $hash{'sound'} }, $hw_item;
+        }
+        
+        # fetching video cards
+        if ( $hw_item->{'Class'} =~ /VGA/msx ) {
+
+            # have to push it on an array because there may be
+            # more than one
+            push @{ $hash{'video'} }, $hw_item;
         }
     }
 
@@ -687,7 +697,7 @@ sub get_chassis_info {
 ##
 sub get_lspci {
 
-    my $lspci_output = `lspci -kmv`;
+    my $lspci_output = `lspci -kmmvvv`;
     my @hardware_list;
     my @hw_item_section = split( /^\n/msx, $lspci_output );
 
