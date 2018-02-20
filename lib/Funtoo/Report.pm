@@ -10,7 +10,7 @@ use JSON;
 use POSIX;
 use Term::ANSIColor;
 use Time::Local;
-our $VERSION = '1.3';
+our $VERSION = '1.4';
 
 our @EXPORT_OK = qw(user_config
     get_cpu_info
@@ -707,6 +707,7 @@ sub get_lspci {
         my %hash;
         for (@hw_item_lines) {
             chomp;
+            s/\[\]|\{\}/[ ]/msx;
             my ( $key, $value ) = split(':\s');
             chomp $key;
             chomp $value;
