@@ -30,7 +30,7 @@ use Search::Elasticsearch;
 
 ## elasticsearch submission infromation:
 my %es_config = (
-    node  => 'http://elk.liguros.net:9200',
+    node  => 'http://elk2.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
     type  => 'report',
     debug => 1,
@@ -163,7 +163,8 @@ sub report_from_config {
         'world-info'     => \&Funtoo::Report::get_world_info,
         'chassis-info'   => \&Funtoo::Report::get_chassis_info,
         'installed-pkgs' => \&Funtoo::Report::get_all_installed_pkg,
-        'hardware-info'  => \&Funtoo::Report::get_hardware_info
+        'hardware-info'  => \&Funtoo::Report::get_hardware_info,
+        'filesystem-info'=> \&Funtoo::Report::get_filesystem_info
     );
 
     # check each key and see if it's in the config file

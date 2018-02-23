@@ -147,6 +147,9 @@ sub config_update {
 
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
+        
+    $new_config{'filesystem-info'}
+        = get_y_or_n('Report information about your filesystem and block devices?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
@@ -277,6 +280,18 @@ sub get_hardware_info {
     return \%hash;
 }
 
+##
+## fetching lsblk output
+##
+sub get_filesystem_info{
+    my $json_from_lsblk = 
+        `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
+    $json_from_lsblk =~ s/\"\[/\"/msxg;
+    $json_from_lsblk =~ s/\]\"/\"/msxg;
+    my $data = decode_json($json_from_lsblk);
+    my %hash = %$data;
+    return \%hash;
+}
 ##
 ## fetching active profiles
 ## reconst output of epro show-json command
