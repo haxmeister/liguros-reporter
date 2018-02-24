@@ -69,7 +69,6 @@ sub user_config {
 
         # if we arrived here due to config-update() and there isn't
         # a config file then we return a UUID without editing the file
-  
         $hash{'UUID'} = 'none';
         return;
     }
@@ -147,6 +146,9 @@ sub config_update {
         
     $new_config{'filesystem-info'}
         = get_y_or_n('Report information about your filesystem and block devices?');
+
+    $new_config{'networking-info'}
+        = get_y_or_n('Report information about your networking hardware and devices?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
@@ -277,6 +279,129 @@ sub get_hardware_info {
     return \%hash;
 }
 
+##
+## returns a hash ref containing networking device info
+## by ShadowM00n this function goes directly to the source instead
+## of making calls to external tools
+##
+sub get_net_info {
+    use Carp;                          # Core
+    use English qw(-no_match_vars);    # Core
+    use autodie qw< :io >;
+    
+    my $interface_dir = '/sys/class/net';
+    my $pci_ids       = '/usr/share/misc/pci.ids';
+    my $usb_ids       = '/usr/share/misc/usb.ids';
+    my %hash;
+    my @interfaces;
+    opendir my $dh, $interface_dir
+        or croak "Unable to open dir $interface_dir: $ERRNO\n";
+    while ( my $file = readdir $dh ) {
+        if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
+            push @interfaces, $file;
+        }
+    }
+    closedir $dh;
+ 
+### @interfaces
+ 
+    for my $device (@interfaces) {
+        my ( $vendor_id, $device_id, $id_file );
+ 
+        # Create dummy entries for virtual devices and move on
+        if ( !-d "$interface_dir/$device/device/driver/module" ) {
+            $hash{'interface info'}{$device}{'vendor'} = 'Virtual';
+            $hash{'interface info'}{$device}{'device'} = 'Virtual device';
+            $hash{'interface info'}{$device}{'driver'} = 'Virtual driver';
+            next;
+        }
+ 
+        # Othewise, determine the driver via the path name
+        my $driver = (
+            split /[\/]/xms,
+            readlink "$interface_dir/$device/device/driver/module"
+        )[-1];
+        ### $driver
+ 
+        # Get the vendor ID (PCI)
+        my $vendor_id_file = "/sys/class/net/$device/device/vendor";
+        if ( -e $vendor_id_file ) {
+            $id_file = $pci_ids;
+            open my $fh, '<', $vendor_id_file
+                or carp "Unable to open file $vendor_id_file: $ERRNO";
+            $vendor_id = <$fh>;
+            close $fh;
+            chomp $vendor_id;
+            $vendor_id =~ s/^0x//xms;
+ 
+            # Get the device ID (PCI)
+            my $device_id_file = "/sys/class/net/$device/device/device";
+            open $fh, '<', $device_id_file
+                or carp "Unable to open file $device_id_file: $ERRNO";
+            $device_id = <$fh>;
+            close $fh;
+            chomp $device_id;
+            $device_id =~ s/^0x//xms;
+ 
+        }
+ 
+        # Or get the vendor and device ID (USB)
+        else {
+            $vendor_id_file = "/sys/class/net/$device/device/uevent";
+            $id_file        = $usb_ids;
+            ## no critic [RequireBriefOpen]
+            open my $fh, '<', $vendor_id_file
+                or do {
+                carp "Unable to open file $vendor_id_file: $ERRNO";
+                next;
+                };
+            while (<$fh>) {
+                if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
+                    $vendor_id = sprintf '%04s', $1;
+                    $device_id = sprintf '%04s', $2;
+                    last;
+                }
+            }
+            close $fh;
+        }
+        ### $vendor_id
+        ### $device_id
+ 
+        # Look up the proper device name from the id file
+        my ( $vendor_name, $device_name );
+ 
+        ## no critic [RequireBriefOpen]
+        open my $fh, '<', $id_file
+            or carp "Unable to open file $id_file $ERRNO\n";
+ 
+     # Devices can share device IDs but not "underneath" a vendor ID, so we'll
+     # want to get the first result under the vendor
+        my $seen = 0;
+ 
+        while (<$fh>) {
+ 
+            if (/^$vendor_id[ ]{2}(.*)/xms) {
+                $vendor_name = $1;
+                chomp $vendor_name;
+                $seen = 1;
+            }
+            if ( $seen == 1 && /^[\t]{1}$device_id[ ]{2}(.*)/xms ) {
+                $device_name = $1;
+                chomp $device_name;
+                last;
+            }
+        }
+        close $fh;
+        ### $vendor_name
+        ### $device_name
+        $hash{'interface info'}{$device}{'vendor'} = $vendor_name;
+        $hash{'interface info'}{$device}{'device'} = $device_name;
+        $hash{'interface info'}{$device}{'driver'} = $driver;
+    }
+    ### %hash
+    return \%hash;
+}
+ 
 ##
 ## fetching lsblk output
 ##

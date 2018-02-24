@@ -27,6 +27,7 @@ use Term::ANSIColor;
 use lib "$ENV{PWD}/lib";
 use Funtoo::Report;
 use Search::Elasticsearch;
+use LWP;
 
 ## elasticsearch submission infromation:
 my %es_config = (
@@ -164,7 +165,8 @@ sub report_from_config {
         'chassis-info'   => \&Funtoo::Report::get_chassis_info,
         'installed-pkgs' => \&Funtoo::Report::get_all_installed_pkg,
         'hardware-info'  => \&Funtoo::Report::get_hardware_info,
-        'filesystem-info'=> \&Funtoo::Report::get_filesystem_info
+        'filesystem-info'=> \&Funtoo::Report::get_filesystem_info,
+        'networking-info'=> \&Funtoo::Report::get_net_info
     );
 
     # check each key and see if it's in the config file
