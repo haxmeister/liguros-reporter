@@ -310,9 +310,9 @@ sub get_net_info {
  
         # Create dummy entries for virtual devices and move on
         if ( !-d "$interface_dir/$device/device/driver/module" ) {
-            $hash{'interface info'}{$device}{'vendor'} = 'Virtual';
-            $hash{'interface info'}{$device}{'device'} = 'Virtual device';
-            $hash{'interface info'}{$device}{'driver'} = 'Virtual driver';
+            $hash{$device}{'vendor'} = 'Virtual';
+            $hash{$device}{'device'} = 'Virtual device';
+            $hash{$device}{'driver'} = 'Virtual driver';
             next;
         }
  
@@ -394,9 +394,9 @@ sub get_net_info {
         close $fh;
         ### $vendor_name
         ### $device_name
-        $hash{'interface info'}{$device}{'vendor'} = $vendor_name;
-        $hash{'interface info'}{$device}{'device'} = $device_name;
-        $hash{'interface info'}{$device}{'driver'} = $driver;
+        $hash{$device}{'vendor'} = $vendor_name;
+        $hash{$device}{'device'} = $device_name;
+        $hash{$device}{'driver'} = $driver;
     }
     ### %hash
     return \%hash;
