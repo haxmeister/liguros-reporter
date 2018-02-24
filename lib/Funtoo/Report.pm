@@ -69,12 +69,9 @@ sub user_config {
 
         # if we arrived here due to config-update() and there isn't
         # a config file then we return a UUID without editing the file
-        if ($args) {
-            if ( $args eq 'new' ) {
-                $hash{'UUID'} = 'none';
-                return;
-            }
-        }
+  
+        $hash{'UUID'} = 'none';
+        return;
     }
     else {
         # if we arrived here from the command line and there is no
