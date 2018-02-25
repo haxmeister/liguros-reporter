@@ -5,11 +5,11 @@ package Funtoo::Report;
 
 use strict;
 use warnings;
-use Exporter;
-use JSON;
-use POSIX;
-use Term::ANSIColor;
-use Time::Local;
+use Exporter;       #core
+use JSON;           #cpan
+use POSIX;          #core
+use Term::ANSIColor;#core
+use Time::Local;    #core
 our $VERSION = '1.4';
 
 our @EXPORT_OK = qw(user_config

@@ -22,12 +22,12 @@
 
 use strict;
 use warnings;
-use JSON;
-use Term::ANSIColor;
-use lib "$ENV{PWD}/lib";
-use Funtoo::Report;
-use Search::Elasticsearch;
-use LWP;
+use JSON;                   #cpan
+use Term::ANSIColor;        #core
+use lib "$ENV{PWD}/lib";    #core
+use Funtoo::Report;         #GIT
+use Search::Elasticsearch;  #CPAN
+
 
 ## elasticsearch submission infromation:
 my %es_config = (
