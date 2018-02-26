@@ -536,35 +536,28 @@ sub get_cpu_info {
 sub get_mem_info {
 
     # pulling relevent info from /proc/meminfo
-    my %hash;
+    my %hash = (
+        MemTotal     => undef,
+        MemFree      => undef,
+        MemAvailable => undef,
+        SwapTotal    => undef,
+        SwapFree     => undef,
+    );
     my $mem_file = '/proc/meminfo';
     my @mem_file_contents;
     if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
         @mem_file_contents = <$fh>;
         close $fh;
+        
         foreach my $row (@mem_file_contents) {
-            chomp $row;
-
-            if ($row) {
-
-                # splitting on the colon again
-                my ( $key, $value ) = split /\s*:\s*/msx, $row;
-
-                # look for all these values
-                if (   ( $key eq 'MemTotal' )
-                    or ( $key eq 'MemFree' )
-                    or ( $key eq 'MemAvailable' )
-                    or ( $key eq 'SwapTotal' )
-                    or ( $key eq 'SwapFree' ) )
-                {
-
-                    # capture just digit characters in the value
-                    $value =~ /(\d+)/msx;
-
-                    # simple math to force perl to type this as a number
-                    $hash{$key} = $1 * 1;
-                }
-            }
+            
+            # get the key and the first numeric value
+            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
+                or next;
+                
+            # if there's a hash bucket waiting for this value, add it
+            exists $hash{$key} or next;
+            $hash{$key} = int $value;
         }
     }
     else { warn "Could not open file ' $mem_file' $!"; }
