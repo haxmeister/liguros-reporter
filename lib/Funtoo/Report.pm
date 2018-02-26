@@ -670,88 +670,88 @@ sub get_all_installed_pkg {
 ## fetching versions of key softwares
 ##
 sub get_version_info {
-
+    
     my %hash;
-    my %ebuild_dirs = (
-        'portage' => '/var/db/pkg/sys-apps',
-        'ego'     => '/var/db/pkg/app-admin',
-        'python'  => '/var/db/pkg/dev-lang',
-        'gcc'     => '/var/db/pkg/sys-devel',
-        'glibc'   => '/var/db/pkg/sys-libs'
+    # specify which ebuilds to look at; use a "version" of "undef" for a single
+    # version value, and a hashref "[]" for a list of version values
+    my %ebuilds = (
+        portage => {
+            kit     => 'sys-apps',
+            version => undef,
+            section => 'portage versions',
+        },
+        ego => {
+            kit     => 'app-admin',
+            version => undef,
+            section => 'ego version',
+        },
+        python => {
+            kit     => 'dev-lang',
+            version => [],
+            section => 'python versions',
+        },
+        gcc => {
+            kit     => 'sys-devel',
+            version => [],
+            section => 'gcc versions',
+        },
+        glibc => {
+            kit     => 'sys-libs',
+            version => [],
+            section => 'glibc versions',
+        },
     );
 
-    ## retrieving portage version
-    opendir( DIR, ( $ebuild_dirs{'portage'} ) )
-        or die "could not open $ebuild_dirs{'portage'} ", $!;
-    my @portage_dir = readdir(DIR);
-    closedir(DIR);
-    foreach my $folder (@portage_dir) {
-        chomp $folder;
-        if ( $folder =~ /^portage/msx ) {
-            $folder =~ /^portage-(.*)/msx;
-            $hash{'portage version'} = $1;
-        }
-    }
+    # iterate through the ebuilds hash to fill out the result hash
 
-    ## retrieving ego version
-    opendir( DIR, ( $ebuild_dirs{'ego'} ) )
-        or die "could not open $ebuild_dirs{'ego'} ", $!;
-    my @ego_dir = readdir(DIR);
-    closedir(DIR);
-    foreach my $folder (@ego_dir) {
-        chomp $folder;
-        if ( $folder =~ /^ego/msx ) {
-            $folder =~ /^ego-(.*)/msx;
-            $hash{'ego version'} = $1;
-        }
-    }
+    for my $name (keys %ebuilds) {
+        my $ebuild = $ebuilds{$name};
 
-    # retrieving python versions
-    my @python_versions;
-    opendir( DIR, ( $ebuild_dirs{'python'} ) )
-        or die "could not open $ebuild_dirs{'python'} ", $!;
-    my @python_dir = readdir(DIR);
-    closedir(DIR);
-    foreach my $folder (@python_dir) {
-        chomp $folder;
-        if ( $folder =~ /^python.[^exec]/msx ) {
-            $folder =~ /^python-(.*)/msx;
-            push @python_versions, $1;
-            $hash{'python versions'} = \@python_versions;
-        }
-    }
+        # define a pattern for getting the version number of the ebuild from
+        # its directory name
+        my $pat = qr{
+            \A         # start of string
+            \Q$name\E  # quoted ebuild name
+            -          # hyphen
+            (\d.*)     # string beginning with digit
+        }msx;
 
-    # retrieving gcc versions
-    my @gcc_versions;
-    opendir( DIR, ( $ebuild_dirs{'gcc'} ) )
-        or die "could not open $ebuild_dirs{'gcc'} ", $!;
-    my @gcc_dir = readdir(DIR);
-    closedir(DIR);
-    foreach my $folder (@gcc_dir) {
-        chomp $folder;
-        if ( $folder =~ /^gcc.[^config]/msx ) {
-            $folder =~ /^gcc-(.*)/msx;
-            push @gcc_versions, $1;
-            $hash{'gcc versions'} = \@gcc_versions;
-        }
-    }
 
-    # retrieving glibc versions
-    my @glibc_versions;
-    opendir( DIR, ( $ebuild_dirs{'glibc'} ) )
-        or die "could not open $ebuild_dirs{'glibc'} ", $!;
-    my @glibc_dir = readdir(DIR);
-    closedir(DIR);
-    foreach my $folder (@glibc_dir) {
-        chomp $folder;
-        if ( $folder =~ /^glibc.[^config]/msx ) {
-            $folder =~ /^glibc-(.*)/msx;
-            push @glibc_versions, $1;
-            $hash{'glibc versions'} = \@glibc_versions;
+        # open the ebuild's directory, die horribly if we can't find it
+        my $dn = "/var/db/pkg/$ebuild->{kit}";
+        opendir my $dh, $dn
+            or die "could not open $dn: $!\n";
+
+        # iterate through directory entries
+        while (defined(my $entry = readdir $dh)) {
+
+            # skip anything that doesn't match the version pattern
+            my ($version) = $entry =~ $pat or next;
+
+            # if the hash wants an array, push the version onto it and keep
+            # iterating
+            if (ref $ebuild->{version} eq 'ARRAY') {
+                push @{ $ebuild->{version} }, $version;
+            }
+
+            # otherwise, just set the value to the version and end the loop
+            else {
+                $ebuild->{version} = $version;
+                last;
+            }
         }
-    }
-    return \%hash;
-}
+
+        # close the directory
+        closedir $dh;
+
+
+
+        # tie in this section of the final report
+        $hash{$ebuild->{section}} = $ebuild->{version};
+     }
+     return \%hash;
+ }
+ 
 
 ##
 ## fetch information about the system chassi
