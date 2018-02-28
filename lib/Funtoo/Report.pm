@@ -443,42 +443,67 @@ sub get_profile_info {
 
 ##
 ## fetching active kits
-## resorting to parsing output of ego
+## applies /etc/ego.conf contents to the data structure
+## at /var/git/meta-repo/metadata/kit-info.json and returns a structure
+## that shows only the "active" kit
 ##
-sub get_kit_info {
-
-    # execute 'ego kit status' and capture it's output
-    my @status_info = `ego kit status`;
+sub get_kit_info{
+    
+    my $meta_file ="/var/git/meta-repo/metadata/kit-info.json";
+    my $meta_data;
+    my $ego_conf = "/etc/ego.conf";
     my %hash;
+    
+    
+    # decode and store meta file datastructure into $meta_data
+    if ( open (my $fh, '<:encoding(UTF-8)',$meta_file)){
+        my @lines = <$fh>;
+        close $fh;
+        my $data = join('',@lines);
+        $meta_data = decode_json($data);
 
-    # this output needs a lot of work to get the data into a hash
-    for my $line (@status_info) {
-        chomp $line;
-
-        # lets remove leading and trailing white space from the line
-        $line =~ s/^\s+|\s+$//g;
-
-        # done parsing lines if we hit the NOTE line
-        if ( $line =~ /NOTE/ ) {
-            return \%hash;
+        # let's define our hash keys from the array found in this file
+        foreach my $key ( @{$meta_data->{"kit_order"}} ){
+            $hash{$key} = "undef";
         }
+    }
+    else{
+        print "cannot open meta file";
+    }
 
-        # lets dodge that line with the underlined words in it
-        if ( $line =~ /^\w/msx ) {
-
-            # split the line on whitespace and grab the first 2 values
-            # which are 'kit' and 'active branch'
-            my ( $key, $value ) = split( ' ', $line );
-
-            # this will also remove the terminal color encoding
-            # that is present but not normally visible
-            # otherwise you see  \u001b[94m and other such nonsense
-            $value =~ s/^\W\[\d.m//;
-            $hash{$key} = $value;
+    # extract valid lines from ego.conf 
+    if ( open (my $fh, '<:encoding(UTF-8)', $ego_conf)){
+        my @lines = <$fh>;
+        close $fh;
+        foreach my $line (@lines){
+            chomp $line;
+            if ($line =~ /^\w/msx){
+                my ($kit, $value) = split (/\s*=\s*/msx, $line);
+                chomp $kit;
+                chomp $value;
+                       
+                # if the kit has been named in the meta data structure
+                # we will plug that value into it
+                if (exists $hash{$kit}){
+                    $hash{$kit} = $value;
+                }
+            }
+        }
+    }
+    else{
+        print "cannot open ego.conf"
+    }
+    
+    # now lets finish filling out our hash with default settings
+    # anywhere it is undef
+    foreach my $key (keys %hash){
+        if ($hash{$key} eq "undef"){
+            $hash{$key} = $meta_data->{kit_settings}{$key}{default};
         }
     }
     return \%hash;
 }
+
 
 ##
 ## fetching lines from /proc/cpuinfo
