@@ -877,33 +877,25 @@ sub get_lspci {
 ############ misc functions ###############
 
 ## accepts a string that is the question
-## returns only a proper y or n or continues to prompt user
+## returns y or n or continues to prompt user
 ## until they answer correctly
 sub get_y_or_n {
     my $arg = shift;
 
-    # ask the question
-    print "$arg yes or no?\n";
-    my $answer = <STDIN>;
-    chomp $answer;
+    my $answer = q( );
+    while ( $answer !~ /^y(?:es)?$|^no?$|^$/ixms ) {
 
-    # convert to lower case for easy matching
-    my $answer_lc = lc $answer;
+        # ask the question, with "yes" as the implied default
+        print "$arg yes or no? [y]\n";
+        $answer = readline *STDIN;
+    }
 
-    # checking for valid yes responses
-    if ( $answer_lc =~ /y|yes/ ) {
+    if ( $answer =~ /^y(?:es)?$|^$/ixms ) {
         return 'y';
     }
-
-    # checking for valid no responses
-    elsif ( $answer_lc =~ /n|no/ ) {
+    elsif ( $answer =~ /^no?$/ixms ) {
         return 'n';
     }
-
-    # if a valid response is not given
-    else {
-        print "$answer is not a valid answer\n";
-        return get_y_or_n($arg);
-    }
 }
+
 1;
