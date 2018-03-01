@@ -703,7 +703,7 @@ sub get_version_info {
         portage => {
             kit     => 'sys-apps',
             version => undef,
-            section => 'portage versions',
+            section => 'portage version',
         },
         ego => {
             kit     => 'app-admin',
