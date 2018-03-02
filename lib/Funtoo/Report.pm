@@ -408,8 +408,6 @@ sub get_net_info {
 sub get_filesystem_info{
     my $json_from_lsblk = 
         `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
-    $json_from_lsblk =~ s/\"\[/\"/msxg;
-    $json_from_lsblk =~ s/\]\"/\"/msxg;
     my $data = decode_json($json_from_lsblk);
     my %hash = %$data;
     return \%hash;
