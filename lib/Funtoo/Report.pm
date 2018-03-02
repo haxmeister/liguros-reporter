@@ -408,11 +408,87 @@ sub get_net_info {
 sub get_filesystem_info{
     my $json_from_lsblk = 
         `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
-    $json_from_lsblk =~ s/\"\[/\"/msxg;
-    $json_from_lsblk =~ s/\]\"/\"/msxg;
     my $data = decode_json($json_from_lsblk);
-    my %hash = %$data;
-    return \%hash;
+
+    # we need to recursively transform the arrayref-of-hashref structures in
+    # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
+
+    # start a stack of references to objects to transform
+    my @stack;
+
+    # dispatch table of reference type to transformation method
+    my %disp = (
+
+        # pass hashes through unscathed, enqueuing all their values
+        HASH => sub {
+            my $obj = shift;
+            for my $value (values %{ $obj }) {
+                push @stack, \$value;
+            }
+            return $obj;
+        },
+
+        # convert an arrayref of hashrefs in-place into a hashref by the "name"
+        # member of each hashref, and enqueue all the original items
+        ARRAY => sub {
+            my $obj = shift;
+
+            # start replacement hash
+            my %rep;
+
+            # iterate over the list items
+            for my $item (@{ $obj }) {
+
+                # ensure we can actually translate this item, warn and skip it
+                # if we can't
+                eval {
+                    my $type = ref $item
+                      or die;
+                    $type eq 'HASH'
+                      or die;
+                    exists $item->{name}
+                      or die;
+                    not exists $rep{$item->{name}}
+                      or die;
+
+                    # item passes muster, put it into the replacement hash
+                    $rep{$item->{name}} = $item;
+                    push @stack, \$item;
+
+                } or warn "Failed arrayref item conversion\n";
+            }
+
+            # return a reference to the replacement hash, not the original
+            # arrayref; we discard that
+            return \%rep;
+        },
+    );
+
+    # start with the root node on the stack
+    push @stack, \$data;
+
+    # iterative walk through the tree
+    while (@stack) {
+
+        # pop a reference off the stack
+        my $ref = pop @stack;
+
+        # get the object it points to
+        my $obj = ${ $ref };
+
+        # skip any object that is not itself a reference
+        my $type = ref $obj
+          or next;
+
+        # skip any object for which we don't have a handler defined
+        exists $disp{$type}
+          or next;
+
+        # repoint the reference to the outcome of this type's dispatch method
+        ${ $ref } = $disp{$type}->($obj);
+    }
+
+    return $data;
 }
 ##
 ## fetching active profiles
