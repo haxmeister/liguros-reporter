@@ -14,9 +14,8 @@ use HTTP::Tiny;         #core
 
 our $VERSION = '1.4';
 
-our @EXPORT_OK = qw(user_config
-    get_cpu_info
-    get_mem_info
+our @EXPORT_OK = qw(
+    user_config
     get_kernel_info
     get_boot_dir_info
     get_version_info
@@ -25,7 +24,6 @@ our @EXPORT_OK = qw(user_config
     get_kit_info
     add_uuid
     version
-    get_chassis_info
     get_all_installed_pkg
     report_time
     config_update
@@ -142,11 +140,6 @@ sub config_update {
     }
 
     # let's ask the user about each report setting
-    $new_config{'cpu-info'}
-        = get_y_or_n('Report information about your CPU?');
-
-    $new_config{'mem-info'}
-        = get_y_or_n('Report information about your RAM?');
 
     $new_config{'kernel-info'}
         = get_y_or_n('Report information about your active kernel?');
@@ -156,9 +149,6 @@ sub config_update {
 
     $new_config{'version-info'}
         = get_y_or_n('Report versions of key system softwares?');
-
-    $new_config{'chassis-info'}
-        = get_y_or_n('Report information about your computer\'s chassis?');
 
     $new_config{'installed-pkgs'}
         = get_y_or_n('Report all packages installed on the system?');
@@ -175,13 +165,6 @@ sub config_update {
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
 
-    $new_config{'filesystem-info'}
-        = get_y_or_n(
-        'Report information about your filesystem and block devices?');
-
-    $new_config{'networking-info'}
-        = get_y_or_n(
-        'Report information about your networking hardware and devices?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
@@ -284,7 +267,7 @@ sub report_time {
 
 ##
 ## returns a hash ref with various hardware info that was
-## derived from lspci -kmv
+## derived from lspci -kmv and other functions
 ##
 sub get_hardware_info {
     my %hash;
@@ -293,16 +276,31 @@ sub get_hardware_info {
                     
         # fetching sound info from data structure
         if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
-            $hash{'Audio'}{$device} = \%{$lspci{'PCI-Device'}{$device}}
+            $hash{'audio'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
         
         }
 
         # fetching video cards
         if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
-            $hash{'Video'}{$device} = \%{$lspci{'PCI-Device'}{$device}}
+            $hash{'video'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
         }
     }
-
+    
+    # fetching networking devices
+    $hash{'networking'} = get_net_info();
+    
+    # fetching block devices
+    $hash{'filesystem'} = get_filesystem_info();
+    
+    # fetching cpu info
+    $hash{'cpu'} = get_cpu_info();
+    
+    # fetching memory info
+    $hash{'memory'} = get_mem_info();
+    
+    # fetching chassis info
+    $hash{'chassis'} = get_chassis_info();
+    
     return \%hash;
 }
 
@@ -517,6 +515,160 @@ sub get_filesystem_info {
 
     return $data;
 }
+
+##
+## fetching lines from /proc/cpuinfo
+##
+sub get_cpu_info {
+
+    my $cpu_file = '/proc/cpuinfo';
+    my %hash;
+    my @cpu_file_contents;
+    my $proc_count = 0;
+    if ( open( my $fh, '<:encoding(UTF-8)', $cpu_file ) ) {
+        @cpu_file_contents = <$fh>;
+        close $fh;
+
+        foreach my $row (@cpu_file_contents) {
+            chomp $row;
+            if ($row) {
+
+                # lets split each line on the colon, left is the key
+                # right is the value
+                my ( $key, $value ) = split /\s*:\s*/msx, $row;
+
+                # now we will just look for the values we want and
+                # add them to the hash
+                if ( $key eq 'model name' ) {
+                    $hash{$key} = $value;
+                }
+                elsif ( $key eq 'flags' ) {
+                    my @cpu_flags = split / /, $value;
+                    $hash{$key} = \@cpu_flags;
+                }
+                elsif ( $key eq 'cpu MHz' ) {
+                    $hash{$key} = $value * 1;
+                }
+                elsif ( $key eq 'processor' ) {
+
+                    # counting lines that are labeled 'processor' which
+                    # should give us a number that users expect to see
+                    # including logical and physical cores
+                    $proc_count = $proc_count + 1;
+                }
+                else {next}
+            }
+        }
+    }
+
+    else { warn "Could not open file ' $cpu_file' $!"; }
+    $hash{"processors"} = $proc_count;
+    return \%hash;
+}
+
+##
+## fetching a few lines from /proc/meminfo
+##
+sub get_mem_info {
+
+    # pulling relevent info from /proc/meminfo
+    my %hash = (
+        MemTotal     => undef,
+        MemFree      => undef,
+        MemAvailable => undef,
+        SwapTotal    => undef,
+        SwapFree     => undef,
+    );
+    my $mem_file = '/proc/meminfo';
+    my @mem_file_contents;
+    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
+        @mem_file_contents = <$fh>;
+        close $fh;
+
+        foreach my $row (@mem_file_contents) {
+
+            # get the key and the first numeric value
+            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
+                or next;
+
+            # if there's a hash bucket waiting for this value, add it
+            exists $hash{$key} or next;
+            $hash{$key} = int $value;
+        }
+    }
+    else { warn "Could not open file ' $mem_file' $!"; }
+    return \%hash;
+}
+
+##
+## fetch information about the system chassi
+##
+sub get_chassis_info {
+    my %hash;
+    my $folder = "/sys/class/dmi/id/";
+    my @id_files = ( 'chassis_type', 'chassis_vendor', 'product_name' );
+
+    my @possible_id = (
+        'N/A',
+        'Other',
+        'Unknown',
+        'Desktop',
+        'Low Profile Desktop',
+        'Pizza Box',
+        'Mini Tower',
+        'Tower',
+        'Portable',
+        'Laptop',
+        'Notebook',
+        'Hand Held',
+        'Docking Station',
+        'All in One',
+        'Sub Notebook',
+        'Space-Saving',
+        'Lunch Box',
+        'Main Server Chassis',
+        'Expansion Chassis',
+        'SubChassis',
+        'Bus Expansion Chassis',
+        'Peripheral Chassis',
+        'RAID Chassis',
+        'Rack Mount Chassis',
+        'Sealed-Case PC',
+        'Multi-system Chassis',
+        'Compact PCI',
+        'Advanced TCA',
+        'Blade',
+        'Blade Enclosure',
+        'Tablet',
+        'Convertible',
+        'Detachable',
+        'IoT Gateway',
+        'Embedded PC',
+        'Mini PC',
+        'Stick PC'
+    );
+
+    for my $file (@id_files) {
+        if ( open( my $fh, '<', "$folder$file" ) ) {
+            my $content = <$fh>;
+            chomp $content;
+            if ( $file eq "chassis_type" ) {
+                $hash{$file} = $possible_id[$content];
+            }
+            else {
+                $hash{$file} = $content;
+            }
+            close $fh;
+        }
+        else {
+            $hash{$file} = $possible_id[0];
+        }
+    }
+    return \%hash;
+
+}
+
+
 ##
 ## fetching active profiles
 ## reconst output of epro show-json command
@@ -606,89 +758,6 @@ sub get_kit_info {
     return \%hash;
 }
 
-##
-## fetching lines from /proc/cpuinfo
-##
-sub get_cpu_info {
-
-    my $cpu_file = '/proc/cpuinfo';
-    my %hash;
-    my @cpu_file_contents;
-    my $proc_count = 0;
-    if ( open( my $fh, '<:encoding(UTF-8)', $cpu_file ) ) {
-        @cpu_file_contents = <$fh>;
-        close $fh;
-
-        foreach my $row (@cpu_file_contents) {
-            chomp $row;
-            if ($row) {
-
-                # lets split each line on the colon, left is the key
-                # right is the value
-                my ( $key, $value ) = split /\s*:\s*/msx, $row;
-
-                # now we will just look for the values we want and
-                # add them to the hash
-                if ( $key eq 'model name' ) {
-                    $hash{$key} = $value;
-                }
-                elsif ( $key eq 'flags' ) {
-                    my @cpu_flags = split / /, $value;
-                    $hash{$key} = \@cpu_flags;
-                }
-                elsif ( $key eq 'cpu MHz' ) {
-                    $hash{$key} = $value * 1;
-                }
-                elsif ( $key eq 'processor' ) {
-
-                    # counting lines that are labeled 'processor' which
-                    # should give us a number that users expect to see
-                    # including logical and physical cores
-                    $proc_count = $proc_count + 1;
-                }
-                else {next}
-            }
-        }
-    }
-
-    else { warn "Could not open file ' $cpu_file' $!"; }
-    $hash{"processors"} = $proc_count;
-    return \%hash;
-}
-
-##
-## fetching a few lines from /proc/meminfo
-##
-sub get_mem_info {
-
-    # pulling relevent info from /proc/meminfo
-    my %hash = (
-        MemTotal     => undef,
-        MemFree      => undef,
-        MemAvailable => undef,
-        SwapTotal    => undef,
-        SwapFree     => undef,
-    );
-    my $mem_file = '/proc/meminfo';
-    my @mem_file_contents;
-    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
-        @mem_file_contents = <$fh>;
-        close $fh;
-
-        foreach my $row (@mem_file_contents) {
-
-            # get the key and the first numeric value
-            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
-                or next;
-
-            # if there's a hash bucket waiting for this value, add it
-            exists $hash{$key} or next;
-            $hash{$key} = int $value;
-        }
-    }
-    else { warn "Could not open file ' $mem_file' $!"; }
-    return \%hash;
-}
 
 ##
 ## fetching kernel information from /proc/sys/kernel
@@ -874,74 +943,6 @@ sub get_version_info {
         $hash{ $ebuild->{section} } = $ebuild->{version};
     }
     return \%hash;
-}
-
-##
-## fetch information about the system chassi
-##
-sub get_chassis_info {
-    my %hash;
-    my $folder = "/sys/class/dmi/id/";
-    my @id_files = ( 'chassis_type', 'chassis_vendor', 'product_name' );
-
-    my @possible_id = (
-        'N/A',
-        'Other',
-        'Unknown',
-        'Desktop',
-        'Low Profile Desktop',
-        'Pizza Box',
-        'Mini Tower',
-        'Tower',
-        'Portable',
-        'Laptop',
-        'Notebook',
-        'Hand Held',
-        'Docking Station',
-        'All in One',
-        'Sub Notebook',
-        'Space-Saving',
-        'Lunch Box',
-        'Main Server Chassis',
-        'Expansion Chassis',
-        'SubChassis',
-        'Bus Expansion Chassis',
-        'Peripheral Chassis',
-        'RAID Chassis',
-        'Rack Mount Chassis',
-        'Sealed-Case PC',
-        'Multi-system Chassis',
-        'Compact PCI',
-        'Advanced TCA',
-        'Blade',
-        'Blade Enclosure',
-        'Tablet',
-        'Convertible',
-        'Detachable',
-        'IoT Gateway',
-        'Embedded PC',
-        'Mini PC',
-        'Stick PC'
-    );
-
-    for my $file (@id_files) {
-        if ( open( my $fh, '<', "$folder$file" ) ) {
-            my $content = <$fh>;
-            chomp $content;
-            if ( $file eq "chassis_type" ) {
-                $hash{$file} = $possible_id[$content];
-            }
-            else {
-                $hash{$file} = $content;
-            }
-            close $fh;
-        }
-        else {
-            $hash{$file} = $possible_id[0];
-        }
-    }
-    return \%hash;
-
 }
 
 ##
