@@ -439,7 +439,7 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my $json_from_lsblk
-        = `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
+        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
     my $data = decode_json($json_from_lsblk);
 
    # we need to recursively transform the arrayref-of-hashref structures in
