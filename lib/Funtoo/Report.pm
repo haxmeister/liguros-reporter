@@ -289,22 +289,17 @@ sub report_time {
 sub get_hardware_info {
     my %hash;
 
-    for my $hw_item ( @{ $lspci{'PCI-Device'} } ) {
-
+    for my $device( keys %{$lspci{'PCI-Device'}}  ) {
+                    
         # fetching sound info from data structure
-        if ( $hw_item->{'Class'} =~ /Audio|audio/msx ) {
-
-            # have to push it on an array because there may be
-            # more than one
-            push @{ $hash{'sound'} }, $hw_item;
+        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
+            $hash{'Audio'}{$device} = \%{$lspci{'PCI-Device'}{$device}}
+        
         }
 
         # fetching video cards
-        if ( $hw_item->{'Class'} =~ /VGA/msx ) {
-
-            # have to push it on an array because there may be
-            # more than one
-            push @{ $hash{'video'} }, $hw_item;
+        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
+            $hash{'Video'}{$device} = \%{$lspci{'PCI-Device'}{$device}}
         }
     }
 
@@ -958,22 +953,29 @@ sub get_lspci {
     my $lspci_output = `lspci -kmmvvv`;
     my @hardware_list;
     my @hw_item_section = split( /^\n/msx, $lspci_output );
-
+    my %hash;
+    my %item;
     for (@hw_item_section) {
         chomp;    # $hw_item;
         my @hw_item_lines = split(/\n/msx);
-        my %hash;
+        
         for (@hw_item_lines) {
             chomp;
             s/\[\]|\{\}/[ ]/msx;
             my ( $key, $value ) = split(':\s');
             chomp $key;
             chomp $value;
-            $hash{$key} = $value;
+            $item{$key} = $value;
         }
-        push @hardware_list, \%hash;
+        
+        
+        foreach my $key_item (keys %item){
+            unless ($key_item eq 'Slot'){
+                $hash{$item{'Slot'}}{$key_item} = $item{$key_item};
+            }
+        }
     }
-    return \@hardware_list;
+    return \%hash;
 }
 
 ###########################################
