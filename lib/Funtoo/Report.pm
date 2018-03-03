@@ -851,10 +851,9 @@ sub get_world_info {
 ##
 sub get_all_installed_pkg {
     my %hash;
-    my @results = `equery list -F='\$cpv' "*"`;
+    my @results = `equery list -F'\$cpv' "*"`;
     for my $line (@results) {
         chomp $line;
-        $line =~ s/^=//s;
         push @{ $hash{'pkgs'} }, $line;
     }
     $hash{'pkg-count'} = scalar @results;
