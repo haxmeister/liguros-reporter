@@ -5,12 +5,12 @@ package Funtoo::Report;
 
 use strict;
 use warnings;
-use Exporter;       #core
-use JSON;           #cpan
-use POSIX;          #core
-use Term::ANSIColor;#core
-use Time::Local;    #core
-use HTTP::Tiny;     #core
+use Exporter;           #core
+use JSON;               #cpan
+use POSIX;              #core
+use Term::ANSIColor;    #core
+use Time::Local;        #core
+use HTTP::Tiny;         #core
 
 our $VERSION = '1.4';
 
@@ -39,35 +39,30 @@ my %lspci = ( 'PCI-Device' => get_lspci() );
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
-sub send_report{
-    my $rep = shift;
+sub send_report {
+    my $rep     = shift;
     my $es_conf = shift;
-    
+
     # constructing the url we will report too
     my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
 
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
 
-    # send the report to the json object to be encoded to json
-    # and print the results with proper indents (pretty)
-    #my $json_pretty = $json->pretty->encode( $rep );
-    
     # load the report options for the http post
-    my %header = ("Content-Type" => "application/json");
-    my %options =(
-        'content' => $json->pretty->encode( $rep ),
-        'headers' => \%header    
+    my %header = ( "Content-Type" => "application/json" );
+    my %options = (
+        'content' => $json->pretty->encode($rep),
+        'headers' => \%header
     );
-    
+
     # create a new HTTP object
     my $http = HTTP::Tiny->new();
-    
+
     # send report and capture the response from ES
-    my $response = $http->request('POST', $url, \%options );
+    my $response = $http->request( 'POST', $url, \%options );
 
 }
-
 
 ##
 ## finds the config file in /etc/funtoo-report.conf and loads it's contents
@@ -179,12 +174,14 @@ sub config_update {
 
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
-        
+
     $new_config{'filesystem-info'}
-        = get_y_or_n('Report information about your filesystem and block devices?');
+        = get_y_or_n(
+        'Report information about your filesystem and block devices?');
 
     $new_config{'networking-info'}
-        = get_y_or_n('Report information about your networking hardware and devices?');
+        = get_y_or_n(
+        'Report information about your networking hardware and devices?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
@@ -292,9 +289,8 @@ sub report_time {
 sub get_hardware_info {
     my %hash;
 
-    
     for my $hw_item ( @{ $lspci{'PCI-Device'} } ) {
-        
+
         # fetching sound info from data structure
         if ( $hw_item->{'Class'} =~ /Audio|audio/msx ) {
 
@@ -302,7 +298,7 @@ sub get_hardware_info {
             # more than one
             push @{ $hash{'sound'} }, $hw_item;
         }
-        
+
         # fetching video cards
         if ( $hw_item->{'Class'} =~ /VGA/msx ) {
 
@@ -324,7 +320,7 @@ sub get_net_info {
     use Carp;                          # Core
     use English qw(-no_match_vars);    # Core
     use autodie qw< :io >;
-    
+
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
@@ -338,12 +334,12 @@ sub get_net_info {
         }
     }
     closedir $dh;
- 
+
 ### @interfaces
- 
+
     for my $device (@interfaces) {
         my ( $vendor_id, $device_id, $id_file );
- 
+
         # Create dummy entries for virtual devices and move on
         if ( !-d "$interface_dir/$device/device/driver/module" ) {
             $hash{$device}{'vendor'} = 'Virtual';
@@ -351,14 +347,14 @@ sub get_net_info {
             $hash{$device}{'driver'} = 'Virtual driver';
             next;
         }
- 
+
         # Othewise, determine the driver via the path name
         my $driver = (
             split /[\/]/xms,
             readlink "$interface_dir/$device/device/driver/module"
         )[-1];
         ### $driver
- 
+
         # Get the vendor ID (PCI)
         my $vendor_id_file = "/sys/class/net/$device/device/vendor";
         if ( -e $vendor_id_file ) {
@@ -369,7 +365,7 @@ sub get_net_info {
             close $fh;
             chomp $vendor_id;
             $vendor_id =~ s/^0x//xms;
- 
+
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
@@ -378,9 +374,9 @@ sub get_net_info {
             close $fh;
             chomp $device_id;
             $device_id =~ s/^0x//xms;
- 
+
         }
- 
+
         # Or get the vendor and device ID (USB)
         else {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
@@ -402,20 +398,20 @@ sub get_net_info {
         }
         ### $vendor_id
         ### $device_id
- 
+
         # Look up the proper device name from the id file
         my ( $vendor_name, $device_name );
- 
+
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
             or carp "Unable to open file $id_file $ERRNO\n";
- 
+
      # Devices can share device IDs but not "underneath" a vendor ID, so we'll
      # want to get the first result under the vendor
         my $seen = 0;
- 
+
         while (<$fh>) {
- 
+
             if (/^$vendor_id[ ]{2}(.*)/xms) {
                 $vendor_name = $1;
                 chomp $vendor_name;
@@ -437,17 +433,17 @@ sub get_net_info {
     ### %hash
     return \%hash;
 }
- 
+
 ##
 ## fetching lsblk output
 ##
-sub get_filesystem_info{
-    my $json_from_lsblk = 
-        `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
+sub get_filesystem_info {
+    my $json_from_lsblk
+        = `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
     my $data = decode_json($json_from_lsblk);
 
-    # we need to recursively transform the arrayref-of-hashref structures in
-    # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
+   # we need to recursively transform the arrayref-of-hashref structures in
+   # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
 
     # start a stack of references to objects to transform
     my @stack;
@@ -458,14 +454,14 @@ sub get_filesystem_info{
         # pass hashes through unscathed, enqueuing all their values
         HASH => sub {
             my $obj = shift;
-            for my $value (values %{ $obj }) {
+            for my $value ( values %{$obj} ) {
                 push @stack, \$value;
             }
             return $obj;
         },
 
-        # convert an arrayref of hashrefs in-place into a hashref by the "name"
-        # member of each hashref, and enqueue all the original items
+       # convert an arrayref of hashrefs in-place into a hashref by the "name"
+       # member of each hashref, and enqueue all the original items
         ARRAY => sub {
             my $obj = shift;
 
@@ -473,22 +469,22 @@ sub get_filesystem_info{
             my %rep;
 
             # iterate over the list items
-            for my $item (@{ $obj }) {
+            for my $item ( @{$obj} ) {
 
                 # ensure we can actually translate this item, warn and skip it
                 # if we can't
                 eval {
                     my $type = ref $item
-                      or die;
+                        or die;
                     $type eq 'HASH'
-                      or die;
+                        or die;
                     exists $item->{name}
-                      or die;
-                    not exists $rep{$item->{name}}
-                      or die;
+                        or die;
+                    not exists $rep{ $item->{name} }
+                        or die;
 
                     # item passes muster, put it into the replacement hash
-                    $rep{$item->{name}} = $item;
+                    $rep{ $item->{name} } = $item;
                     push @stack, \$item;
 
                 } or warn "Failed arrayref item conversion\n";
@@ -510,18 +506,18 @@ sub get_filesystem_info{
         my $ref = pop @stack;
 
         # get the object it points to
-        my $obj = ${ $ref };
+        my $obj = ${$ref};
 
         # skip any object that is not itself a reference
         my $type = ref $obj
-          or next;
+            or next;
 
         # skip any object for which we don't have a handler defined
         exists $disp{$type}
-          or next;
+            or next;
 
         # repoint the reference to the outcome of this type's dispatch method
-        ${ $ref } = $disp{$type}->($obj);
+        ${$ref} = $disp{$type}->($obj);
     }
 
     return $data;
@@ -559,63 +555,61 @@ sub get_profile_info {
 ## at /var/git/meta-repo/metadata/kit-info.json and returns a structure
 ## that shows only the "active" kit
 ##
-sub get_kit_info{
-    
-    my $meta_file ="/var/git/meta-repo/metadata/kit-info.json";
+sub get_kit_info {
+
+    my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
     my $meta_data;
     my $ego_conf = "/etc/ego.conf";
     my %hash;
-    
-    
+
     # decode and store meta file datastructure into $meta_data
-    if ( open (my $fh, '<:encoding(UTF-8)',$meta_file)){
+    if ( open( my $fh, '<:encoding(UTF-8)', $meta_file ) ) {
         my @lines = <$fh>;
         close $fh;
-        my $data = join('',@lines);
+        my $data = join( '', @lines );
         $meta_data = decode_json($data);
 
         # let's define our hash keys from the array found in this file
-        foreach my $key ( @{$meta_data->{"kit_order"}} ){
+        foreach my $key ( @{ $meta_data->{"kit_order"} } ) {
             $hash{$key} = "undef";
         }
     }
-    else{
+    else {
         print "cannot open meta file";
     }
 
-    # extract valid lines from ego.conf 
-    if ( open (my $fh, '<:encoding(UTF-8)', $ego_conf)){
+    # extract valid lines from ego.conf
+    if ( open( my $fh, '<:encoding(UTF-8)', $ego_conf ) ) {
         my @lines = <$fh>;
         close $fh;
-        foreach my $line (@lines){
+        foreach my $line (@lines) {
             chomp $line;
-            if ($line =~ /^\w/msx){
-                my ($kit, $value) = split (/\s*=\s*/msx, $line);
+            if ( $line =~ /^\w/msx ) {
+                my ( $kit, $value ) = split( /\s*=\s*/msx, $line );
                 chomp $kit;
                 chomp $value;
-                       
+
                 # if the kit has been named in the meta data structure
                 # we will plug that value into it
-                if (exists $hash{$kit}){
+                if ( exists $hash{$kit} ) {
                     $hash{$kit} = $value;
                 }
             }
         }
     }
-    else{
-        print "cannot open ego.conf"
+    else {
+        print "cannot open ego.conf";
     }
-    
+
     # now lets finish filling out our hash with default settings
     # anywhere it is undef
-    foreach my $key (keys %hash){
-        if ($hash{$key} eq "undef"){
+    foreach my $key ( keys %hash ) {
+        if ( $hash{$key} eq "undef" ) {
             $hash{$key} = $meta_data->{kit_settings}{$key}{default};
         }
     }
     return \%hash;
 }
-
 
 ##
 ## fetching lines from /proc/cpuinfo
@@ -685,13 +679,13 @@ sub get_mem_info {
     if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
         @mem_file_contents = <$fh>;
         close $fh;
-        
+
         foreach my $row (@mem_file_contents) {
-            
+
             # get the key and the first numeric value
             my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
                 or next;
-                
+
             # if there's a hash bucket waiting for this value, add it
             exists $hash{$key} or next;
             $hash{$key} = int $value;
@@ -807,10 +801,11 @@ sub get_all_installed_pkg {
 ## fetching versions of key softwares
 ##
 sub get_version_info {
-    
+
     my %hash;
-    # specify which ebuilds to look at; use a "version" of "undef" for a single
-    # version value, and a hashref "[]" for a list of version values
+
+   # specify which ebuilds to look at; use a "version" of "undef" for a single
+   # version value, and a hashref "[]" for a list of version values
     my %ebuilds = (
         portage => {
             kit     => 'sys-apps',
@@ -841,7 +836,7 @@ sub get_version_info {
 
     # iterate through the ebuilds hash to fill out the result hash
 
-    for my $name (keys %ebuilds) {
+    for my $name ( keys %ebuilds ) {
         my $ebuild = $ebuilds{$name};
 
         # define a pattern for getting the version number of the ebuild from
@@ -853,21 +848,20 @@ sub get_version_info {
             (\d.*)     # string beginning with digit
         }msx;
 
-
         # open the ebuild's directory, die horribly if we can't find it
         my $dn = "/var/db/pkg/$ebuild->{kit}";
         opendir my $dh, $dn
             or die "could not open $dn: $!\n";
 
         # iterate through directory entries
-        while (defined(my $entry = readdir $dh)) {
+        while ( defined( my $entry = readdir $dh ) ) {
 
             # skip anything that doesn't match the version pattern
             my ($version) = $entry =~ $pat or next;
 
             # if the hash wants an array, push the version onto it and keep
             # iterating
-            if (ref $ebuild->{version} eq 'ARRAY') {
+            if ( ref $ebuild->{version} eq 'ARRAY' ) {
                 push @{ $ebuild->{version} }, $version;
             }
 
@@ -881,14 +875,11 @@ sub get_version_info {
         # close the directory
         closedir $dh;
 
-
-
         # tie in this section of the final report
-        $hash{$ebuild->{section}} = $ebuild->{version};
-     }
-     return \%hash;
- }
- 
+        $hash{ $ebuild->{section} } = $ebuild->{version};
+    }
+    return \%hash;
+}
 
 ##
 ## fetch information about the system chassi
