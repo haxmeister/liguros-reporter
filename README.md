@@ -65,15 +65,6 @@ ly what is reported to elasticsearch.
 **Here is an example of all possible values in the config file**
 
 ```perl
-# To report cpu info which includes clock speed, model name,
-# and cpu cores
-cpu-info:y
-
-# To report memory info which includes the amount of free memory,
-# the amount of memory available, total amount of swap space,
-# and the amount of free swap space
-mem-info:y
-
 # To report kernel info including O.S. type, release and version
 kernel-info:y
 
@@ -96,9 +87,6 @@ profile-info:y
 # To report kit versions as reported by ego
 # extracted from ego kit show
 kit-info:y
-
-# To report system chassis type and model
-chassis-info:y
 
 # To report all installed packages (takes a few secs)
 installed-pkgs:y
