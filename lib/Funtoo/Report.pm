@@ -10,6 +10,8 @@ use JSON;           #cpan
 use POSIX;          #core
 use Term::ANSIColor;#core
 use Time::Local;    #core
+use HTTP::Tiny;     #core
+
 our $VERSION = '1.4';
 
 our @EXPORT_OK = qw(user_config
@@ -27,11 +29,45 @@ our @EXPORT_OK = qw(user_config
     get_all_installed_pkg
     report_time
     config_update
-    get_hardware_info);
+    get_hardware_info
+    send_report);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
 my %lspci = ( 'PCI-Device' => get_lspci() );
+
+##
+## generates report, creates user agent, and sends to elastic search
+##
+sub send_report{
+    my $rep = shift;
+    my $es_conf = shift;
+    
+    # constructing the url we will report too
+    my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
+
+    # generate a json object that we can use to convert to json
+    my $json = JSON->new->allow_nonref;
+
+    # send the report to the json object to be encoded to json
+    # and print the results with proper indents (pretty)
+    #my $json_pretty = $json->pretty->encode( $rep );
+    
+    # load the report options for the http post
+    my %header = ("Content-Type" => "application/json");
+    my %options =(
+        'content' => $json->pretty->encode( $rep ),
+        'headers' => \%header    
+    );
+    
+    # create a new HTTP object
+    my $http = HTTP::Tiny->new();
+    
+    # send report and capture the response from ES
+    my $response = $http->request('POST', $url, \%options );
+
+}
+
 
 ##
 ## finds the config file in /etc/funtoo-report.conf and loads it's contents

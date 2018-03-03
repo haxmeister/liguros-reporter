@@ -20,23 +20,19 @@
 ## distribution on funtoo or wherever and the module can go
 ## in a more proper place
 
-use strict;
-use warnings;
+use strict;                 #core
+use warnings;               #core
 use JSON;                   #cpan
 use Term::ANSIColor;        #core
 use lib "$ENV{PWD}/lib";    #core
 use Funtoo::Report;         #GIT
-use Search::Elasticsearch;  #CPAN
+use HTTP::Tiny;             #core
 
-
-## elasticsearch submission infromation:
 my %es_config = (
     node  => 'http://elk2.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
-    type  => 'report',
-    debug => 1,
-    id    => ''
-);
+    type  => 'report');
+
 
 ## let's parse the command line args
 if (@ARGV) {
@@ -59,26 +55,7 @@ if (@ARGV) {
 
         # get the entire report
         my %report = report_from_config();
-
-        # generate an elasticsearch object we can send a report to
-        my $e = Search::Elasticsearch->new(
-            nodes => $es_config{'node'},
-            debug => $es_config{'debug'}
-        );
-
-        # let's set the elasticsearch params so that the
-        # recieving end knows what to do with this data
-        $e->index(
-
-            # load params for elastic search into report
-            index => $es_config{'index'},
-            type  => $es_config{'type'},
-            id    => $es_config{'id'},
-
-            # the report data structure goes straight into the body key
-            # where it will be converted to json on the fly
-            body => \%report
-        );
+        Funtoo::Report::send_report(\%report, \%es_config);
     }
 
     # for people who ask for help
