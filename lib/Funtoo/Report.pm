@@ -237,7 +237,7 @@ sub report_time {
             my @t = @_;
             my $year = $t[5] + 1900;
             my $week = ceil(($t[7] + 1) / 7);
-            return sprintf 'funtoo-%04u-%02u',
+            return sprintf 'funtoo-%04u.%02u',
                 $year, $week;
         },
     );
