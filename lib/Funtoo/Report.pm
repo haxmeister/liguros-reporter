@@ -417,85 +417,11 @@ sub get_filesystem_info {
         = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
     my $data = decode_json($json_from_lsblk);
 
-   # we need to recursively transform the arrayref-of-hashref structures in
-   # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
+    # change the troublesome arrayrefs of block devices into hashrefs, indexed
+    # by device name (e.g. "sda1")
+    my $hash = transform_es_arrayref($data, 'name');
 
-    # start a stack of references to objects to transform
-    my @stack;
-
-    # dispatch table of reference type to transformation method
-    my %disp = (
-
-        # pass hashes through unscathed, enqueuing all their values
-        HASH => sub {
-            my $obj = shift;
-            for my $value ( values %{$obj} ) {
-                push @stack, \$value;
-            }
-            return $obj;
-        },
-
-       # convert an arrayref of hashrefs in-place into a hashref by the "name"
-       # member of each hashref, and enqueue all the original items
-        ARRAY => sub {
-            my $obj = shift;
-
-            # start replacement hash
-            my %rep;
-
-            # iterate over the list items
-            for my $item ( @{$obj} ) {
-
-                # ensure we can actually translate this item, warn and skip it
-                # if we can't
-                eval {
-                    my $type = ref $item
-                        or die;
-                    $type eq 'HASH'
-                        or die;
-                    exists $item->{name}
-                        or die;
-                    not exists $rep{ $item->{name} }
-                        or die;
-
-                    # item passes muster, put it into the replacement hash
-                    $rep{ $item->{name} } = $item;
-                    push @stack, \$item;
-
-                } or warn "Failed arrayref item conversion\n";
-            }
-
-            # return a reference to the replacement hash, not the original
-            # arrayref; we discard that
-            return \%rep;
-        },
-    );
-
-    # start with the root node on the stack
-    push @stack, \$data;
-
-    # iterative walk through the tree
-    while (@stack) {
-
-        # pop a reference off the stack
-        my $ref = pop @stack;
-
-        # get the object it points to
-        my $obj = ${$ref};
-
-        # skip any object that is not itself a reference
-        my $type = ref $obj
-            or next;
-
-        # skip any object for which we don't have a handler defined
-        exists $disp{$type}
-            or next;
-
-        # repoint the reference to the outcome of this type's dispatch method
-        ${$ref} = $disp{$type}->($obj);
-    }
-
-    return $data;
+    return $hash;
 }
 
 ##
@@ -982,6 +908,127 @@ sub get_y_or_n {
     }
     elsif ( $answer =~ /^no?$/ixms ) {
         return 'n';
+    }
+}
+
+#
+# ElasticSearch doesn't like lists of objects, or in Perl parlance, arrayrefs
+# of hashrefs. This function accepts a nested structure of arbitrary depth, but
+# with no circular references, and looks for arrayrefs of hashrefs. It attempts
+# to transform each one into a *hashref* of hashrefs instead, by using a key of
+# the initial hashrefs, without touching the hashref objects themselves. All of
+# this is done in-place.
+#
+# For example, this structure:
+#
+# [
+#     { name => 'foo', data => 1234 },
+#     { name => 'bar', data => 5678 }
+# ]
+#
+# If transformed with @keys of ('name'), would be transformed in-place into:
+#
+# {
+#     foo => { name => 'foo', data => 1234 },
+#     bar => { name => 'bar', data => 5678 }
+# }
+#
+# It does this recursively, using an iterative breadth-first walk of the
+# structure.
+#
+# This first block (before the actual function declaration) is setting up the
+# dispatch table for the state machine that changes the structure.
+#
+{
+    # dispatch table of reference type to transformation method
+    my %disp = (
+
+        # pass hashes through unscathed, enqueuing all their values. we ignore
+        # the key parameter; we don't need it here
+        HASH => sub {
+            my ( $obj, $stack ) = @_;
+            for my $value ( values %{$obj} ) {
+                push @{$stack}, \$value;
+            }
+            return $obj;
+        },
+
+        # convert an arrayref of hashrefs in-place into a hashref by the "name"
+        # member of each hashref, and enqueue all the original items
+        ARRAY => sub {
+            my ( $obj, $stack, $key ) = @_;
+
+            # start replacement hash
+            my %rep;
+
+            # iterate over the list items
+            for my $item ( @{$obj} ) {
+
+                # ensure we can actually translate this item, warn and skip it
+                # if we can't
+                eval {
+                    my $type = ref $item
+                      or die;
+                    $type eq 'HASH'
+                      or die;
+                    exists $item->{$key}
+                      or die;
+                    not exists $rep{ $item->{$key} }
+                      or die;
+
+                    # item passes muster, put it into the replacement hash
+                    $rep{ $item->{$key} } = $item;
+                    push @{$stack}, \$item;
+
+                } or carp "Failed arrayref item conversion\n";
+            }
+
+            # return a reference to the replacement hash, not the original
+            # arrayref; we discard that
+            return \%rep;
+        },
+    );
+
+    # here's the actual sub declaration
+    sub transform_es_arrayref {
+        my ( $data, $key ) = @_;
+
+        # check parameters
+        defined $data
+          or croak 'Undefined structure';
+        length $key
+          or croak 'Bad transformation key';
+
+        # start a stack of references to objects to transform
+        my @stack;
+
+        # start with the root node on the stack
+        my $root = \$data;
+        push @stack, $root;
+
+        # iterative walk through the tree
+        while (@stack) {
+
+            # pop a reference off the stack
+            my $ref = pop @stack;
+
+            # get the object it points to
+            my $obj = ${$ref};
+
+            # skip any object that is not itself a reference
+            my $type = ref $obj
+              or next;
+
+            # skip any object for which we don't have a handler defined
+            exists $disp{$type}
+              or next;
+
+           # repoint the reference to the outcome of this type's dispatch method
+            ${$ref} = $disp{$type}->( $obj, \@stack, $key );
+        }
+
+        # return a reference to the root node; it may have changed!
+        return ${$root};
     }
 }
 
