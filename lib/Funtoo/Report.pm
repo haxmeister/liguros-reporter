@@ -7,7 +7,7 @@ use strict;
 use warnings;
 use Exporter;           #core
 use JSON;               #cpan
-use POSIX;              #core
+use POSIX qw(ceil);     #core
 use Term::ANSIColor;    #core
 use HTTP::Tiny;         #core
 
