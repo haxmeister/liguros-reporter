@@ -933,7 +933,7 @@ sub get_y_or_n {
 #     bar => { name => 'bar', data => 5678 }
 # }
 #
-# It does this recursively, using an iterative breadth-first walk of the
+# It does this recursively, using an iterative depth-first walk of the
 # structure.
 #
 # This first block (before the actual function declaration) is setting up the
