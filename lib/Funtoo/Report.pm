@@ -31,7 +31,6 @@ our @EXPORT_OK = qw(
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
-my %lspci = ( 'PCI-Device' => get_lspci() );
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -252,6 +251,8 @@ sub report_time {
 ##
 sub get_hardware_info {
     my %hash;
+
+    my %lspci = ( 'PCI-Device' => get_lspci() );
 
     for my $device( keys %{$lspci{'PCI-Device'}}  ) {
                     
