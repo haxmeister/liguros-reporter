@@ -5,16 +5,17 @@ package Funtoo::Report;
 
 use strict;
 use warnings;
-use Exporter;       #core
-use JSON;           #cpan
-use POSIX;          #core
-use Term::ANSIColor;#core
-use Time::Local;    #core
+use Exporter;           #core
+use JSON;               #cpan
+use POSIX;              #core
+use Term::ANSIColor;    #core
+use Time::Local;        #core
+use HTTP::Tiny;         #core
+
 our $VERSION = '1.4';
 
-our @EXPORT_OK = qw(user_config
-    get_cpu_info
-    get_mem_info
+our @EXPORT_OK = qw(
+    user_config
     get_kernel_info
     get_boot_dir_info
     get_version_info
@@ -23,15 +24,43 @@ our @EXPORT_OK = qw(user_config
     get_kit_info
     add_uuid
     version
-    get_chassis_info
     get_all_installed_pkg
     report_time
     config_update
-    get_hardware_info);
+    get_hardware_info
+    send_report);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
 my %lspci = ( 'PCI-Device' => get_lspci() );
+
+##
+## generates report, creates user agent, and sends to elastic search
+##
+sub send_report {
+    my $rep     = shift;
+    my $es_conf = shift;
+
+    # constructing the url we will report too
+    my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
+
+    # generate a json object that we can use to convert to json
+    my $json = JSON->new->allow_nonref;
+
+    # load the report options for the http post
+    my %header = ( "Content-Type" => "application/json" );
+    my %options = (
+        'content' => $json->pretty->encode($rep),
+        'headers' => \%header
+    );
+
+    # create a new HTTP object
+    my $http = HTTP::Tiny->new();
+
+    # send report and capture the response from ES
+    my $response = $http->request( 'POST', $url, \%options );
+
+}
 
 ##
 ## finds the config file in /etc/funtoo-report.conf and loads it's contents
@@ -111,11 +140,6 @@ sub config_update {
     }
 
     # let's ask the user about each report setting
-    $new_config{'cpu-info'}
-        = get_y_or_n('Report information about your CPU?');
-
-    $new_config{'mem-info'}
-        = get_y_or_n('Report information about your RAM?');
 
     $new_config{'kernel-info'}
         = get_y_or_n('Report information about your active kernel?');
@@ -125,9 +149,6 @@ sub config_update {
 
     $new_config{'version-info'}
         = get_y_or_n('Report versions of key system softwares?');
-
-    $new_config{'chassis-info'}
-        = get_y_or_n('Report information about your computer\'s chassis?');
 
     $new_config{'installed-pkgs'}
         = get_y_or_n('Report all packages installed on the system?');
@@ -143,12 +164,7 @@ sub config_update {
 
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
-        
-    $new_config{'filesystem-info'}
-        = get_y_or_n('Report information about your filesystem and block devices?');
 
-    $new_config{'networking-info'}
-        = get_y_or_n('Report information about your networking hardware and devices?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
@@ -251,31 +267,40 @@ sub report_time {
 
 ##
 ## returns a hash ref with various hardware info that was
-## derived from lspci -kmv
+## derived from lspci -kmv and other functions
 ##
 sub get_hardware_info {
     my %hash;
 
-    
-    for my $hw_item ( @{ $lspci{'PCI-Device'} } ) {
-        
+    for my $device( keys %{$lspci{'PCI-Device'}}  ) {
+                    
         # fetching sound info from data structure
-        if ( $hw_item->{'Class'} =~ /Audio|audio/msx ) {
-
-            # have to push it on an array because there may be
-            # more than one
-            push @{ $hash{'sound'} }, $hw_item;
-        }
+        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
+            $hash{'audio'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
         
-        # fetching video cards
-        if ( $hw_item->{'Class'} =~ /VGA/msx ) {
+        }
 
-            # have to push it on an array because there may be
-            # more than one
-            push @{ $hash{'video'} }, $hw_item;
+        # fetching video cards
+        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
+            $hash{'video'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
         }
     }
-
+    
+    # fetching networking devices
+    $hash{'networking'} = get_net_info();
+    
+    # fetching block devices
+    $hash{'filesystem'} = get_filesystem_info();
+    
+    # fetching cpu info
+    $hash{'cpu'} = get_cpu_info();
+    
+    # fetching memory info
+    $hash{'memory'} = get_mem_info();
+    
+    # fetching chassis info
+    $hash{'chassis'} = get_chassis_info();
+    
     return \%hash;
 }
 
@@ -288,7 +313,7 @@ sub get_net_info {
     use Carp;                          # Core
     use English qw(-no_match_vars);    # Core
     use autodie qw< :io >;
-    
+
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
@@ -302,12 +327,12 @@ sub get_net_info {
         }
     }
     closedir $dh;
- 
+
 ### @interfaces
- 
+
     for my $device (@interfaces) {
         my ( $vendor_id, $device_id, $id_file );
- 
+
         # Create dummy entries for virtual devices and move on
         if ( !-d "$interface_dir/$device/device/driver/module" ) {
             $hash{$device}{'vendor'} = 'Virtual';
@@ -315,14 +340,14 @@ sub get_net_info {
             $hash{$device}{'driver'} = 'Virtual driver';
             next;
         }
- 
+
         # Othewise, determine the driver via the path name
         my $driver = (
             split /[\/]/xms,
             readlink "$interface_dir/$device/device/driver/module"
         )[-1];
         ### $driver
- 
+
         # Get the vendor ID (PCI)
         my $vendor_id_file = "/sys/class/net/$device/device/vendor";
         if ( -e $vendor_id_file ) {
@@ -333,7 +358,7 @@ sub get_net_info {
             close $fh;
             chomp $vendor_id;
             $vendor_id =~ s/^0x//xms;
- 
+
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
@@ -342,9 +367,9 @@ sub get_net_info {
             close $fh;
             chomp $device_id;
             $device_id =~ s/^0x//xms;
- 
+
         }
- 
+
         # Or get the vendor and device ID (USB)
         else {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
@@ -366,20 +391,20 @@ sub get_net_info {
         }
         ### $vendor_id
         ### $device_id
- 
+
         # Look up the proper device name from the id file
         my ( $vendor_name, $device_name );
- 
+
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
             or carp "Unable to open file $id_file $ERRNO\n";
- 
+
      # Devices can share device IDs but not "underneath" a vendor ID, so we'll
      # want to get the first result under the vendor
         my $seen = 0;
- 
+
         while (<$fh>) {
- 
+
             if (/^$vendor_id[ ]{2}(.*)/xms) {
                 $vendor_name = $1;
                 chomp $vendor_name;
@@ -401,109 +426,95 @@ sub get_net_info {
     ### %hash
     return \%hash;
 }
- 
+
 ##
 ## fetching lsblk output
 ##
-sub get_filesystem_info{
-    my $json_from_lsblk = 
-        `lsblk --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
-    $json_from_lsblk =~ s/\"\[/\"/msxg;
-    $json_from_lsblk =~ s/\]\"/\"/msxg;
+sub get_filesystem_info {
+    my $json_from_lsblk
+        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
     my $data = decode_json($json_from_lsblk);
-    my %hash = %$data;
-    return \%hash;
-}
-##
-## fetching active profiles
-## reconst output of epro show-json command
-##
-sub get_profile_info {
 
-    # execute 'epro show-json' and capture it's output
-    my $json_from_epro = `epro show-json`;
-    my %profiles;
-    my %sorted;
+   # we need to recursively transform the arrayref-of-hashref structures in
+   # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
 
-    # convert the output from json to a perl data structure
-    my $data = decode_json($json_from_epro);
-    %profiles = %$data;
+    # start a stack of references to objects to transform
+    my @stack;
 
-    # we are going to reconstruct the epro output without the extra
-    # 'shortname' keys, so that it is more easily used in elasticsearch
-    foreach my $item ( keys(%profiles) ) {
-        foreach my $final ( $profiles{$item} ) {
-            foreach my $array_item ( @{$final} ) {
-                push @{ $sorted{$item} }, $array_item->{'shortname'};
+    # dispatch table of reference type to transformation method
+    my %disp = (
+
+        # pass hashes through unscathed, enqueuing all their values
+        HASH => sub {
+            my $obj = shift;
+            for my $value ( values %{$obj} ) {
+                push @stack, \$value;
             }
-        }
-    }
-    return \%sorted;
-}
+            return $obj;
+        },
 
-##
-## fetching active kits
-## applies /etc/ego.conf contents to the data structure
-## at /var/git/meta-repo/metadata/kit-info.json and returns a structure
-## that shows only the "active" kit
-##
-sub get_kit_info{
-    
-    my $meta_file ="/var/git/meta-repo/metadata/kit-info.json";
-    my $meta_data;
-    my $ego_conf = "/etc/ego.conf";
-    my %hash;
-    
-    
-    # decode and store meta file datastructure into $meta_data
-    if ( open (my $fh, '<:encoding(UTF-8)',$meta_file)){
-        my @lines = <$fh>;
-        close $fh;
-        my $data = join('',@lines);
-        $meta_data = decode_json($data);
+       # convert an arrayref of hashrefs in-place into a hashref by the "name"
+       # member of each hashref, and enqueue all the original items
+        ARRAY => sub {
+            my $obj = shift;
 
-        # let's define our hash keys from the array found in this file
-        foreach my $key ( @{$meta_data->{"kit_order"}} ){
-            $hash{$key} = "undef";
-        }
-    }
-    else{
-        print "cannot open meta file";
-    }
+            # start replacement hash
+            my %rep;
 
-    # extract valid lines from ego.conf 
-    if ( open (my $fh, '<:encoding(UTF-8)', $ego_conf)){
-        my @lines = <$fh>;
-        close $fh;
-        foreach my $line (@lines){
-            chomp $line;
-            if ($line =~ /^\w/msx){
-                my ($kit, $value) = split (/\s*=\s*/msx, $line);
-                chomp $kit;
-                chomp $value;
-                       
-                # if the kit has been named in the meta data structure
-                # we will plug that value into it
-                if (exists $hash{$kit}){
-                    $hash{$kit} = $value;
-                }
+            # iterate over the list items
+            for my $item ( @{$obj} ) {
+
+                # ensure we can actually translate this item, warn and skip it
+                # if we can't
+                eval {
+                    my $type = ref $item
+                        or die;
+                    $type eq 'HASH'
+                        or die;
+                    exists $item->{name}
+                        or die;
+                    not exists $rep{ $item->{name} }
+                        or die;
+
+                    # item passes muster, put it into the replacement hash
+                    $rep{ $item->{name} } = $item;
+                    push @stack, \$item;
+
+                } or warn "Failed arrayref item conversion\n";
             }
-        }
-    }
-    else{
-        print "cannot open ego.conf"
-    }
-    
-    # now lets finish filling out our hash with default settings
-    # anywhere it is undef
-    foreach my $key (keys %hash){
-        if ($hash{$key} eq "undef"){
-            $hash{$key} = $meta_data->{kit_settings}{$key}{default};
-        }
-    }
-    return \%hash;
-}
 
+            # return a reference to the replacement hash, not the original
+            # arrayref; we discard that
+            return \%rep;
+        },
+    );
+
+    # start with the root node on the stack
+    push @stack, \$data;
+
+    # iterative walk through the tree
+    while (@stack) {
+
+        # pop a reference off the stack
+        my $ref = pop @stack;
+
+        # get the object it points to
+        my $obj = ${$ref};
+
+        # skip any object that is not itself a reference
+        my $type = ref $obj
+            or next;
+
+        # skip any object for which we don't have a handler defined
+        exists $disp{$type}
+            or next;
+
+        # repoint the reference to the outcome of this type's dispatch method
+        ${$ref} = $disp{$type}->($obj);
+    }
+
+    return $data;
+}
 
 ##
 ## fetching lines from /proc/cpuinfo
@@ -573,13 +584,13 @@ sub get_mem_info {
     if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
         @mem_file_contents = <$fh>;
         close $fh;
-        
+
         foreach my $row (@mem_file_contents) {
-            
+
             # get the key and the first numeric value
             my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
                 or next;
-                
+
             # if there's a hash bucket waiting for this value, add it
             exists $hash{$key} or next;
             $hash{$key} = int $value;
@@ -588,6 +599,165 @@ sub get_mem_info {
     else { warn "Could not open file ' $mem_file' $!"; }
     return \%hash;
 }
+
+##
+## fetch information about the system chassi
+##
+sub get_chassis_info {
+    my %hash;
+    my $folder = "/sys/class/dmi/id/";
+    my @id_files = ( 'chassis_type', 'chassis_vendor', 'product_name' );
+
+    my @possible_id = (
+        'N/A',
+        'Other',
+        'Unknown',
+        'Desktop',
+        'Low Profile Desktop',
+        'Pizza Box',
+        'Mini Tower',
+        'Tower',
+        'Portable',
+        'Laptop',
+        'Notebook',
+        'Hand Held',
+        'Docking Station',
+        'All in One',
+        'Sub Notebook',
+        'Space-Saving',
+        'Lunch Box',
+        'Main Server Chassis',
+        'Expansion Chassis',
+        'SubChassis',
+        'Bus Expansion Chassis',
+        'Peripheral Chassis',
+        'RAID Chassis',
+        'Rack Mount Chassis',
+        'Sealed-Case PC',
+        'Multi-system Chassis',
+        'Compact PCI',
+        'Advanced TCA',
+        'Blade',
+        'Blade Enclosure',
+        'Tablet',
+        'Convertible',
+        'Detachable',
+        'IoT Gateway',
+        'Embedded PC',
+        'Mini PC',
+        'Stick PC'
+    );
+
+    for my $file (@id_files) {
+        if ( open( my $fh, '<', "$folder$file" ) ) {
+            my $content = <$fh>;
+            chomp $content;
+            if ( $file eq "chassis_type" ) {
+                $hash{$file} = $possible_id[$content];
+            }
+            else {
+                $hash{$file} = $content;
+            }
+            close $fh;
+        }
+        else {
+            $hash{$file} = $possible_id[0];
+        }
+    }
+    return \%hash;
+
+}
+
+
+##
+## fetching active profiles
+## reconst output of epro show-json command
+##
+sub get_profile_info {
+
+    # execute 'epro show-json' and capture it's output
+    my $json_from_epro = `epro show-json`;
+    my %profiles;
+    my %sorted;
+
+    # convert the output from json to a perl data structure
+    my $data = decode_json($json_from_epro);
+    %profiles = %$data;
+
+    # we are going to reconstruct the epro output without the extra
+    # 'shortname' keys, so that it is more easily used in elasticsearch
+    foreach my $item ( keys(%profiles) ) {
+        foreach my $final ( $profiles{$item} ) {
+            foreach my $array_item ( @{$final} ) {
+                push @{ $sorted{$item} }, $array_item->{'shortname'};
+            }
+        }
+    }
+    return \%sorted;
+}
+
+##
+## fetching active kits
+## applies /etc/ego.conf contents to the data structure
+## at /var/git/meta-repo/metadata/kit-info.json and returns a structure
+## that shows only the "active" kit
+##
+sub get_kit_info {
+
+    my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
+    my $meta_data;
+    my $ego_conf = "/etc/ego.conf";
+    my %hash;
+
+    # decode and store meta file datastructure into $meta_data
+    if ( open( my $fh, '<:encoding(UTF-8)', $meta_file ) ) {
+        my @lines = <$fh>;
+        close $fh;
+        my $data = join( '', @lines );
+        $meta_data = decode_json($data);
+
+        # let's define our hash keys from the array found in this file
+        foreach my $key ( @{ $meta_data->{"kit_order"} } ) {
+            $hash{$key} = "undef";
+        }
+    }
+    else {
+        print "cannot open meta file";
+    }
+
+    # extract valid lines from ego.conf
+    if ( open( my $fh, '<:encoding(UTF-8)', $ego_conf ) ) {
+        my @lines = <$fh>;
+        close $fh;
+        foreach my $line (@lines) {
+            chomp $line;
+            if ( $line =~ /^\w/msx ) {
+                my ( $kit, $value ) = split( /\s*=\s*/msx, $line );
+                chomp $kit;
+                chomp $value;
+
+                # if the kit has been named in the meta data structure
+                # we will plug that value into it
+                if ( exists $hash{$kit} ) {
+                    $hash{$kit} = $value;
+                }
+            }
+        }
+    }
+    else {
+        print "cannot open ego.conf";
+    }
+
+    # now lets finish filling out our hash with default settings
+    # anywhere it is undef
+    foreach my $key ( keys %hash ) {
+        if ( $hash{$key} eq "undef" ) {
+            $hash{$key} = $meta_data->{kit_settings}{$key}{default};
+        }
+    }
+    return \%hash;
+}
+
 
 ##
 ## fetching kernel information from /proc/sys/kernel
@@ -681,10 +851,9 @@ sub get_world_info {
 ##
 sub get_all_installed_pkg {
     my %hash;
-    my @results = `equery list -F='\$cpv' "*"`;
+    my @results = `equery list -F'\$cpv' "*"`;
     for my $line (@results) {
         chomp $line;
-        $line =~ s/^=//s;
         push @{ $hash{'pkgs'} }, $line;
     }
     $hash{'pkg-count'} = scalar @results;
@@ -695,15 +864,16 @@ sub get_all_installed_pkg {
 ## fetching versions of key softwares
 ##
 sub get_version_info {
-    
+
     my %hash;
-    # specify which ebuilds to look at; use a "version" of "undef" for a single
-    # version value, and a hashref "[]" for a list of version values
+
+   # specify which ebuilds to look at; use a "version" of "undef" for a single
+   # version value, and a hashref "[]" for a list of version values
     my %ebuilds = (
         portage => {
             kit     => 'sys-apps',
             version => undef,
-            section => 'portage versions',
+            section => 'portage version',
         },
         ego => {
             kit     => 'app-admin',
@@ -729,7 +899,7 @@ sub get_version_info {
 
     # iterate through the ebuilds hash to fill out the result hash
 
-    for my $name (keys %ebuilds) {
+    for my $name ( keys %ebuilds ) {
         my $ebuild = $ebuilds{$name};
 
         # define a pattern for getting the version number of the ebuild from
@@ -741,21 +911,20 @@ sub get_version_info {
             (\d.*)     # string beginning with digit
         }msx;
 
-
         # open the ebuild's directory, die horribly if we can't find it
         my $dn = "/var/db/pkg/$ebuild->{kit}";
         opendir my $dh, $dn
             or die "could not open $dn: $!\n";
 
         # iterate through directory entries
-        while (defined(my $entry = readdir $dh)) {
+        while ( defined( my $entry = readdir $dh ) ) {
 
             # skip anything that doesn't match the version pattern
             my ($version) = $entry =~ $pat or next;
 
             # if the hash wants an array, push the version onto it and keep
             # iterating
-            if (ref $ebuild->{version} eq 'ARRAY') {
+            if ( ref $ebuild->{version} eq 'ARRAY' ) {
                 push @{ $ebuild->{version} }, $version;
             }
 
@@ -769,81 +938,10 @@ sub get_version_info {
         # close the directory
         closedir $dh;
 
-
-
         # tie in this section of the final report
-        $hash{$ebuild->{section}} = $ebuild->{version};
-     }
-     return \%hash;
- }
- 
-
-##
-## fetch information about the system chassi
-##
-sub get_chassis_info {
-    my %hash;
-    my $folder = "/sys/class/dmi/id/";
-    my @id_files = ( 'chassis_type', 'chassis_vendor', 'product_name' );
-
-    my @possible_id = (
-        'N/A',
-        'Other',
-        'Unknown',
-        'Desktop',
-        'Low Profile Desktop',
-        'Pizza Box',
-        'Mini Tower',
-        'Tower',
-        'Portable',
-        'Laptop',
-        'Notebook',
-        'Hand Held',
-        'Docking Station',
-        'All in One',
-        'Sub Notebook',
-        'Space-Saving',
-        'Lunch Box',
-        'Main Server Chassis',
-        'Expansion Chassis',
-        'SubChassis',
-        'Bus Expansion Chassis',
-        'Peripheral Chassis',
-        'RAID Chassis',
-        'Rack Mount Chassis',
-        'Sealed-Case PC',
-        'Multi-system Chassis',
-        'Compact PCI',
-        'Advanced TCA',
-        'Blade',
-        'Blade Enclosure',
-        'Tablet',
-        'Convertible',
-        'Detachable',
-        'IoT Gateway',
-        'Embedded PC',
-        'Mini PC',
-        'Stick PC'
-    );
-
-    for my $file (@id_files) {
-        if ( open( my $fh, '<', "$folder$file" ) ) {
-            my $content = <$fh>;
-            chomp $content;
-            if ( $file eq "chassis_type" ) {
-                $hash{$file} = $possible_id[$content];
-            }
-            else {
-                $hash{$file} = $content;
-            }
-            close $fh;
-        }
-        else {
-            $hash{$file} = $possible_id[0];
-        }
+        $hash{ $ebuild->{section} } = $ebuild->{version};
     }
     return \%hash;
-
 }
 
 ##
@@ -855,22 +953,29 @@ sub get_lspci {
     my $lspci_output = `lspci -kmmvvv`;
     my @hardware_list;
     my @hw_item_section = split( /^\n/msx, $lspci_output );
-
+    my %hash;
+    my %item;
     for (@hw_item_section) {
         chomp;    # $hw_item;
         my @hw_item_lines = split(/\n/msx);
-        my %hash;
+        
         for (@hw_item_lines) {
             chomp;
             s/\[\]|\{\}/[ ]/msx;
             my ( $key, $value ) = split(':\s');
             chomp $key;
             chomp $value;
-            $hash{$key} = $value;
+            $item{$key} = $value;
         }
-        push @hardware_list, \%hash;
+        
+        
+        foreach my $key_item (keys %item){
+            unless ($key_item eq 'Slot'){
+                $hash{$item{'Slot'}}{$key_item} = $item{$key_item};
+            }
+        }
     }
-    return \@hardware_list;
+    return \%hash;
 }
 
 ###########################################
