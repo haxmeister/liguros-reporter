@@ -7,9 +7,8 @@ use strict;
 use warnings;
 use Exporter;           #core
 use JSON;               #cpan
-use POSIX;              #core
+use POSIX qw(ceil);     #core
 use Term::ANSIColor;    #core
-use Time::Local;        #core
 use HTTP::Tiny;         #core
 
 our $VERSION = '1.4';
@@ -221,48 +220,30 @@ sub version {
 ##
 ## with special date formatting by request
 sub report_time {
-    my $option = shift;
-
-    #      0    1    2     3     4    5     6     7     8
-    #     sec  min  hour  mday  mon  year wday  yday  isdst
-    my @time             = localtime(time);
-    my $r_year           = $time[5] + 1900;
-    my $r_month          = sprintf( "%02d", $time[4] + 1 );
-    my $r_week           = sprintf( "%02d", ceil( $time[7] / 7 ) );
-    my $r_mday           = sprintf( "%02d", $time[3] );
-    my $r_hr             = sprintf( "%02d", $time[2] );
-    my $r_min            = sprintf( "%02d", $time[1] );
-    my $r_sec            = sprintf( "%02d", $time[0] );
-    my $gmt_offset_hours = ( timegm(@time) - timelocal(@time) ) / 60 / 60;
-    my $gmt_offset_mins = ( $gmt_offset_hours - int($gmt_offset_hours) ) * 60;
-    my $gmt_offset_str  = "";
-
-    if ( $gmt_offset_hours > 0 ) {
-        $gmt_offset_str = sprintf( "\+" . "%02d", $gmt_offset_hours ) . ":"
-            . sprintf( "%02d", $gmt_offset_mins );
-    }
-    elsif ( $gmt_offset_hours == 0 ) {
-        $gmt_offset_str = "";
-    }
-    elsif ( $gmt_offset_hours < 0 ) {
-        $gmt_offset_str = sprintf( "%03d", $gmt_offset_hours ) . ":"
-            . sprintf( "%02d", $gmt_offset_mins );
-    }
-
-    if ( $option eq "long" ) {
-        return
-              "$r_year" . "-"
-            . "$r_month" . "-"
-            . "$r_mday" . "T"
-            . "$r_hr:$r_min:$r_sec"
-            . "$gmt_offset_str";
-    }
-    elsif ( $option eq 'short' ) {
-        return "funtoo-$r_year.$r_week";
-    }
-    else {
-        return "no time";
-    }
+    my $format = shift;
+    my %formats = (
+        long => sub {
+            my @t = @_;
+            my $year = $t[5] + 1900;
+            my $mon  = $t[4] + 1;
+            my $day  = $t[3];
+            my $hour = $t[2];
+            my $min  = $t[1];
+            my $sec  = $t[0];
+            return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
+                $year, $mon, $day, $hour, $min, $sec;
+        },
+        short => sub {
+            my @t = @_;
+            my $year = $t[5] + 1900;
+            my $week = ceil(($t[7] + 1) / 7);
+            return sprintf 'funtoo-%04u.%02u',
+                $year, $week;
+        },
+    );
+    exists $formats{$format}
+        or return 'no time';
+    return $formats{$format}->(gmtime);
 }
 
 ##
