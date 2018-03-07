@@ -421,6 +421,17 @@ sub get_filesystem_info {
     # by device name (e.g. "sda1")
     my $hash = transform_es_arrayref($data, 'name');
 
+    # coerce integer types on block device sizes
+    my @bds = (values %{ $hash->{blockdevices} });
+    while (my $bd = pop @bds) {
+        if (defined $bd->{size}) {
+            $bd->{size} += 0;
+        }
+        if (defined $bd->{children}) {
+            push @bds, values %{ $bd->{children} };
+        }
+    }
+
     return $hash;
 }
 
