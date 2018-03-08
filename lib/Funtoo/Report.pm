@@ -7,9 +7,8 @@ use strict;
 use warnings;
 use Exporter;           #core
 use JSON;               #cpan
-use POSIX;              #core
+use POSIX qw(ceil);     #core
 use Term::ANSIColor;    #core
-use Time::Local;        #core
 use HTTP::Tiny;         #core
 
 our $VERSION = '1.4';
@@ -32,7 +31,6 @@ our @EXPORT_OK = qw(
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
-my %lspci = ( 'PCI-Device' => get_lspci() );
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -59,6 +57,14 @@ sub send_report {
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
+    
+    # show response
+    my $json_response = JSON->new->allow_nonref;
+
+    # send the report to the json object to be encoded to json
+    # and print the results with proper indents (pretty)
+    my $json_pretty = $json_response->pretty->encode( $response );
+    print $json_pretty;
 
 }
 
@@ -221,48 +227,30 @@ sub version {
 ##
 ## with special date formatting by request
 sub report_time {
-    my $option = shift;
-
-    #      0    1    2     3     4    5     6     7     8
-    #     sec  min  hour  mday  mon  year wday  yday  isdst
-    my @time             = localtime(time);
-    my $r_year           = $time[5] + 1900;
-    my $r_month          = sprintf( "%02d", $time[4] + 1 );
-    my $r_week           = sprintf( "%02d", ceil( $time[7] / 7 ) );
-    my $r_mday           = sprintf( "%02d", $time[3] );
-    my $r_hr             = sprintf( "%02d", $time[2] );
-    my $r_min            = sprintf( "%02d", $time[1] );
-    my $r_sec            = sprintf( "%02d", $time[0] );
-    my $gmt_offset_hours = ( timegm(@time) - timelocal(@time) ) / 60 / 60;
-    my $gmt_offset_mins = ( $gmt_offset_hours - int($gmt_offset_hours) ) * 60;
-    my $gmt_offset_str  = "";
-
-    if ( $gmt_offset_hours > 0 ) {
-        $gmt_offset_str = sprintf( "\+" . "%02d", $gmt_offset_hours ) . ":"
-            . sprintf( "%02d", $gmt_offset_mins );
-    }
-    elsif ( $gmt_offset_hours == 0 ) {
-        $gmt_offset_str = "";
-    }
-    elsif ( $gmt_offset_hours < 0 ) {
-        $gmt_offset_str = sprintf( "%03d", $gmt_offset_hours ) . ":"
-            . sprintf( "%02d", $gmt_offset_mins );
-    }
-
-    if ( $option eq "long" ) {
-        return
-              "$r_year" . "-"
-            . "$r_month" . "-"
-            . "$r_mday" . "T"
-            . "$r_hr:$r_min:$r_sec"
-            . "$gmt_offset_str";
-    }
-    elsif ( $option eq 'short' ) {
-        return "funtoo-$r_year.$r_week";
-    }
-    else {
-        return "no time";
-    }
+    my $format = shift;
+    my %formats = (
+        long => sub {
+            my @t = @_;
+            my $year = $t[5] + 1900;
+            my $mon  = $t[4] + 1;
+            my $day  = $t[3];
+            my $hour = $t[2];
+            my $min  = $t[1];
+            my $sec  = $t[0];
+            return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
+                $year, $mon, $day, $hour, $min, $sec;
+        },
+        short => sub {
+            my @t = @_;
+            my $year = $t[5] + 1900;
+            my $week = ceil(($t[7] + 1) / 7);
+            return sprintf 'funtoo-%04u.%02u',
+                $year, $week;
+        },
+    );
+    exists $formats{$format}
+        or return 'no time';
+    return $formats{$format}->(gmtime);
 }
 
 ##
@@ -271,6 +259,8 @@ sub report_time {
 ##
 sub get_hardware_info {
     my %hash;
+
+    my %lspci = ( 'PCI-Device' => get_lspci() );
 
     for my $device( keys %{$lspci{'PCI-Device'}}  ) {
                     
@@ -433,87 +423,38 @@ sub get_net_info {
 sub get_filesystem_info {
     my $json_from_lsblk
         = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
-    my $data = decode_json($json_from_lsblk);
+    my $hash = decode_json($json_from_lsblk);
 
-   # we need to recursively transform the arrayref-of-hashref structures in
-   # this output into hashrefs-of-hashrefs, indexed by the 'name' of each item
+    # iterate through the block device tree, fixing it up a little so
+    # ElasticSearch can handle it; it doesn't like lists of objects, so we
+    # convert those to objects indexed by device name
+    my @stack = (\$hash->{blockdevices});
+    while (my $list = pop @stack) {
 
-    # start a stack of references to objects to transform
-    my @stack;
+        # start hash to replace the list
+        my %rep;
 
-    # dispatch table of reference type to transformation method
-    my %disp = (
+        # iterate through the list
+        for my $dev (@{ ${ $list } }) {
 
-        # pass hashes through unscathed, enqueuing all their values
-        HASH => sub {
-            my $obj = shift;
-            for my $value ( values %{$obj} ) {
-                push @stack, \$value;
+            # coerce device's size to a number
+            $dev->{size} += 0;
+
+            # put this device into the replacement hashref by name
+            $rep{$dev->{name}} = $dev;
+
+            # if this device has a list of children, push a reference to that
+            # list onto the stack for the next round
+            if (defined $dev->{children}) {
+                push @stack, \$dev->{children};
             }
-            return $obj;
-        },
+        }
 
-       # convert an arrayref of hashrefs in-place into a hashref by the "name"
-       # member of each hashref, and enqueue all the original items
-        ARRAY => sub {
-            my $obj = shift;
-
-            # start replacement hash
-            my %rep;
-
-            # iterate over the list items
-            for my $item ( @{$obj} ) {
-
-                # ensure we can actually translate this item, warn and skip it
-                # if we can't
-                eval {
-                    my $type = ref $item
-                        or die;
-                    $type eq 'HASH'
-                        or die;
-                    exists $item->{name}
-                        or die;
-                    not exists $rep{ $item->{name} }
-                        or die;
-
-                    # item passes muster, put it into the replacement hash
-                    $rep{ $item->{name} } = $item;
-                    push @stack, \$item;
-
-                } or warn "Failed arrayref item conversion\n";
-            }
-
-            # return a reference to the replacement hash, not the original
-            # arrayref; we discard that
-            return \%rep;
-        },
-    );
-
-    # start with the root node on the stack
-    push @stack, \$data;
-
-    # iterative walk through the tree
-    while (@stack) {
-
-        # pop a reference off the stack
-        my $ref = pop @stack;
-
-        # get the object it points to
-        my $obj = ${$ref};
-
-        # skip any object that is not itself a reference
-        my $type = ref $obj
-            or next;
-
-        # skip any object for which we don't have a handler defined
-        exists $disp{$type}
-            or next;
-
-        # repoint the reference to the outcome of this type's dispatch method
-        ${$ref} = $disp{$type}->($obj);
+        # run replacement
+        ${ $list } = \%rep;
     }
 
-    return $data;
+    return $hash;
 }
 
 ##
