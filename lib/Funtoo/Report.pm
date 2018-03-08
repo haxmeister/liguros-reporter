@@ -57,6 +57,14 @@ sub send_report {
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
+    
+    # show response
+    my $json_response = JSON->new->allow_nonref;
+
+    # send the report to the json object to be encoded to json
+    # and print the results with proper indents (pretty)
+    my $json_pretty = $json_response->pretty->encode( $response );
+    print $json_pretty;
 
 }
 
