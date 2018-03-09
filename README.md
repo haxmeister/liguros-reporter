@@ -47,11 +47,11 @@ To generate a new configuration file use 'funtoo-report config-update'
 
 'funtoo-report config-update'
 
-**You can send your report to the elastic search database using the send option which will output nothing on the console if it is
-successful:**
+**You can send your report to the elastic search database using the send option which will return a link to the data if successful:**
 
 'funtoo-report send'
 
+```your report can be seen at: http://elk2.liguros.net:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
 
 ### Manual Configuration:
 
