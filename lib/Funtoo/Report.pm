@@ -3,6 +3,7 @@ package Funtoo::Report;
 ### Author : Joshua S. Day (haxmeister)
 ### purpose : functions for retrieving data on funtoo linux
 
+use 5.014;
 use strict;
 use warnings;
 use Exporter;           #core
