@@ -6,6 +6,7 @@ package Funtoo::Report;
 use 5.014;
 use strict;
 use warnings;
+use English qw(-no_match_vars);    # Core
 use Exporter;           #core
 use JSON;               #cpan
 use POSIX qw(ceil);     #core
@@ -170,7 +171,7 @@ sub config_update {
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
-        or die "could not open $config_file", $!;
+        or die "could not open $config_file", $ERRNO;
     foreach my $key ( keys %new_config ) {
         print $fh "$key" . ":" . "$new_config{$key}\n";
     }
@@ -186,7 +187,7 @@ sub add_uuid {
     my $arg = shift;
 
     # lets just get a random identifier from the system
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die $!;
+    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die $ERRNO;
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
@@ -201,7 +202,7 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file ) or die $!;
+        open( $fh, '>>', $config_file ) or die $ERRNO;
         print $fh "\n# A unique identifier for this reporting machine \n";
         print $fh "UUID:$UUID\n";
         close $fh;
@@ -303,7 +304,6 @@ sub get_hardware_info {
 ##
 sub get_net_info {
     use Carp;                          # Core
-    use English qw(-no_match_vars);    # Core
     use autodie qw< :io >;
 
     my $interface_dir = '/sys/class/net';
@@ -504,7 +504,7 @@ sub get_cpu_info {
         }
     }
 
-    else { warn "Could not open file ' $cpu_file' $!"; }
+    else { warn "Could not open file ' $cpu_file' $ERRNO"; }
     $hash{"processors"} = $proc_count;
     return \%hash;
 }
@@ -539,7 +539,7 @@ sub get_mem_info {
             $hash{$key} = int $value;
         }
     }
-    else { warn "Could not open file ' $mem_file' $!"; }
+    else { warn "Could not open file ' $mem_file' $ERRNO"; }
     return \%hash;
 }
 
@@ -712,7 +712,7 @@ sub get_kernel_info {
     my @dir_contents;
 
     # pulling relevant info from /proc/sys/kernel
-    opendir( DIR, $directory ) or die $!;
+    opendir( DIR, $directory ) or die $ERRNO;
     @dir_contents = readdir(DIR);
     closedir(DIR);
 
@@ -734,7 +734,7 @@ sub get_kernel_info {
                 chomp $row;
                 $hash{$file} = $row;
             }
-            else { warn "could not open file '$file' $!"; }
+            else { warn "could not open file '$file' $ERRNO"; }
         }
     }
     return \%hash;
@@ -749,7 +749,7 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    opendir( DIR, $boot_dir ) or die "cannot access $boot_dir ", $!;
+    opendir( DIR, $boot_dir ) or die "cannot access $boot_dir ", $ERRNO;
     foreach my $file ( readdir(DIR) ) {
         next unless ( -f "$boot_dir/$file" );    #only want files
         chomp $file;
@@ -783,7 +783,7 @@ sub get_world_info {
         }
         close $fh;
     }
-    else { warn "Could not open file $world_file $!"; }
+    else { warn "Could not open file $world_file $ERRNO"; }
 
     $hash{'world file'} = \@world_array;
     return \@world_array;
@@ -857,7 +857,7 @@ sub get_version_info {
         # open the ebuild's directory, die horribly if we can't find it
         my $dn = "/var/db/pkg/$ebuild->{kit}";
         opendir my $dh, $dn
-            or die "could not open $dn: $!\n";
+            or die "could not open $dn: $ERRNO\n";
 
         # iterate through directory entries
         while ( defined( my $entry = readdir $dh ) ) {
