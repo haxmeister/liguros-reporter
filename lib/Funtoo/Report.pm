@@ -6,13 +6,13 @@ package Funtoo::Report;
 use 5.014;
 use strict;
 use warnings;
-use Carp;                          # Core
-use English qw(-no_match_vars);    # Core
-use Exporter;           #core
-use JSON;               #cpan
-use POSIX qw(ceil);     #core
-use Term::ANSIColor;    #core
-use HTTP::Tiny;         #core
+use Carp;                          #core
+use English qw(-no_match_vars);    #core
+use Exporter;                      #core
+use JSON;                          #cpan
+use POSIX qw(ceil);                #core
+use Term::ANSIColor;               #core
+use HTTP::Tiny;                    #core
 
 our $VERSION = '1.4';
 
