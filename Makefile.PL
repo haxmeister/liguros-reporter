@@ -1,3 +1,6 @@
+use 5.006;
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME            => 'Funtoo::Report',
