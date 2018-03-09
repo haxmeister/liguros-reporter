@@ -224,6 +224,9 @@ sub version {
 sub report_time {
     my $format = shift;
     my %formats = (
+
+        # ISO8601 date and time with UTC timezone suffix "Z"
+        # e.g. 2018-03-09T22:37:09Z
         long => sub {
             my @t = @_;
             my $year = $t[5] + 1900;
@@ -235,6 +238,9 @@ sub report_time {
             return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
                 $year, $mon, $day, $hour, $min, $sec;
         },
+
+        # year and week number in UTC with static "funtoo" prefix
+        # e.g. funtoo-2018.49
         short => sub {
             my @t = @_;
             my $year = $t[5] + 1900;
@@ -242,6 +248,7 @@ sub report_time {
             return sprintf 'funtoo-%04u.%02u',
                 $year, $week;
         },
+
     );
     exists $formats{$format}
         or return 'no time';
