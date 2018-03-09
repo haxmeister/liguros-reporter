@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!perl
 
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : A anonymous funtoo data reporting tool
@@ -19,11 +19,11 @@
 ## distribution on funtoo or wherever and the module can go
 ## in a more proper place
 
+use 5.014;
 use strict;                 #core
 use warnings;               #core
 use JSON;                   #cpan
 use Term::ANSIColor;        #core
-use lib "$ENV{PWD}/lib";    #core
 use Funtoo::Report;         #GIT
 use HTTP::Tiny;             #core
 
