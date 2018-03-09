@@ -6,6 +6,7 @@ package Funtoo::Report;
 use 5.014;
 use strict;
 use warnings;
+use Carp;                          # Core
 use English qw(-no_match_vars);    # Core
 use Exporter;           #core
 use JSON;               #cpan
@@ -303,7 +304,6 @@ sub get_hardware_info {
 ## of making calls to external tools
 ##
 sub get_net_info {
-    use Carp;                          # Core
     use autodie qw< :io >;
 
     my $interface_dir = '/sys/class/net';
