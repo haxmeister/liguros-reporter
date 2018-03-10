@@ -8,10 +8,11 @@ use strict;
 use warnings;
 use Carp;                          #core
 use English qw(-no_match_vars);    #core
+use HTTP::Tiny;                    #core
 use JSON;                          #cpan
+use List::Util qw(any);            #core
 use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
-use HTTP::Tiny;                    #core
 
 our $VERSION = '1.4';
 
@@ -132,9 +133,6 @@ sub config_update {
 
     $new_config{'boot-dir-info'}
         = get_y_or_n('Report available kernels in /boot ?');
-
-    $new_config{'version-info'}
-        = get_y_or_n('Report versions of key system softwares?');
 
     $new_config{'installed-pkgs'}
         = get_y_or_n('Report all packages installed on the system?');
@@ -777,96 +775,48 @@ sub get_world_info {
 ##
 sub get_all_installed_pkg {
     my %hash;
-    my @results = `equery list -F'\$cpv' "*"`;
-    for my $line (@results) {
-        chomp $line;
-        push @{ $hash{'pkgs'} }, $line;
-    }
-    $hash{'pkg-count'} = scalar @results;
-    return \%hash;
-}
+    my @all;
+    my @world;
+    my $db_dir     = '/var/db/pkg';
+    my $world_file = '/var/lib/portage/world';
 
-##
-## fetching versions of key softwares
-##
-sub get_version_info {
+    # Get a list of the world packages
+    open my $fh, '<', $world_file
+        or croak "Unable to open dir $world_file $ERRNO\n";
+    @world = <$fh>;
+    close $fh;
 
-    my %hash;
-
-   # specify which ebuilds to look at; use a "version" of "undef" for a single
-   # version value, and a hashref "[]" for a list of version values
-    my %ebuilds = (
-        portage => {
-            kit     => 'sys-apps',
-            version => undef,
-            section => 'portage version',
-        },
-        ego => {
-            kit     => 'app-admin',
-            version => undef,
-            section => 'ego version',
-        },
-        python => {
-            kit     => 'dev-lang',
-            version => [],
-            section => 'python versions',
-        },
-        gcc => {
-            kit     => 'sys-devel',
-            version => [],
-            section => 'gcc versions',
-        },
-        glibc => {
-            kit     => 'sys-libs',
-            version => [],
-            section => 'glibc versions',
-        },
-    );
-
-    # iterate through the ebuilds hash to fill out the result hash
-
-    for my $name ( keys %ebuilds ) {
-        my $ebuild = $ebuilds{$name};
-
-        # define a pattern for getting the version number of the ebuild from
-        # its directory name
-        my $pat = qr{
-            \A         # start of string
-            \Q$name\E  # quoted ebuild name
-            -          # hyphen
-            (\d.*)     # string beginning with digit
-        }msx;
-
-        # open the ebuild's directory, die horribly if we can't find it
-        my $dn = "/var/db/pkg/$ebuild->{kit}";
-        opendir my $dh, $dn
-            or die "could not open $dn: $ERRNO\n";
-
-        # iterate through directory entries
-        while ( defined( my $entry = readdir $dh ) ) {
-
-            # skip anything that doesn't match the version pattern
-            my ($version) = $entry =~ $pat or next;
-
-            # if the hash wants an array, push the version onto it and keep
-            # iterating
-            if ( ref $ebuild->{version} eq 'ARRAY' ) {
-                push @{ $ebuild->{version} }, $version;
-            }
-
-            # otherwise, just set the value to the version and end the loop
-            else {
-                $ebuild->{version} = $version;
-                last;
+    # Get a list of all the packages
+    opendir my $dh, $db_dir or croak "Unable to open dir $db_dir: $ERRNO\n";
+    while ( my $cat = readdir $dh ) {
+        if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
+            opendir my $dh2, "$db_dir/$cat"
+                or croak "Unable to open dir $cat: $ERRNO\n";
+            while ( my $pkg = readdir $dh2 ) {
+                if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
+                    push @all, "$cat/$pkg";
+                }
             }
         }
-
-        # close the directory
-        closedir $dh;
-
-        # tie in this section of the final report
-        $hash{ $ebuild->{section} } = $ebuild->{version};
     }
+
+   # Create the world and miscellaneous hashes. Do so using List::Util's "any"
+   # since grep doesn't short-circuit after a successful match.
+    for my $line (@all) {
+        open my $fh, '<', "$db_dir/$line/SLOT"
+            or croak "Unable to open $db_dir/$line/SLOT: $ERRNO\n";
+        chomp( my $slot = <$fh> );
+        close $fh;
+        my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
+        if ( any {/\Q$pkg\E/xms} @world ) {
+            $hash{pkgs}{world}{$pkg}{$version} = $slot;
+        }
+        else {
+            $hash{pkgs}{other}{$pkg}{$version} = $slot;
+        }
+    }
+    $hash{'pkg-count-world'} = scalar @world;
+    $hash{'pkg-count-total'} = scalar @all;
     return \%hash;
 }
 
