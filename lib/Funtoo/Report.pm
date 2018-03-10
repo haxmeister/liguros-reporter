@@ -3,31 +3,17 @@ package Funtoo::Report;
 ### Author : Joshua S. Day (haxmeister)
 ### purpose : functions for retrieving data on funtoo linux
 
+use 5.014;
 use strict;
 use warnings;
-use Exporter;           #core
-use JSON;               #cpan
-use POSIX qw(ceil);     #core
-use Term::ANSIColor;    #core
-use HTTP::Tiny;         #core
+use Carp;                          #core
+use English qw(-no_match_vars);    #core
+use JSON;                          #cpan
+use POSIX qw(ceil);                #core
+use Term::ANSIColor;               #core
+use HTTP::Tiny;                    #core
 
 our $VERSION = '1.4';
-
-our @EXPORT_OK = qw(
-    user_config
-    get_kernel_info
-    get_boot_dir_info
-    get_version_info
-    get_world_info
-    get_profile_info
-    get_kit_info
-    add_uuid
-    version
-    get_all_installed_pkg
-    report_time
-    config_update
-    get_hardware_info
-    send_report);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
@@ -57,15 +43,9 @@ sub send_report {
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
-    
-    # show response
-    my $json_response = JSON->new->allow_nonref;
 
-    # send the report to the json object to be encoded to json
-    # and print the results with proper indents (pretty)
-    my $json_pretty = $json_response->pretty->encode( $response );
-    print $json_pretty;
-
+    # output the link to the data
+    print "your report can be seen at: ".$es_conf->{'node'}.$response->{'headers'}{'location'}."\n";
 }
 
 ##
@@ -175,7 +155,7 @@ sub config_update {
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
-        or die "could not open $config_file", $!;
+        or die "could not open $config_file", $ERRNO;
     foreach my $key ( keys %new_config ) {
         print $fh "$key" . ":" . "$new_config{$key}\n";
     }
@@ -191,7 +171,7 @@ sub add_uuid {
     my $arg = shift;
 
     # lets just get a random identifier from the system
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die $!;
+    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die $ERRNO;
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
@@ -206,7 +186,7 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file ) or die $!;
+        open( $fh, '>>', $config_file ) or die $ERRNO;
         print $fh "\n# A unique identifier for this reporting machine \n";
         print $fh "UUID:$UUID\n";
         close $fh;
@@ -229,6 +209,9 @@ sub version {
 sub report_time {
     my $format = shift;
     my %formats = (
+
+        # ISO8601 date and time with UTC timezone suffix "Z"
+        # e.g. 2018-03-09T22:37:09Z
         long => sub {
             my @t = @_;
             my $year = $t[5] + 1900;
@@ -240,6 +223,9 @@ sub report_time {
             return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
                 $year, $mon, $day, $hour, $min, $sec;
         },
+
+        # year and week number in UTC with static "funtoo" prefix
+        # e.g. funtoo-2018.49
         short => sub {
             my @t = @_;
             my $year = $t[5] + 1900;
@@ -247,6 +233,7 @@ sub report_time {
             return sprintf 'funtoo-%04u.%02u',
                 $year, $week;
         },
+
     );
     exists $formats{$format}
         or return 'no time';
@@ -300,8 +287,6 @@ sub get_hardware_info {
 ## of making calls to external tools
 ##
 sub get_net_info {
-    use Carp;                          # Core
-    use English qw(-no_match_vars);    # Core
     use autodie qw< :io >;
 
     my $interface_dir = '/sys/class/net';
@@ -502,7 +487,7 @@ sub get_cpu_info {
         }
     }
 
-    else { warn "Could not open file ' $cpu_file' $!"; }
+    else { warn "Could not open file ' $cpu_file' $ERRNO"; }
     $hash{"processors"} = $proc_count;
     return \%hash;
 }
@@ -537,7 +522,7 @@ sub get_mem_info {
             $hash{$key} = int $value;
         }
     }
-    else { warn "Could not open file ' $mem_file' $!"; }
+    else { warn "Could not open file ' $mem_file' $ERRNO"; }
     return \%hash;
 }
 
@@ -710,7 +695,7 @@ sub get_kernel_info {
     my @dir_contents;
 
     # pulling relevant info from /proc/sys/kernel
-    opendir( DIR, $directory ) or die $!;
+    opendir( DIR, $directory ) or die $ERRNO;
     @dir_contents = readdir(DIR);
     closedir(DIR);
 
@@ -732,7 +717,7 @@ sub get_kernel_info {
                 chomp $row;
                 $hash{$file} = $row;
             }
-            else { warn "could not open file '$file' $!"; }
+            else { warn "could not open file '$file' $ERRNO"; }
         }
     }
     return \%hash;
@@ -747,7 +732,7 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    opendir( DIR, $boot_dir ) or die "cannot access $boot_dir ", $!;
+    opendir( DIR, $boot_dir ) or die "cannot access $boot_dir ", $ERRNO;
     foreach my $file ( readdir(DIR) ) {
         next unless ( -f "$boot_dir/$file" );    #only want files
         chomp $file;
@@ -781,7 +766,7 @@ sub get_world_info {
         }
         close $fh;
     }
-    else { warn "Could not open file $world_file $!"; }
+    else { warn "Could not open file $world_file $ERRNO"; }
 
     $hash{'world file'} = \@world_array;
     return \@world_array;
@@ -855,7 +840,7 @@ sub get_version_info {
         # open the ebuild's directory, die horribly if we can't find it
         my $dn = "/var/db/pkg/$ebuild->{kit}";
         opendir my $dh, $dn
-            or die "could not open $dn: $!\n";
+            or die "could not open $dn: $ERRNO\n";
 
         # iterate through directory entries
         while ( defined( my $entry = readdir $dh ) ) {

@@ -3,28 +3,21 @@
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : A anonymous funtoo data reporting tool
 ##
-## With code from: Palica, and Tom Ryder
-##
-## Special thanks to ShadowMoon for his continued critique of this perl code
+## With code from: Palica, Tom Ryder and ShaddowM00n
 ##
 ## written with the following additional packages
 ##
 ## from funtoo repository:
 ## dev-perl/JSON-2.900.0
-## dev-perl/Search-Elasticsearch-6.00
 ##
 ## also from Github
-## The accompanying "Report" module placed in
-## modules folder relative to the report script
-## this is until the whole thing is properly packaged for
-## distribution on funtoo or wherever and the module can go
-## in a more proper place
+## The accompanying "Report.pm" module placed in
 
+use 5.014;
 use strict;                 #core
 use warnings;               #core
 use JSON;                   #cpan
 use Term::ANSIColor;        #core
-use lib "$ENV{PWD}/lib";    #core
 use Funtoo::Report;         #GIT
 use HTTP::Tiny;             #core
 
