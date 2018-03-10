@@ -8,29 +8,12 @@ use strict;
 use warnings;
 use Carp;                          #core
 use English qw(-no_match_vars);    #core
-use Exporter;                      #core
 use JSON;                          #cpan
 use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
 use HTTP::Tiny;                    #core
 
 our $VERSION = '1.4';
-
-our @EXPORT_OK = qw(
-    user_config
-    get_kernel_info
-    get_boot_dir_info
-    get_version_info
-    get_world_info
-    get_profile_info
-    get_kit_info
-    add_uuid
-    version
-    get_all_installed_pkg
-    report_time
-    config_update
-    get_hardware_info
-    send_report);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
