@@ -45,8 +45,21 @@ sub send_report {
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
 
-    # output the link to the data
-    print "your report can be seen at: ".$es_conf->{'node'}.$response->{'headers'}{'location'}."\n";
+    # error out helpfully on failed submission
+    $response->{success}
+      or die "Failed submission: $response->{status} $response->{reason}\n";
+
+    # warn if the response code wasn't 201 (Created)
+    $response->{status} == 201
+      or warn "Successful submission, but status was not the expected '201 Created'\n";
+
+    # print location redirection if there was one, warn if not
+    if (defined $response->{headers}{location}) {
+        print "your report can be seen at: ".$es_conf->{'node'}.$response->{'headers'}{'location'}."\n";
+    }
+    else {
+        warn "Expected location for created resource\n";
+    }
 }
 
 ##
