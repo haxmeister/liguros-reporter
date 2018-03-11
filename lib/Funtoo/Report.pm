@@ -18,6 +18,7 @@ our $VERSION = '1.4';
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
+my %errors; # for any errors that don't cause a die
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -190,8 +191,9 @@ sub add_uuid {
 
     my $arg = shift;
 
-    # lets just get a random identifier from the system
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die $ERRNO;
+    # lets just get a random identifier from the system or die trying
+    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die 
+        "Cannot open /proc/sys/kernel/random/uuid to generate a UUID $! \n";
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
@@ -219,6 +221,13 @@ sub add_uuid {
 ##
 sub version {
     return $VERSION;
+}
+
+##
+## reporting errors
+##
+sub errors {
+    return \%errors;
 }
 
 ## returns a long date string for the report body or
@@ -426,39 +435,44 @@ sub get_net_info {
 ## fetching lsblk output
 ##
 sub get_filesystem_info {
-    my $json_from_lsblk
-        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`;
-    my $hash = decode_json($json_from_lsblk);
+    my $hash;
+    if (my $json_from_lsblk = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`){
+        $hash = decode_json($json_from_lsblk);
 
-    # iterate through the block device tree, fixing it up a little so
-    # ElasticSearch can handle it; it doesn't like lists of objects, so we
-    # convert those to objects indexed by device name
-    my @stack = (\$hash->{blockdevices});
-    while (my $list = pop @stack) {
+        # iterate through the block device tree, fixing it up a little so
+        # ElasticSearch can handle it; it doesn't like lists of objects, so we
+        # convert those to objects indexed by device name
+        my @stack = (\$hash->{blockdevices});
+        while (my $list = pop @stack) {
 
-        # start hash to replace the list
-        my %rep;
+            # start hash to replace the list
+            my %rep;
 
-        # iterate through the list
-        for my $dev (@{ ${ $list } }) {
+            # iterate through the list
+            for my $dev (@{ ${ $list } }) {
 
-            # coerce device's size to a number
-            $dev->{size} += 0;
+                # coerce device's size to a number
+                $dev->{size} += 0;
 
-            # put this device into the replacement hashref by name
-            $rep{$dev->{name}} = $dev;
+                # put this device into the replacement hashref by name
+                $rep{$dev->{name}} = $dev;
 
-            # if this device has a list of children, push a reference to that
-            # list onto the stack for the next round
-            if (defined $dev->{children}) {
-                push @stack, \$dev->{children};
+                # if this device has a list of children, push a reference to that
+                # list onto the stack for the next round
+                if (defined $dev->{children}) {
+                    push @stack, \$dev->{children};
+                }
             }
+
+            # run replacement
+            ${ $list } = \%rep;
         }
-
-        # run replacement
-        ${ $list } = \%rep;
     }
-
+    else{
+        push @{$errors{'get_filesystem_info'}}, "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN with $!";
+        warn "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN with $! /n";
+        return;
+    }
     return $hash;
 }
 
@@ -507,7 +521,11 @@ sub get_cpu_info {
         }
     }
 
-    else { warn "Could not open file ' $cpu_file' $ERRNO"; }
+    else { 
+        push @{$errors{'get_cpu_info'}}, "Could not open file $cpu_file $!";
+        warn  "Could not open file $cpu_file $!";
+        return \%hash; # returning empty hash ?
+        }
     $hash{"processors"} = $proc_count;
     return \%hash;
 }
@@ -542,7 +560,9 @@ sub get_mem_info {
             $hash{$key} = int $value;
         }
     }
-    else { warn "Could not open file ' $mem_file' $ERRNO"; }
+    else { 
+        push @{$errors{'get_mem_info'}}, "Could not open file $mem_file $!"; 
+    }
     return \%hash;
 }
 
@@ -607,6 +627,7 @@ sub get_chassis_info {
             close $fh;
         }
         else {
+            push @{$errors{'get_chassis_info'}}, "Unable to open $folder$file $!";
             $hash{$file} = $possible_id[0];
         }
     }
@@ -622,24 +643,29 @@ sub get_chassis_info {
 sub get_profile_info {
 
     # execute 'epro show-json' and capture it's output
-    my $json_from_epro = `epro show-json`;
-    my %profiles;
-    my %sorted;
+    if (my $json_from_epro = `epro show-json`){
+        my %profiles;
+        my %sorted;
 
-    # convert the output from json to a perl data structure
-    my $data = decode_json($json_from_epro);
-    %profiles = %$data;
+        # convert the output from json to a perl data structure
+        my $data = decode_json($json_from_epro);
+        %profiles = %$data;
 
-    # we are going to reconstruct the epro output without the extra
-    # 'shortname' keys, so that it is more easily used in elasticsearch
-    foreach my $item ( keys(%profiles) ) {
-        foreach my $final ( $profiles{$item} ) {
-            foreach my $array_item ( @{$final} ) {
-                push @{ $sorted{$item} }, $array_item->{'shortname'};
+        # we are going to reconstruct the epro output without the extra
+        # 'shortname' keys, so that it is more easily used in elasticsearch
+        foreach my $item ( keys(%profiles) ) {
+            foreach my $final ( $profiles{$item} ) {
+                foreach my $array_item ( @{$final} ) {
+                    push @{ $sorted{$item} }, $array_item->{'shortname'};
+                }
             }
         }
+        return \%sorted;
     }
-    return \%sorted;
+    else{
+        push @{$errors{'get_profile_info'}}, "Unable to retrieve epro show-json output $!";
+        return;
+    }
 }
 
 ##
@@ -668,7 +694,9 @@ sub get_kit_info {
         }
     }
     else {
-        print "cannot open meta file";
+        warn "cannot open $meta_file, $!";
+        push @{$errors{'get_kit_info'}}, "cannot open $meta_file, $!";
+        return;
     }
 
     # extract valid lines from ego.conf
@@ -691,7 +719,9 @@ sub get_kit_info {
         }
     }
     else {
-        print "cannot open ego.conf";
+        warn "cannot open $ego_conf, $!";
+        push @{$errors{'get_kit_info'}}, "cannot open $ego_conf, $!";
+        return;
     }
 
     # now lets finish filling out our hash with default settings
@@ -715,30 +745,40 @@ sub get_kernel_info {
     my @dir_contents;
 
     # pulling relevant info from /proc/sys/kernel
-    opendir( DIR, $directory ) or die $ERRNO;
-    @dir_contents = readdir(DIR);
-    closedir(DIR);
+    if (opendir( DIR, $directory )){
+        @dir_contents = readdir(DIR);
+        closedir(DIR);
 
-    # let's search the directory tree and find the files we want
-    foreach my $file (@dir_contents) {
-        next unless ( -f "$directory/$file" );    #only want files
+        # let's search the directory tree and find the files we want
+        foreach my $file (@dir_contents) {
+            next unless ( -f "$directory/$file" );    #only want files
 
-        # could be easy to add another file here
-        if (   ( $file eq 'ostype' )
-            or ( $file eq 'osrelease' )
-            or ( $file eq 'version' ) )
-        {
-            # lets open the file we found and get it's contents
-            if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) ) {
+            # could be easy to add another file here
+            if (   ( $file eq 'ostype' )
+                or ( $file eq 'osrelease' )
+                or ( $file eq 'version' ) )
+            {
+                # lets open the file we found and get it's contents
+                if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) ) {
 
-                # just want the first line (there shouldn't be anything else)
-                my $row = <$fh>;
-                close $fh;
-                chomp $row;
-                $hash{$file} = $row;
+                    # just want the first line (there shouldn't be anything else)
+                    my $row = <$fh>;
+                    close $fh;
+                    chomp $row;
+                    $hash{$file} = $row;
+                }
+                else { 
+                    push @{$errors{'get_kernel_info'}}, "Could not open file $file, $!";
+                    warn "could not open file '$file' $! \n";
+                    return; 
+                }
             }
-            else { warn "could not open file '$file' $ERRNO"; }
         }
+    }
+    else{
+        push @{$errors{'get_kernel_info'}}, "Could not open $directory, $!";
+        warn "Could not open $directory, $! \n";
+        return;
     }
     return \%hash;
 }    #end sub
@@ -752,16 +792,22 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    opendir( DIR, $boot_dir ) or die "cannot access $boot_dir ", $ERRNO;
-    foreach my $file ( readdir(DIR) ) {
-        next unless ( -f "$boot_dir/$file" );    #only want files
-        chomp $file;
+    if (opendir( DIR, $boot_dir )){
+        foreach my $file ( readdir(DIR) ) {
+            next unless ( -f "$boot_dir/$file" );    #only want files
+            chomp $file;
 
-        # lets grab the names of any files that start with
-        # kernel, vmlinuz or bzImage
-        if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
-            push @kernel_list, $file;
+            # lets grab the names of any files that start with
+            # kernel, vmlinuz or bzImage
+            if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
+                push @kernel_list, $file;
+            }
         }
+    }
+    else{
+        warn "Cannot open $boot_dir, $! \n";
+        push @{$errors{'get_boot_dir_info'}},"Cannot open $boot_dir, $!";
+        return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
     closedir(DIR);
@@ -786,7 +832,11 @@ sub get_world_info {
         }
         close $fh;
     }
-    else { warn "Could not open file $world_file $ERRNO"; }
+    else { 
+        warn "Could not open file $world_file $ERRNO";
+        push @{$errors{'get_world_info'}}, "Could not open file $world_file, $!";
+        return;
+    }
 
     $hash{'world file'} = \@world_array;
     return \@world_array;
@@ -848,34 +898,41 @@ sub get_all_installed_pkg {
 ## structure for use elswhere
 ##
 sub get_lspci {
-
-    my $lspci_output = `lspci -kmmvvv`;
-    my @hardware_list;
-    my @hw_item_section = split( /^\n/msx, $lspci_output );
     my %hash;
-    my %item;
-    for (@hw_item_section) {
-        chomp;    # $hw_item;
-        my @hw_item_lines = split(/\n/msx);
+    if (my $lspci_output = `lspci -kmmvvv`) {
+        my @hardware_list;
+        my @hw_item_section = split( /^\n/msx, $lspci_output );
         
-        for (@hw_item_lines) {
-            chomp;
-            s/\[\]|\{\}/[ ]/msx;
-            my ( $key, $value ) = split(':\s');
-            chomp $key;
-            chomp $value;
-            $item{$key} = $value;
-        }
+        my %item;
+        for (@hw_item_section) {
+            chomp;    # $hw_item;
+            my @hw_item_lines = split(/\n/msx);
+        
+            for (@hw_item_lines) {
+                chomp;
+                s/\[\]|\{\}/[ ]/msx;
+                my ( $key, $value ) = split(':\s');
+                chomp $key;
+                chomp $value;
+                $item{$key} = $value;
+            }
         
         
-        foreach my $key_item (keys %item){
-            unless ($key_item eq 'Slot'){
-                $hash{$item{'Slot'}}{$key_item} = $item{$key_item};
+            foreach my $key_item (keys %item){
+                unless ($key_item eq 'Slot'){
+                    $hash{$item{'Slot'}}{$key_item} = $item{$key_item};
+                }
             }
         }
     }
+    else{
+        push @{$errors{'get_lspci'}}, "Could not retrieve output from lspci -kmmvvv , $!";
+        warn "Could not retrieve output from lspci -kmmvvv $! \n";
+        return;
+    }
     return \%hash;
 }
+
 
 ###########################################
 ############ misc functions ###############

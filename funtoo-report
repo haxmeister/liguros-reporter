@@ -163,6 +163,10 @@ sub report_from_config {
     ## adding version number to report
     #
     $hash{'funtoo-report'}{'version'} = Funtoo::Report::version();
+    
+    ## adding any non fatal errors to the report
+    #
+    $hash{'errors'} = Funtoo::Report::errors();
 
     return %hash;
 }
