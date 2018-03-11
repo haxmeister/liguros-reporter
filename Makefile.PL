@@ -12,6 +12,7 @@ WriteMakefile(
         'Carp'            => 0,
         'English'         => 0,
         'Exporter'        => 0,
+        'Getopt::Long'    => 0,
         'HTTP::Tiny'      => 0,
         'JSON'            => 0,
         'List::Util'      => '1.33',

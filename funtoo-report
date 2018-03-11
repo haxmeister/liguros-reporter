@@ -16,6 +16,7 @@
 use 5.014;
 use strict;                 #core
 use warnings;               #core
+use Getopt::Long;           #core
 use JSON;                   #cpan
 use Term::ANSIColor;        #core
 use Funtoo::Report;         #GIT
@@ -26,6 +27,10 @@ my %es_config = (
     index => Funtoo::Report::report_time('short'),
     type  => 'report');
 
+# Parse options
+my $debug = 0;
+GetOptions('debug|d' => \$debug)
+    or die "Error in command line arguments\n";
 
 ## let's parse the command line args
 if (@ARGV) {
@@ -48,7 +53,7 @@ if (@ARGV) {
 
         # get the entire report
         my %report = report_from_config();
-        Funtoo::Report::send_report(\%report, \%es_config);
+        Funtoo::Report::send_report(\%report, \%es_config, $debug);
     }
 
     # for people who ask for help

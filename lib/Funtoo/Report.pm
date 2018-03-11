@@ -25,6 +25,10 @@ my $config_file = '/etc/funtoo-report.conf';
 sub send_report {
     my $rep     = shift;
     my $es_conf = shift;
+    my $debug   = shift;
+
+    # if we weren't told whether to show debugging output, don't
+    $debug //= 0;
 
     # constructing the url we will report too
     my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
@@ -44,6 +48,11 @@ sub send_report {
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
+
+    # if debugging, dump the entire response content
+    if ($debug) {
+        print {*STDERR} "$response->{content}\n";
+    }
 
     # error out helpfully on failed submission
     $response->{success}
