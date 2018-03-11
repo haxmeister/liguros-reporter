@@ -815,6 +815,7 @@ sub get_all_installed_pkg {
             opendir my $dh2, "$db_dir/$cat"
                 or croak "Unable to open dir $cat: $ERRNO\n";
             while ( my $pkg = readdir $dh2 ) {
+                next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
                     push @all, "$cat/$pkg";
                 }
