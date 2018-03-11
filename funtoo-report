@@ -32,9 +32,11 @@ my $debug = 0;
 GetOptions('debug|d' => \$debug)
     or die "Error in command line arguments\n";
 
-## let's parse the command line args
-if (@ARGV) {
-    if ( $ARGV[0] eq 'show-json' ) {
+# dispatch table of script actions
+my %actions = (
+
+    # generate and print JSON report, but don't submit it
+    'show-json' => sub {
 
         # get the entire report
         my %report = report_from_config();
@@ -46,28 +48,28 @@ if (@ARGV) {
         # and print the results with proper indents (pretty)
         my $json_pretty = $json->pretty->encode( \%report );
         print $json_pretty;
+    },
 
-    }
-
-    if ( $ARGV[0] eq 'send' ) {
-
+    # generate and send JSON report, and print URL
+    'send' => sub {
         # get the entire report
         my %report = report_from_config();
         Funtoo::Report::send_report(\%report, \%es_config, $debug);
-    }
+    },
 
-    # for people who ask for help
-    if ( $ARGV[0] eq 'help' ) {
-        show_help();
-    }
+    # update configuration file
+    'config-update' => \&Funtoo::Report::config_update,
 
-    # to update/replace the config file
-    if ( $ARGV[0] eq 'config-update' ) {
-        Funtoo::Report::config_update();
-    }
+    # show script help
+    'help' => \&show_help,
+);
+
+# pull action from script arguments if possible
+if (length (my $action = shift @ARGV)) {
+    exists $actions{$action}
+        or die "Unknown action '$action'\n";
+    $actions{$action}->();
 }
-
-# for people who don't ask for help
 else {
     show_help();
 }
