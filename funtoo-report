@@ -27,7 +27,7 @@ my %es_config = (
     index => Funtoo::Report::report_time('short'),
     type  => 'report');
 
-# Parse options
+# parse options
 my $debug = 0;
 GetOptions('debug|d' => \$debug)
     or die "Error in command line arguments\n";
