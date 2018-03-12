@@ -45,7 +45,8 @@ sub send_report {
     );
 
     # create a new HTTP object
-    my $http = HTTP::Tiny->new();
+    my $agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $http = HTTP::Tiny->new(agent => $agent);
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
