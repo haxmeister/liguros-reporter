@@ -881,10 +881,10 @@ sub get_all_installed_pkg {
     for my $line (@all) {
         my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
         if ( any {/\Q$pkg\E/xms} @world ) {
-            push @{ $hash{pkgs}{world}{$pkg}->{versions} }, $version;
+            push @{ $hash{pkgs}{world}{$pkg} }, $version;
         }
         else {
-            push @{ $hash{pkgs}{other}{$pkg}->{versions} }, $version;
+            push @{ $hash{pkgs}{other}{$pkg}}, $version;
         }
     }
     $hash{'pkg-count-world'} = scalar @world;
