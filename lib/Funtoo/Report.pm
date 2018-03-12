@@ -782,7 +782,7 @@ sub get_kernel_info {
         return;
     }
     return \%hash;
-}    #end sub
+}
 
 ##
 ## finding kernel files in boot
@@ -813,7 +813,7 @@ sub get_boot_dir_info {
     $hash{'available kernels'} = \@kernel_list;
     closedir(DIR);
     return \%hash;
-}    #end sub
+}
 
 ##
 ## fetching contents of /var/lib/portage/world
@@ -841,7 +841,7 @@ sub get_world_info {
 
     $hash{'world file'} = \@world_array;
     return \@world_array;
-}    #end sub
+}
 
 ##
 ## getting the full list of installed packages
@@ -855,16 +855,18 @@ sub get_all_installed_pkg {
 
     # Get a list of the world packages
     open my $fh, '<', $world_file
-        or croak "Unable to open dir $world_file $ERRNO\n";
+        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
     @world = <$fh>;
     close $fh;
 
-    # Get a list of all the packages
-    opendir my $dh, $db_dir or croak "Unable to open dir $db_dir: $ERRNO\n";
+    # Get a list of all the packages, skipping those half-merged
+    opendir my $dh, $db_dir
+        or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
-            opendir my $dh2, "$db_dir/$cat"
-                or croak "Unable to open dir $cat: $ERRNO\n";
+            opendir my $dh2,       "$db_dir/$cat"
+                or opendir my $dh, $db_dir
+                or do { push_error("Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
@@ -877,16 +879,12 @@ sub get_all_installed_pkg {
    # Create the world and miscellaneous hashes. Do so using List::Util's "any"
    # since grep doesn't short-circuit after a successful match.
     for my $line (@all) {
-        open my $fh, '<', "$db_dir/$line/SLOT"
-            or croak "Unable to open $db_dir/$line/SLOT: $ERRNO\n";
-        chomp( my $slot = <$fh> );
-        close $fh;
         my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
         if ( any {/\Q$pkg\E/xms} @world ) {
-            $hash{pkgs}{world}{$pkg}{$version} = $slot;
+            push @{ $hash{pkgs}{world}{$pkg}->{versions} }, $version;
         }
         else {
-            $hash{pkgs}{other}{$pkg}{$version} = $slot;
+            push @{ $hash{pkgs}{other}{$pkg}->{versions} }, $version;
         }
     }
     $hash{'pkg-count-world'} = scalar @world;
@@ -958,6 +956,14 @@ sub get_y_or_n {
     elsif ( $answer =~ /^no?$/ixms ) {
         return 'n';
     }
+}
+
+sub push_error {
+    my $error_message = shift;
+    my $parent        = ( caller 1 )[3];
+    print {*STDERR} "$parent: $error_message\n";
+    push @{ $errors{$parent} }, $error_message;
+    return;
 }
 
 1;
