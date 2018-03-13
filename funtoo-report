@@ -23,7 +23,7 @@ use Funtoo::Report;         #GIT
 use HTTP::Tiny;             #core
 
 my %es_config = (
-    node  => 'http://elk2.liguros.net:9200',
+    node  => 'http://elk.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
     type  => 'report');
 
