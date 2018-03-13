@@ -840,9 +840,9 @@ sub get_world_info {
     if ( defined $parent && $parent =~ /get_all_installed_pkg/xms ) {
         return @world_array;
     }
-    $hash{'world file'}      = \@world_array;
+    #$hash{'world file'}      = \@world_array;
     ### %hash
-    return \%hash;
+    return \@world_array
 }
 
 ##
