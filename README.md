@@ -8,8 +8,8 @@ emerge -av Funtoo-Report
 ```
 
 ### Operation:
-**The reporting tool is intended to run with root privileges for access to key system files. Use the method most appropriate on yo
-ur system**
+**The reporting tool is intended to run with root privileges for access to key
+system files. Use the method most appropriate on your system**
 
 **Just launching the program will show you a help menu:**
 
