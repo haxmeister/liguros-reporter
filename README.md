@@ -23,7 +23,7 @@ funtoo-report show-json         Show the output that will be sent, in JSON forma
 funtoo-report help              Show this help list
 funtoo-report config-update     Generate, reconfigure or update the config file /etc/funtoo-report.conf
 
-Output can be ommitted by modifying the /etc/report.conf file
+Output can be ommitted by modifying the /etc/funtoo-report.conf file
 ```
 **help shows you the same output:**
 
