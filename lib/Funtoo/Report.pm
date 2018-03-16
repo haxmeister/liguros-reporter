@@ -1,7 +1,7 @@
 package Funtoo::Report;
 
-### Author : Joshua S. Day (haxmeister)
-### purpose : functions for retrieving data on funtoo linux
+### Authors : Joshua S. Day (haxmeister), Tom Ryder, ShadowM00n
+### purpose : functions for retrieving and sending data on funtoo linux
 
 use 5.014;
 use strict;
