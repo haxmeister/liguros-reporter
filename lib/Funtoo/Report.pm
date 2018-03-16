@@ -235,7 +235,7 @@ sub errors {
 }
 
 ## returns a long date string for the report body or
-## returns a string that is like 'funtoo-year-week' that is
+## returns a string that is like 'funtoo-year.week' that is
 ## suitable for elasticsearch historical data management
 ##
 ## with special date formatting by request
