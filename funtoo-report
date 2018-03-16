@@ -11,7 +11,7 @@
 ## dev-perl/JSON-2.900.0
 ##
 ## also from Github
-## The accompanying "Report.pm" module placed in
+## The accompanying "Report.pm" module 
 
 use 5.014;
 use strict;                 #core
