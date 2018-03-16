@@ -53,6 +53,10 @@ To generate a new configuration file use 'funtoo-report config-update'
 
 ```your report can be seen at: http://elk2.liguros.net:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
 
+**You can get HTTP debugging output for the send command with the `-d` or `--debug` option:**
+
+'funtoo-report -d send'
+
 ### Manual Configuration:
 
 The reporting tool is completely anonymous and the individual categories that
