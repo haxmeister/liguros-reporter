@@ -74,7 +74,7 @@ sub send_report {
 }
 
 ##
-## finds the config file in /etc/funtoo-report.conf and loads it's contents
+## finds the config file in /etc/funtoo-report.conf and loads its contents
 ## into a hash and returns it
 #
 sub user_config {
@@ -129,7 +129,7 @@ sub user_config {
 
 ## retrieves UUID from the config file if present and then
 ## prompts user as it generates settings for a new config file
-## insures all new possibilities are in the config file from previous
+## ensures all new possibilities are in the config file from previous
 ## versions, etc.
 #
 sub config_update {
@@ -316,7 +316,8 @@ sub get_hardware_info {
 
 ##
 ## returns a hash ref containing networking device info
-## by ShadowM00n this function goes directly to the source instead
+## by ShadowM00n
+## this function goes directly to the source instead
 ## of making calls to external tools
 ##
 sub get_net_info {
@@ -497,7 +498,7 @@ sub get_cpu_info {
             chomp $row;
             if ($row) {
 
-                # lets split each line on the colon, left is the key
+                # let's split each line on the colon, left is the key
                 # right is the value
                 my ( $key, $value ) = split /\s*:\s*/msx, $row;
 
@@ -539,7 +540,7 @@ sub get_cpu_info {
 ##
 sub get_mem_info {
 
-    # pulling relevent info from /proc/meminfo
+    # pulling relevant info from /proc/meminfo
     my %hash = (
         MemTotal     => undef,
         MemFree      => undef,
@@ -571,7 +572,7 @@ sub get_mem_info {
 }
 
 ##
-## fetch information about the system chassi
+## fetch information about the system chassis
 ##
 sub get_chassis_info {
     my %hash;
@@ -642,11 +643,11 @@ sub get_chassis_info {
 
 ##
 ## fetching active profiles
-## reconst output of epro show-json command
+## reconstruct output of epro show-json command
 ##
 sub get_profile_info {
 
-    # execute 'epro show-json' and capture it's output
+    # execute 'epro show-json' and capture its output
     if (my $json_from_epro = `epro show-json`){
         my %profiles;
         my %sorted;
@@ -728,7 +729,7 @@ sub get_kit_info {
         return;
     }
 
-    # now lets finish filling out our hash with default settings
+    # now let's finish filling out our hash with default settings
     # anywhere it is undef
     foreach my $key ( keys %hash ) {
         if ( $hash{$key} eq "undef" ) {
@@ -762,7 +763,7 @@ sub get_kernel_info {
                 or ( $file eq 'osrelease' )
                 or ( $file eq 'version' ) )
             {
-                # lets open the file we found and get it's contents
+                # let's open the file we found and get its contents
                 if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) ) {
 
                     # just want the first line (there shouldn't be anything else)
@@ -801,7 +802,7 @@ sub get_boot_dir_info {
             next unless ( -f "$boot_dir/$file" );    #only want files
             chomp $file;
 
-            # lets grab the names of any files that start with
+            # let's grab the names of any files that start with
             # kernel, vmlinuz or bzImage
             if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
                 push @kernel_list, $file;
