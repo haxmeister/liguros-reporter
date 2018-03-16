@@ -275,7 +275,7 @@ sub report_time {
 
 ##
 ## returns a hash ref with various hardware info that was
-## derived from lspci -kmv and other functions
+## derived from lspci -kmmvvv and other functions
 ##
 sub get_hardware_info {
     my %hash;
@@ -969,7 +969,7 @@ sub get_version_info {
 }
 
 ##
-## parsing output from lspci -kmv and putting it in a useable data
+## parsing output from lspci -kmmvvv and putting it in a useable data
 ## structure for use elswhere
 ##
 sub get_lspci {
