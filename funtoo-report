@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+package main;
 
 ## Author : Joshua S. Day (haxmeister)
 ## Purpose : An anonymous funtoo data reporting tool
