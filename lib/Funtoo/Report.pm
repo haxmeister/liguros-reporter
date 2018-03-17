@@ -816,13 +816,13 @@ sub get_boot_dir_info {
                 push @kernel_list, $file;
             }
         }
+        closedir(DIR);
     }
     else {
         push_error("Cannot open directory $boot_dir, $ERRNO");
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
-    closedir(DIR);
     return \%hash;
 }
 
