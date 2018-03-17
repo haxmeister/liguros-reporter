@@ -901,8 +901,8 @@ sub get_version_info {
     my @all = get_all_installed_pkg();
     my %hash;
 
-   # specify which ebuilds to look at; use a "version" of "undef" for a single
-   # version value, and a hashref "[]" for a list of version values
+    # specify which ebuilds to look at; use a "version" of "undef" for a single
+    # version value, and a hashref "[]" for a list of version values
     my %ebuilds = (
         portage => {
             kit     => 'sys-apps',
