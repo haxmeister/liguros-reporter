@@ -18,7 +18,7 @@ our $VERSION = '1.4';
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
-my %errors; # for any errors that don't cause a die
+my %errors;                        # for any errors that don't cause a die
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -46,7 +46,7 @@ sub send_report {
 
     # create a new HTTP object
     my $agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
-    my $http = HTTP::Tiny->new(agent => $agent);
+    my $http = HTTP::Tiny->new( agent => $agent );
 
     # send report and capture the response from ES
     my $response = $http->request( 'POST', $url, \%options );
@@ -58,15 +58,23 @@ sub send_report {
 
     # error out helpfully on failed submission
     $response->{success}
-      or do { push_error("Failed submission: $response->{status} $response->{reason}"); croak };
+        or do {
+        push_error(
+            "Failed submission: $response->{status} $response->{reason}");
+        croak;
+        };
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-      or push_error('Successful submission, but status was not the expected \'201 Created\'');
+        or push_error(
+        'Successful submission, but status was not the expected \'201 Created\''
+        );
 
     # print location redirection if there was one, warn if not
-    if (defined $response->{headers}{location}) {
-        print "your report can be seen at: ".$es_conf->{'node'}.$response->{'headers'}{'location'}."\n";
+    if ( defined $response->{headers}{location} ) {
+        print "your report can be seen at: "
+            . $es_conf->{'node'}
+            . $response->{'headers'}{'location'} . "\n";
     }
     else {
         push_error('Expected location for created resource');
@@ -176,7 +184,6 @@ sub config_update {
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
 
-
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
@@ -196,7 +203,8 @@ sub add_uuid {
     my $arg = shift;
 
     # lets just get a random identifier from the system or die trying
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or croak
+    open( my $fh, '<', '/proc/sys/kernel/random/uuid' )
+        or croak
         "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
     my $UUID = <$fh>;
     chomp $UUID;
@@ -212,7 +220,8 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file ) or croak "Unable to append to $config_file: $ERRNO\n";
+        open( $fh, '>>', $config_file )
+            or croak "Unable to append to $config_file: $ERRNO\n";
         print $fh "\n# A unique identifier for this reporting machine \n";
         print $fh "UUID:$UUID\n";
         close $fh;
@@ -240,13 +249,13 @@ sub errors {
 ##
 ## with special date formatting by request
 sub report_time {
-    my $format = shift;
+    my $format  = shift;
     my %formats = (
 
         # ISO8601 date and time with UTC timezone suffix "Z"
         # e.g. 2018-03-09T22:37:09Z
         long => sub {
-            my @t = @_;
+            my @t    = @_;
             my $year = $t[5] + 1900;
             my $mon  = $t[4] + 1;
             my $day  = $t[3];
@@ -260,16 +269,15 @@ sub report_time {
         # year and week number in UTC with static "funtoo" prefix
         # e.g. funtoo-2018.49
         short => sub {
-            my @t = @_;
+            my @t    = @_;
             my $year = $t[5] + 1900;
-            my $week = ceil(($t[7] + 1) / 7);
-            return sprintf 'funtoo-%04u.%02u',
-                $year, $week;
+            my $week = ceil( ( $t[7] + 1 ) / 7 );
+            return sprintf 'funtoo-%04u.%02u', $year, $week;
         },
 
     );
     exists $formats{$format}
-        or do {push_error('Unable to determine the time'); return};
+        or do { push_error('Unable to determine the time'); return };
     return $formats{$format}->(gmtime);
 }
 
@@ -282,35 +290,35 @@ sub get_hardware_info {
 
     my %lspci = ( 'PCI-Device' => get_lspci() );
 
-    for my $device( keys %{$lspci{'PCI-Device'}}  ) {
-                    
+    for my $device ( keys %{ $lspci{'PCI-Device'} } ) {
+
         # fetching sound info from data structure
         if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
-            $hash{'audio'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
-        
+            $hash{'audio'}{$device} = \%{ $lspci{'PCI-Device'}{$device} };
+
         }
 
         # fetching video cards
         if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
-            $hash{'video'}{$device} = \%{$lspci{'PCI-Device'}{$device}};
+            $hash{'video'}{$device} = \%{ $lspci{'PCI-Device'}{$device} };
         }
     }
-    
+
     # fetching networking devices
     $hash{'networking'} = get_net_info();
-    
+
     # fetching block devices
     $hash{'filesystem'} = get_filesystem_info();
-    
+
     # fetching cpu info
     $hash{'cpu'} = get_cpu_info();
-    
+
     # fetching memory info
     $hash{'memory'} = get_mem_info();
-    
+
     # fetching chassis info
     $hash{'chassis'} = get_chassis_info();
-    
+
     return \%hash;
 }
 
@@ -329,8 +337,10 @@ sub get_net_info {
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-        or do {push_error("Unable to open dir $interface_dir: $ERRNO"); return};
+        or
+        do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
     while ( my $file = readdir $dh ) {
+
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
             push @interfaces, $file;
         }
@@ -362,7 +372,10 @@ sub get_net_info {
         if ( -e $vendor_id_file ) {
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
-                or do {push_error("Unable to open file $vendor_id_file: $ERRNO"); next};
+                or do {
+                push_error("Unable to open file $vendor_id_file: $ERRNO");
+                next;
+                };
             $vendor_id = <$fh>;
             close $fh;
             chomp $vendor_id;
@@ -371,7 +384,10 @@ sub get_net_info {
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
-                or do {push_error("Unable to open file $device_id_file: $ERRNO"); next};
+                or do {
+                push_error("Unable to open file $device_id_file: $ERRNO");
+                next;
+                };
             $device_id = <$fh>;
             close $fh;
             chomp $device_id;
@@ -384,7 +400,10 @@ sub get_net_info {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
             $id_file        = $usb_ids;
             open my $fh, '<', $vendor_id_file
-                or do { push_error("Unable to open file $vendor_id_file: $ERRNO"); next; };
+                or do {
+                push_error("Unable to open file $vendor_id_file: $ERRNO");
+                next;
+                };
             while (<$fh>) {
                 if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
                     $vendor_id = sprintf '%04s', $1;
@@ -432,40 +451,45 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my $hash;
-    if (my $json_from_lsblk = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`){
+    if ( my $json_from_lsblk
+        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`
+        )
+    {
         $hash = decode_json($json_from_lsblk);
 
         # iterate through the block device tree, fixing it up a little so
         # ElasticSearch can handle it; it doesn't like lists of objects, so we
         # convert those to objects indexed by device name
-        my @stack = (\$hash->{blockdevices});
-        while (my $list = pop @stack) {
+        my @stack = ( \$hash->{blockdevices} );
+        while ( my $list = pop @stack ) {
 
             # start hash to replace the list
             my %rep;
 
             # iterate through the list
-            for my $dev (@{ ${ $list } }) {
+            for my $dev ( @{ ${$list} } ) {
 
                 # coerce device's size to a number
                 $dev->{size} += 0;
 
                 # put this device into the replacement hashref by name
-                $rep{$dev->{name}} = $dev;
+                $rep{ $dev->{name} } = $dev;
 
-                # if this device has a list of children, push a reference to that
-                # list onto the stack for the next round
-                if (defined $dev->{children}) {
+             # if this device has a list of children, push a reference to that
+             # list onto the stack for the next round
+                if ( defined $dev->{children} ) {
                     push @stack, \$dev->{children};
                 }
             }
 
             # run replacement
-            ${ $list } = \%rep;
+            ${$list} = \%rep;
         }
     }
     else {
-        push_error("Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN: $ERRNO");
+        push_error(
+            "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN: $ERRNO"
+        );
         return;
     }
     return $hash;
@@ -519,7 +543,7 @@ sub get_cpu_info {
     else {
         push_error("Could not open file $cpu_file: $ERRNO");
         return;
-        }
+    }
     $hash{"processors"} = $proc_count;
     return \%hash;
 }
@@ -630,7 +654,6 @@ sub get_chassis_info {
 
 }
 
-
 ##
 ## fetching active profiles
 ## reconstruct output of epro show-json command
@@ -638,7 +661,7 @@ sub get_chassis_info {
 sub get_profile_info {
 
     # execute 'epro show-json' and capture its output
-    if (my $json_from_epro = `epro show-json`){
+    if ( my $json_from_epro = `epro show-json` ) {
         my %profiles;
         my %sorted;
 
@@ -657,7 +680,7 @@ sub get_profile_info {
         }
         return \%sorted;
     }
-    else{
+    else {
         push_error("Unable to retrieve epro show-json output: $ERRNO");
         return;
     }
@@ -727,7 +750,6 @@ sub get_kit_info {
     return \%hash;
 }
 
-
 ##
 ## fetching kernel information from /proc/sys/kernel
 ##
@@ -738,7 +760,7 @@ sub get_kernel_info {
     my @dir_contents;
 
     # pulling relevant info from /proc/sys/kernel
-    if (opendir( DIR, $directory )){
+    if ( opendir( DIR, $directory ) ) {
         @dir_contents = readdir(DIR);
         closedir(DIR);
 
@@ -752,9 +774,10 @@ sub get_kernel_info {
                 or ( $file eq 'version' ) )
             {
                 # let's open the file we found and get its contents
-                if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) ) {
+                if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) )
+                {
 
-                    # just want the first line (there shouldn't be anything else)
+                 # just want the first line (there shouldn't be anything else)
                     my $row = <$fh>;
                     close $fh;
                     chomp $row;
@@ -767,7 +790,7 @@ sub get_kernel_info {
             }
         }
     }
-    else{
+    else {
         push_error("Could not open directory $directory: $ERRNO");
         return;
     }
@@ -783,7 +806,7 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    if (opendir( DIR, $boot_dir )){
+    if ( opendir( DIR, $boot_dir ) ) {
         foreach my $file ( readdir(DIR) ) {
             next unless ( -f "$boot_dir/$file" );    #only want files
             chomp $file;
@@ -795,7 +818,7 @@ sub get_boot_dir_info {
             }
         }
     }
-    else{
+    else {
         push_error("Cannot open directory $boot_dir, $ERRNO");
         return \%hash;
     }
@@ -826,7 +849,7 @@ sub get_world_info {
     if ( defined $parent && $parent =~ /get_all_installed_pkg/xms ) {
         return @world_array;
     }
-    return \@world_array
+    return \@world_array;
 }
 
 ##
@@ -956,15 +979,15 @@ sub get_version_info {
 ##
 sub get_lspci {
     my %hash;
-    if (my $lspci_output = `lspci -kmmvvv`) {
+    if ( my $lspci_output = `lspci -kmmvvv` ) {
         my @hardware_list;
         my @hw_item_section = split( /^\n/msx, $lspci_output );
-        
+
         my %item;
         for (@hw_item_section) {
             chomp;    # $hw_item;
             my @hw_item_lines = split(/\n/msx);
-        
+
             for (@hw_item_lines) {
                 chomp;
                 s/\[\]|\{\}/[ ]/msx;
@@ -973,22 +996,20 @@ sub get_lspci {
                 chomp $value;
                 $item{$key} = $value;
             }
-        
-        
-            foreach my $key_item (keys %item){
-                unless ($key_item eq 'Slot'){
-                    $hash{$item{'Slot'}}{$key_item} = $item{$key_item};
+
+            foreach my $key_item ( keys %item ) {
+                unless ( $key_item eq 'Slot' ) {
+                    $hash{ $item{'Slot'} }{$key_item} = $item{$key_item};
                 }
             }
         }
     }
-    else{
+    else {
         push_error("Could not retrieve output from lspci -kmmvvv: $ERRNO");
         return;
     }
     return \%hash;
 }
-
 
 ###########################################
 ############ misc functions ###############

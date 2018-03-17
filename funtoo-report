@@ -11,25 +11,26 @@
 ## dev-perl/JSON-2.900.0
 ##
 ## also from Github
-## The accompanying "Report.pm" module 
+## The accompanying "Report.pm" module
 
 use 5.014;
-use strict;                 #core
-use warnings;               #core
-use Getopt::Long;           #core
-use JSON;                   #cpan
-use Term::ANSIColor;        #core
-use Funtoo::Report;         #GIT
-use HTTP::Tiny;             #core
+use strict;             #core
+use warnings;           #core
+use Getopt::Long;       #core
+use JSON;               #cpan
+use Term::ANSIColor;    #core
+use Funtoo::Report;     #GIT
+use HTTP::Tiny;         #core
 
 my %es_config = (
     node  => 'http://elk.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
-    type  => 'report');
+    type  => 'report'
+);
 
 # parse options
 my $debug = 0;
-GetOptions('debug|d' => \$debug)
+GetOptions( 'debug|d' => \$debug )
     or die "Error in command line arguments\n";
 
 # dispatch table of script actions
@@ -52,9 +53,10 @@ my %actions = (
 
     # generate and send JSON report, and print URL
     'send' => sub {
+
         # get the entire report
         my %report = report_from_config();
-        Funtoo::Report::send_report(\%report, \%es_config, $debug);
+        Funtoo::Report::send_report( \%report, \%es_config, $debug );
     },
 
     # update configuration file
@@ -65,7 +67,7 @@ my %actions = (
 );
 
 # pull action from script arguments if possible
-if (length (my $action = shift @ARGV)) {
+if ( length( my $action = shift @ARGV ) ) {
     exists $actions{$action}
         or die "Unknown action '$action'\n";
     $actions{$action}->();
@@ -164,7 +166,7 @@ sub report_from_config {
     ## adding version number to report
     #
     $hash{'funtoo-report'}{'version'} = Funtoo::Report::version();
-    
+
     ## adding any non fatal errors to the report
     #
     $hash{'errors'} = Funtoo::Report::errors();
