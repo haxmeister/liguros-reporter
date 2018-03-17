@@ -8,7 +8,6 @@ WriteMakefile(
     EXE_FILES        => ['funtoo-report'],
     MIN_PERL_VERSION => '5.014',
     PREREQ_PM        => {
-        'autodie'         => 0,
         'Carp'            => 0,
         'English'         => 0,
         'Exporter'        => 0,
