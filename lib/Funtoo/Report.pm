@@ -559,7 +559,7 @@ sub get_mem_info {
             my ( $key, $value ) = $line =~ m/ (\S+) : \s* (\d+) /msx
               or next;
             exists $hash{$key} or next;
-            $hash{$key} = int $value;
+            $hash{$key} = $value + 0;
         }
     }
     else {
