@@ -656,7 +656,8 @@ sub get_chassis_info {
 sub get_profile_info {
 
     # execute 'epro show-json' and capture its output
-    if ( my $json_from_epro = `epro show-json` ) {
+    my $epro = 'epro show-json';
+    if ( my $json_from_epro = `$epro` ) {
         my %profiles;
         my %sorted;
 
@@ -676,7 +677,7 @@ sub get_profile_info {
         return \%sorted;
     }
     else {
-        push_error("Unable to retrieve epro show-json output: $ERRNO");
+        push_error("Unable to retrieve output from $epro: $ERRNO");
         return;
     }
 }
