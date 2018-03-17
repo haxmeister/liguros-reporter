@@ -196,12 +196,12 @@ sub add_uuid {
     my $arg = shift;
 
     # lets just get a random identifier from the system or die trying
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' )
+    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
         or croak
         "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-    my $UUID = <$fh>;
+    my $UUID = <$ufh>;
     chomp $UUID;
-    close $fh;
+    close $ufh;
 
     # if we recieved the 'new' argument then we just want to return
     # the UUID without modifying the file. i.e. we came here from the
@@ -213,11 +213,11 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file )
+        open( my $cfh, '>>', $config_file )
             or croak "Unable to append to $config_file: $ERRNO\n";
-        print $fh "\n# A unique identifier for this reporting machine \n";
-        print $fh "UUID:$UUID\n";
-        close $fh;
+        print $cfh "\n# A unique identifier for this reporting machine \n";
+        print $cfh "UUID:$UUID\n";
+        close $cfh;
     }
     return $UUID;
 }
