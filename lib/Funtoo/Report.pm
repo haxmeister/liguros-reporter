@@ -551,18 +551,13 @@ sub get_mem_info {
         SwapFree     => undef,
     );
     my $mem_file = '/proc/meminfo';
-    my @mem_file_contents;
-    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
-        @mem_file_contents = <$fh>;
-        close $fh;
 
-        foreach my $row (@mem_file_contents) {
-
-            # get the key and the first numeric value
-            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
-                or next;
-
-            # if there's a hash bucket waiting for this value, add it
+    # for each line, get the key and the first numeric value; if there's a hash
+    # bucket waiting for this value, add it, coercing the value to be numeric
+    if ( open my $fh, '<:encoding(UTF-8)', $mem_file ) {
+        while ( my $line = <$fh> ) {
+            my ( $key, $value ) = $line =~ m/ (\S+) : \s* (\d+) /msx
+              or next;
             exists $hash{$key} or next;
             $hash{$key} = int $value;
         }
