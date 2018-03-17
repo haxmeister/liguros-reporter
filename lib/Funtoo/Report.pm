@@ -187,7 +187,7 @@ sub config_update {
     open( my $fh, '>:encoding(UTF-8)', $config_file )
         or croak "Could not open $config_file: $ERRNO\n";
     foreach my $key ( sort keys %new_config ) {
-        print $fh "$key" . ":" . "$new_config{$key}\n";
+        print $fh "$key:$new_config{$key}\n";
     }
     close $fh;
 
