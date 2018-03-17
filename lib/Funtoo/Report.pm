@@ -329,7 +329,6 @@ sub get_hardware_info {
 ## of making calls to external tools
 ##
 sub get_net_info {
-    use autodie qw< :io >;
 
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
