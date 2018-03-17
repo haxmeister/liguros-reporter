@@ -33,7 +33,7 @@ my %es_config = (
 # parse options
 my $debug = 0;
 GetOptions( 'debug|d' => \$debug )
-    or die "Error in command line arguments\n";
+  or die "Error in command line arguments\n";
 
 # dispatch table of script actions
 my %actions = (
@@ -71,7 +71,7 @@ my %actions = (
 # pull action from script arguments if possible
 if ( length( my $action = shift @ARGV ) ) {
     exists $actions{$action}
-        or die "Unknown action '$action'\n";
+      or die "Unknown action '$action'\n";
     $actions{$action}->();
 }
 else {
@@ -119,7 +119,7 @@ sub show_help {
 
 ## let's read the config file and generate the report
 sub report_from_config {
-    my %config = Funtoo::Report::user_config();  # fetch/parse the user config
+    my %config = Funtoo::Report::user_config();    # fetch/parse the user config
     my %hash;
 
     # look for a UUID in the config file and
