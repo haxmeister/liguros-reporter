@@ -561,6 +561,7 @@ sub get_mem_info {
             exists $hash{$key} or next;
             $hash{$key} = $value + 0;
         }
+        close $fh;
     }
     else {
         push_error("Could not open file $mem_file: $ERRNO");
