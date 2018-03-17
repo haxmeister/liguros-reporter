@@ -169,7 +169,7 @@ sub report_from_config {
 
     ## adding any non fatal errors to the report
     #
-    $hash{'errors'} = Funtoo::Report::errors();
+    $hash{'funtoo-report'}{'errors'} = Funtoo::Report::errors();
 
     return %hash;
 }
