@@ -759,9 +759,9 @@ sub get_kernel_info {
     my @dir_contents;
 
     # pulling relevant info from /proc/sys/kernel
-    if ( opendir( DIR, $directory ) ) {
-        @dir_contents = readdir(DIR);
-        closedir(DIR);
+    if ( opendir( my $dh, $directory ) ) {
+        @dir_contents = readdir($dh);
+        closedir($dh);
 
         # let's search the directory tree and find the files we want
         foreach my $file (@dir_contents) {
@@ -805,8 +805,8 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    if ( opendir( DIR, $boot_dir ) ) {
-        foreach my $file ( readdir(DIR) ) {
+    if ( opendir( my $dh, $boot_dir ) ) {
+        foreach my $file ( readdir($dh) ) {
             next unless ( -f "$boot_dir/$file" );    #only want files
             chomp $file;
 
@@ -816,7 +816,7 @@ sub get_boot_dir_info {
                 push @kernel_list, $file;
             }
         }
-        closedir(DIR);
+        closedir($dh);
     }
     else {
         push_error("Cannot open directory $boot_dir, $ERRNO");
