@@ -13,6 +13,7 @@ use JSON;                          #cpan
 use List::Util qw(any);            #core
 use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
+use Time::Piece;                   #core
 
 our $VERSION = '2.0.0-dev';
 
@@ -243,35 +244,21 @@ sub errors {
 ## with special date formatting by request
 sub report_time {
     my $format  = shift;
+    my $t       = gmtime;
     my %formats = (
 
         # ISO8601 date and time with UTC timezone suffix "Z"
         # e.g. 2018-03-09T22:37:09Z
-        long => sub {
-            my @t    = @_;
-            my $year = $t[5] + 1900;
-            my $mon  = $t[4] + 1;
-            my $day  = $t[3];
-            my $hour = $t[2];
-            my $min  = $t[1];
-            my $sec  = $t[0];
-            return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
-                $year, $mon, $day, $hour, $min, $sec;
-        },
+        long => $t->datetime . 'Z',
 
         # year and week number in UTC with static "funtoo" prefix
         # e.g. funtoo-2018.49
-        short => sub {
-            my @t    = @_;
-            my $year = $t[5] + 1900;
-            my $week = ceil( ( $t[7] + 1 ) / 7 );
-            return sprintf 'funtoo-%04u.%02u', $year, $week;
-        },
+        short => 'funtoo-' . $t->year . '.' . $t->week,
 
     );
     exists $formats{$format}
-        or do { push_error('Unable to determine the time'); return };
-    return $formats{$format}->(gmtime);
+      or do { push_error('Unable to determine the time'); return };
+    return $formats{$format};
 }
 
 ##
