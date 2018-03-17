@@ -14,7 +14,7 @@ use List::Util qw(any);            #core
 use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
 
-our $VERSION = '1.4';
+our $VERSION = '2.0.0';
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
