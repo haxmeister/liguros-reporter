@@ -104,11 +104,6 @@ sub user_config {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
                 $hash{$key} = $value;
             }
-
-            # skip the empty lines also
-            else {
-                next;
-            }
         }
     }
     elsif ( $args and ( $args eq 'new' ) ) {
@@ -530,7 +525,6 @@ sub get_cpu_info {
                     # including logical and physical cores
                     $proc_count = $proc_count + 1;
                 }
-                else {next}
             }
         }
     }
