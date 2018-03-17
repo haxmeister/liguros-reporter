@@ -253,7 +253,7 @@ sub report_time {
 
         # year and week number in UTC with static "funtoo" prefix
         # e.g. funtoo-2018.49
-        short => 'funtoo-' . $t->year . '.' . $t->week,
+        short => lc 'funtoo-' . $t->date,
 
     );
     exists $formats{$format}
