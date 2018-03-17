@@ -745,45 +745,20 @@ sub get_kit_info {
 ##
 sub get_kernel_info {
 
-    my $directory = '/proc/sys/kernel';
+    my @keys = qw( osrelease ostype version );
     my %hash;
-    my @dir_contents;
 
-    # pulling relevant info from /proc/sys/kernel
-    if ( opendir( my $dh, $directory ) ) {
-        @dir_contents = readdir($dh);
-        closedir($dh);
-
-        # let's search the directory tree and find the files we want
-        foreach my $file (@dir_contents) {
-            next unless ( -f "$directory/$file" );    #only want files
-
-            # could be easy to add another file here
-            if (   ( $file eq 'ostype' )
-                or ( $file eq 'osrelease' )
-                or ( $file eq 'version' ) )
-            {
-                # let's open the file we found and get its contents
-                if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) )
-                {
-
-                 # just want the first line (there shouldn't be anything else)
-                    my $row = <$fh>;
-                    close $fh;
-                    chomp $row;
-                    $hash{$file} = $row;
-                }
-                else {
-                    push_error("Could not open file $file: $ERRNO");
-                    return;
-                }
-            }
+    for my $fn (@keys) {
+        if ( open my $fh, '<:encoding(UTF-8)', "/proc/sys/kernel/$fn" ) {
+            chomp( $hash{$fn} = <$fh> );
+            close $fh;
+        }
+        else {
+            push_error("Could not open file $fn: $ERRNO");
+            return;
         }
     }
-    else {
-        push_error("Could not open directory $directory: $ERRNO");
-        return;
-    }
+
     return \%hash;
 }
 
