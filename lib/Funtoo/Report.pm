@@ -58,18 +58,18 @@ sub send_report {
 
     # error out helpfully on failed submission
     $response->{success}
-      or die "Failed submission: $response->{status} $response->{reason}\n";
+      or do { push_error("Failed submission: $response->{status} $response->{reason}"); croak };
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-      or warn "Successful submission, but status was not the expected '201 Created'\n";
+      or push_error('Successful submission, but status was not the expected \'201 Created\'');
 
     # print location redirection if there was one, warn if not
     if (defined $response->{headers}{location}) {
         print "your report can be seen at: ".$es_conf->{'node'}.$response->{'headers'}{'location'}."\n";
     }
     else {
-        warn "Expected location for created resource\n";
+        push_error('Expected location for created resource');
     }
 }
 
@@ -180,7 +180,7 @@ sub config_update {
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
-        or die "could not open $config_file", $ERRNO;
+        or croak "Could not open $config_file: $ERRNO\n";
     foreach my $key ( keys %new_config ) {
         print $fh "$key" . ":" . "$new_config{$key}\n";
     }
@@ -196,8 +196,8 @@ sub add_uuid {
     my $arg = shift;
 
     # lets just get a random identifier from the system or die trying
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or die 
-        "Cannot open /proc/sys/kernel/random/uuid to generate a UUID $! \n";
+    open( my $fh, '<', '/proc/sys/kernel/random/uuid' ) or croak
+        "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
     my $UUID = <$fh>;
     chomp $UUID;
     close $fh;
@@ -212,7 +212,7 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file ) or die $ERRNO;
+        open( $fh, '>>', $config_file ) or croak "Unable to append to $config_file: $ERRNO\n";
         print $fh "\n# A unique identifier for this reporting machine \n";
         print $fh "UUID:$UUID\n";
         close $fh;
@@ -269,7 +269,7 @@ sub report_time {
 
     );
     exists $formats{$format}
-        or return 'no time';
+        or do {push_error('Unable to determine the time'); return};
     return $formats{$format}->(gmtime);
 }
 
@@ -329,7 +329,7 @@ sub get_net_info {
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-        or croak "Unable to open dir $interface_dir: $ERRNO\n";
+        or do {push_error("Unable to open dir $interface_dir: $ERRNO"); return};
     while ( my $file = readdir $dh ) {
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
             push @interfaces, $file;
@@ -362,7 +362,7 @@ sub get_net_info {
         if ( -e $vendor_id_file ) {
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
-                or carp "Unable to open file $vendor_id_file: $ERRNO";
+                or do {push_error("Unable to open file $vendor_id_file: $ERRNO"); next};
             $vendor_id = <$fh>;
             close $fh;
             chomp $vendor_id;
@@ -371,7 +371,7 @@ sub get_net_info {
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
-                or carp "Unable to open file $device_id_file: $ERRNO";
+                or do {push_error("Unable to open file $device_id_file: $ERRNO"); next};
             $device_id = <$fh>;
             close $fh;
             chomp $device_id;
@@ -383,12 +383,8 @@ sub get_net_info {
         else {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
             $id_file        = $usb_ids;
-            ## no critic [RequireBriefOpen]
             open my $fh, '<', $vendor_id_file
-                or do {
-                carp "Unable to open file $vendor_id_file: $ERRNO";
-                next;
-                };
+                or do { push_error("Unable to open file $vendor_id_file: $ERRNO"); next; };
             while (<$fh>) {
                 if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
                     $vendor_id = sprintf '%04s', $1;
@@ -398,15 +394,13 @@ sub get_net_info {
             }
             close $fh;
         }
-        ### $vendor_id
-        ### $device_id
 
         # Look up the proper device name from the id file
         my ( $vendor_name, $device_name );
 
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
-            or carp "Unable to open file $id_file $ERRNO\n";
+            or do { push_error("Unable to open file $id_file $ERRNO"); next };
 
      # Devices can share device IDs but not "underneath" a vendor ID, so we'll
      # want to get the first result under the vendor
@@ -426,13 +420,10 @@ sub get_net_info {
             }
         }
         close $fh;
-        ### $vendor_name
-        ### $device_name
         $hash{$device}{'vendor'} = $vendor_name;
         $hash{$device}{'device'} = $device_name;
         $hash{$device}{'driver'} = $driver;
     }
-    ### %hash
     return \%hash;
 }
 
@@ -473,9 +464,8 @@ sub get_filesystem_info {
             ${ $list } = \%rep;
         }
     }
-    else{
-        push @{$errors{'get_filesystem_info'}}, "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN with $!";
-        warn "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN with $! /n";
+    else {
+        push_error("Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN: $ERRNO");
         return;
     }
     return $hash;
@@ -526,10 +516,9 @@ sub get_cpu_info {
         }
     }
 
-    else { 
-        push @{$errors{'get_cpu_info'}}, "Could not open file $cpu_file $!";
-        warn  "Could not open file $cpu_file $!";
-        return \%hash; # returning empty hash ?
+    else {
+        push_error("Could not open file $cpu_file: $ERRNO");
+        return;
         }
     $hash{"processors"} = $proc_count;
     return \%hash;
@@ -565,8 +554,9 @@ sub get_mem_info {
             $hash{$key} = int $value;
         }
     }
-    else { 
-        push @{$errors{'get_mem_info'}}, "Could not open file $mem_file $!"; 
+    else {
+        push_error("Could not open file $mem_file: $ERRNO");
+        return;
     }
     return \%hash;
 }
@@ -632,7 +622,7 @@ sub get_chassis_info {
             close $fh;
         }
         else {
-            push @{$errors{'get_chassis_info'}}, "Unable to open $folder$file $!";
+            push_error("Unable to open $folder$file: $ERRNO");
             $hash{$file} = $possible_id[0];
         }
     }
@@ -668,7 +658,7 @@ sub get_profile_info {
         return \%sorted;
     }
     else{
-        push @{$errors{'get_profile_info'}}, "Unable to retrieve epro show-json output $!";
+        push_error("Unable to retrieve epro show-json output: $ERRNO");
         return;
     }
 }
@@ -699,8 +689,7 @@ sub get_kit_info {
         }
     }
     else {
-        warn "cannot open $meta_file, $!";
-        push @{$errors{'get_kit_info'}}, "cannot open $meta_file, $!";
+        push_error("Cannot open file $meta_file: $ERRNO");
         return;
     }
 
@@ -724,8 +713,7 @@ sub get_kit_info {
         }
     }
     else {
-        warn "cannot open $ego_conf, $!";
-        push @{$errors{'get_kit_info'}}, "cannot open $ego_conf, $!";
+        push_error("Cannot open file $ego_conf: $ERRNO");
         return;
     }
 
@@ -772,17 +760,15 @@ sub get_kernel_info {
                     chomp $row;
                     $hash{$file} = $row;
                 }
-                else { 
-                    push @{$errors{'get_kernel_info'}}, "Could not open file $file, $!";
-                    warn "could not open file '$file' $! \n";
-                    return; 
+                else {
+                    push_error("Could not open file $file: $ERRNO");
+                    return;
                 }
             }
         }
     }
     else{
-        push @{$errors{'get_kernel_info'}}, "Could not open $directory, $!";
-        warn "Could not open $directory, $! \n";
+        push_error("Could not open directory $directory: $ERRNO");
         return;
     }
     return \%hash;
@@ -810,8 +796,7 @@ sub get_boot_dir_info {
         }
     }
     else{
-        warn "Cannot open $boot_dir, $! \n";
-        push @{$errors{'get_boot_dir_info'}},"Cannot open $boot_dir, $!";
+        push_error("Cannot open directory $boot_dir, $ERRNO");
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
@@ -841,8 +826,6 @@ sub get_world_info {
     if ( defined $parent && $parent =~ /get_all_installed_pkg/xms ) {
         return @world_array;
     }
-    #$hash{'world file'}      = \@world_array;
-    ### %hash
     return \@world_array
 }
 
@@ -888,7 +871,6 @@ sub get_all_installed_pkg {
         push @{ $hash{'pkgs'} }, $line;
     }
     $hash{'pkg-count'} = scalar @all;
-    ### %hash
     return \%hash;
 }
 
@@ -1001,8 +983,7 @@ sub get_lspci {
         }
     }
     else{
-        push @{$errors{'get_lspci'}}, "Could not retrieve output from lspci -kmmvvv , $!";
-        warn "Could not retrieve output from lspci -kmmvvv $! \n";
+        push_error("Could not retrieve output from lspci -kmmvvv: $ERRNO");
         return;
     }
     return \%hash;
@@ -1034,10 +1015,14 @@ sub get_y_or_n {
     }
 }
 
+## Accepts reportable errors, puts them
+## into a hash, and prints the error to
+## *STDERR
 sub push_error {
     my $error_message = shift;
-    my $parent        = ( caller 1 )[3];
-    print {*STDERR} "$parent: $error_message\n";
+    my $parent        = ( caller 0 )[3];
+    my $line          = ( caller 0 )[2];
+    print {*STDERR} "$parent: $error_message at line $line\n";
     push @{ $errors{$parent} }, $error_message;
     return;
 }
