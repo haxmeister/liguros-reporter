@@ -704,7 +704,7 @@ sub get_kit_info {
 
         # let's define our hash keys from the array found in this file
         foreach my $key ( @{ $meta_data->{"kit_order"} } ) {
-            $hash{$key} = "undef";
+            $hash{$key} = undef;
         }
     }
     else {
@@ -739,7 +739,7 @@ sub get_kit_info {
     # now let's finish filling out our hash with default settings
     # anywhere it is undef
     foreach my $key ( keys %hash ) {
-        if ( $hash{$key} eq "undef" ) {
+        if ( !defined $hash{$key} ) {
             $hash{$key} = $meta_data->{kit_settings}{$key}{default};
         }
     }
