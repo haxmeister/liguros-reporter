@@ -175,3 +175,160 @@ sub report_from_config {
 
     return %hash;
 }
+
+__END__
+
+=pod
+
+=head1 NAME
+
+funtoo-report - An anonymous Funtoo data reporting tool
+
+=head1 USAGE
+
+    funtoo-report [-d|--debug] (config-update|show-json|send|help)
+
+=head1 DESCRIPTION
+
+This script is the frontend to C<Funtoo::Report>, allowing you to create
+configuration files and generate full report data in JSON to view and submit to
+the ElasticSearch servers.
+
+=head1 REQUIRED ARGUMENTS
+
+Available options are:
+
+=over 4
+
+=item C<config-update>
+
+Generate or update the configuration file C</etc/funtoo-report.conf>.
+
+=item C<show-json>
+
+Generate the system report according to the configuration file, and print it to
+standard output.
+
+=item C<send>
+
+Generate the system report and send it to the hardcoded ElasticSearch server.
+
+=item C<help>
+
+Print usage help.
+
+=back
+
+=head1 OPTIONS
+
+=over 4
+
+=item C<-d>, C<--debug>
+
+Enable debugging mode. At present, this only prints the JSON response from the
+ElasticSearch server with the C<send> subcommand.
+
+=back
+
+=head1 DIAGNOSTICS
+
+This section to be completed. The code (well, its module) emits very many error
+messages that should hopefully be at least partly self-explanatory.
+
+=head1 EXIT STATUS
+
+Exits successfully unless the subcommand argument given is absent or unknown.
+
+=head1 CONFIGURATION
+
+The configuration file C</etc/funtoo-report.conf> is required and can be
+generated with the C<config-update> subcommand (recommended).
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item *
+
+Perl v5.14.0 or newer
+
+=item *
+
+L<Funtoo::Report>
+
+=item *
+
+L<Getopt::Long>
+
+=item *
+
+L<HTTP::Tiny>
+
+=item *
+
+L<JSON>
+
+=item *
+
+L<Term::ANSIColor>
+
+=back
+
+=head1 INCOMPATIBILITIES
+
+This script is almost certainly only useful on a Funtoo computer.
+
+=head1 BUGS AND LIMITATIONS
+
+Definitely. To report bugs or make feature requests, please raise an issue on
+GitHub at L<https://github.com/haxmeister/funtoo-reporter>.
+
+=head1 AUTHOR
+
+The Funtoo::Report development team:
+
+=over 4
+
+=item *
+
+Joshua Day C<< <haxmeister@hotmail.com> >>
+
+=item *
+
+Palica C<< <palica@cupka.name> >>
+
+=item *
+
+ShadowM00n C<< <shadowm00n@airmail.cc> >>
+
+=item *
+
+Tom Ryder C<< <tom@sanctum.geek.nz> >>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+MIT License
+
+Copyright (c) 2018 Haxmeister
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=cut
