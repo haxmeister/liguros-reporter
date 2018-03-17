@@ -18,7 +18,7 @@ our $VERSION = '1.4';
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
-my %errors;                        # for any errors that don't cause a die
+my @errors;                        # for any errors that don't cause a die
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -240,7 +240,7 @@ sub version {
 ## reporting errors
 ##
 sub errors {
-    return \%errors;
+    return \@errors;
 }
 
 ## returns a long date string for the report body or
@@ -1040,10 +1040,10 @@ sub get_y_or_n {
 ## *STDERR
 sub push_error {
     my $error_message = shift;
-    my $parent        = ( caller 0 )[3];
+    my $parent        = ( caller 1 )[3];
     my $line          = ( caller 0 )[2];
     print {*STDERR} "$parent: $error_message at line $line\n";
-    push @{ $errors{$parent} }, $error_message;
+    push @errors, "$parent: $error_message";
     return;
 }
 
