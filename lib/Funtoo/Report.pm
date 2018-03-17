@@ -1035,3 +1035,195 @@ sub push_error {
 }
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
+
+=head1 VERSION
+
+Version 2.0.0-dev
+
+=head1 DESCRIPTION
+
+This module contains functions to generate the sections of a report for Funtoo
+Linux, build the whole report, and send it to an ElasticSearch server.
+
+You almost certainly want to drive this using the C<funtoo-report> script,
+rather than importing it yourself.
+
+=head1 SYNOPSIS
+
+    use Funtoo::Report;
+    ...
+    my %report = Funtoo::Report::report_from_config;
+    ...
+    my %es_config = (
+        node  => 'http://elk2.liguros.net:9200',
+        index => Funtoo::Report::report_time('short'),
+        type  => 'report'
+    );
+    Funtoo::Report::send_report(\%report, \%es_config);
+
+=head1 SUBROUTINES/METHODS
+
+=over 4
+
+=item C<add_uuid>
+
+=item C<config_update>
+
+=item C<errors>
+
+=item C<get_all_installed_pkg>
+
+=item C<get_boot_dir_info>
+
+=item C<get_chassis_info>
+
+=item C<get_cpu_info>
+
+=item C<get_filesystem_info>
+
+=item C<get_hardware_info>
+
+=item C<get_kernel_info>
+
+=item C<get_kit_info>
+
+=item C<get_lspci>
+
+=item C<get_mem_info>
+
+=item C<get_net_info>
+
+=item C<get_profile_info>
+
+=item C<get_version_info>
+
+=item C<get_world_info>
+
+=item C<get_y_or_n>
+
+=item C<push_error>
+
+=item C<report_time>
+
+=item C<send_report>
+
+=item C<user_config>
+
+=item C<version>
+
+=back
+
+=head1 DIAGNOSTICS
+
+This section to be completed. The module emits very many error messages that
+should hopefully be at least partly self-explanatory.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+The configuration file C</etc/funtoo-report.conf> is required and can be
+generated with C<funtoo-report>'s C<config-update> subcommand (recommended).
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item *
+
+Perl v5.14.0 or newer
+
+=item *
+
+L<Carp>
+
+=item *
+
+L<English>
+
+=item *
+
+L<HTTP::Tiny>
+
+=item *
+
+L<JSON>
+
+=item *
+
+L<List::Util>
+
+=item *
+
+L<POSIX>
+
+=item *
+
+L<Term::ANSIColor>
+
+=back
+
+=head1 INCOMPATIBILITIES
+
+This module is almost certainly only useful on a Funtoo computer.
+
+=head1 BUGS AND LIMITATIONS
+
+Definitely. To report bugs or make feature requests, please raise an issue on
+GitHub at L<https://github.com/haxmeister/funtoo-reporter>.
+
+=head1 AUTHOR
+
+The Funtoo::Report development team:
+
+=over 4
+
+=item *
+
+Joshua Day C<< <haxmeister@hotmail.com> >>
+
+=item *
+
+Palica C<< <palica@cupka.name> >>
+
+=item *
+
+ShadowM00n C<< <shadowm00n@airmail.cc> >>
+
+=item *
+
+Tom Ryder C<< <tom@sanctum.geek.nz> >>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+MIT License
+
+Copyright (c) 2018 Haxmeister
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=cut
