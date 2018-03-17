@@ -24,9 +24,7 @@ my @errors;                        # for any errors that don't cause a die
 ## generates report, creates user agent, and sends to elastic search
 ##
 sub send_report {
-    my $rep     = shift;
-    my $es_conf = shift;
-    my $debug   = shift;
+    my ( $rep, $es_conf, $debug ) = @_;
 
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
