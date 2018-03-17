@@ -11,7 +11,6 @@ use English qw(-no_match_vars);    #core
 use HTTP::Tiny;                    #core
 use JSON;                          #cpan
 use List::Util qw(any);            #core
-use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
@@ -1120,10 +1119,6 @@ L<JSON>
 =item *
 
 L<List::Util>
-
-=item *
-
-L<POSIX>
 
 =item *
 

@@ -15,7 +15,6 @@ WriteMakefile(
         'HTTP::Tiny'      => 0,
         'JSON'            => 0,
         'List::Util'      => '1.33',
-        'POSIX'           => 0,
         'Term::ANSIColor' => 0,
     },
 );
