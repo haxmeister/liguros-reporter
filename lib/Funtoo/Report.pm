@@ -974,7 +974,8 @@ sub get_version_info {
 ##
 sub get_lspci {
     my %hash;
-    if ( my $lspci_output = `lspci -kmmvvv` ) {
+    my $lspci = 'lspci -kmmvvv';
+    if ( my $lspci_output = `$lspci` ) {
         my @hardware_list;
         my @hw_item_section = split( /^\n/msx, $lspci_output );
 
@@ -1000,7 +1001,7 @@ sub get_lspci {
         }
     }
     else {
-        push_error("Could not retrieve output from lspci -kmmvvv: $ERRNO");
+        push_error("Could not retrieve output from $lspci: $ERRNO");
         return;
     }
     return \%hash;
