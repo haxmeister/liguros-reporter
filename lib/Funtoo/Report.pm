@@ -971,7 +971,6 @@ sub get_lspci {
     my %hash;
     my $lspci = 'lspci -kmmvvv';
     if ( my $lspci_output = `$lspci` ) {
-        my @hardware_list;
         my @hw_item_section = split( /^\n/msx, $lspci_output );
 
         my %item;
