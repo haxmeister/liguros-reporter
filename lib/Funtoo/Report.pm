@@ -470,8 +470,8 @@ sub get_filesystem_info {
                 # put this device into the replacement hashref by name
                 $rep{ $dev->{name} } = $dev;
 
-             # if this device has a list of children, push a reference to that
-             # list onto the stack for the next round
+                # if this device has a list of children, push a reference to
+                # that list onto the stack for the next round
                 if ( defined $dev->{children} ) {
                     push @stack, \$dev->{children};
                 }
