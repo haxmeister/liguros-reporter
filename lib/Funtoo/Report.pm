@@ -188,7 +188,7 @@ sub config_update {
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
         or croak "Could not open $config_file: $ERRNO\n";
-    foreach my $key ( keys %new_config ) {
+    foreach my $key ( sort keys %new_config ) {
         print $fh "$key" . ":" . "$new_config{$key}\n";
     }
     close $fh;
