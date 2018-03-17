@@ -448,10 +448,8 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my $hash;
-    if ( my $json_from_lsblk
-        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`
-        )
-    {
+    my $lsblk = 'lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN';
+    if ( my $json_from_lsblk = `$lsblk` ) {
         $hash = decode_json($json_from_lsblk);
 
         # iterate through the block device tree, fixing it up a little so
@@ -485,7 +483,7 @@ sub get_filesystem_info {
     }
     else {
         push_error(
-            "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN: $ERRNO"
+            "Unable to retrieve output from $lsblk: $ERRNO"
         );
         return;
     }
