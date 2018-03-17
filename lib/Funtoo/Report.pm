@@ -1043,7 +1043,7 @@ sub push_error {
     my $parent        = ( caller 1 )[3];
     my $line          = ( caller 0 )[2];
     print {*STDERR} "$parent: $error_message at line $line\n";
-    push @errors, "$parent: $error_message";
+    push @errors, "$parent: $error_message at line $line";
     return;
 }
 
