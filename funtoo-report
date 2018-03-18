@@ -24,6 +24,7 @@ use HTTP::Tiny;         #core
 
 our $VERSION = '2.0.0-dev';
 
+
 my %es_config = (
     node  => 'http://elk2.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
@@ -32,7 +33,7 @@ my %es_config = (
 
 # parse options
 my $debug = 0;
-GetOptions( 'debug|d' => \$debug )
+GetOptions( 'debug|d' => \$debug)
   or die "Error in command line arguments\n";
 
 # dispatch table of script actions
@@ -73,6 +74,8 @@ my %actions = (
             $VERSION,
             Funtoo::Report::version(),
     },
+    
+    'check-version' => \&Funtoo::Report::latest_git_version,
 );
 
 # pull action from script arguments if possible
@@ -89,7 +92,7 @@ else {
 ## file now before you mess something up
 sub show_help {
     print color('bold');
-    print "\n\nFuntoo anonymous data reporting tool usage: \n\n";
+    print "\nFuntoo anonymous data reporting tool usage: \n\n";
 
     print color('bold blue');
     print "funtoo-report send";
@@ -116,6 +119,11 @@ sub show_help {
     print "funtoo-report version";
     print color('reset');
     print " \t\t Show script and module version\n";
+    
+    print color('bold blue');
+    print "funtoo-report check-version";
+    print color('reset');
+    print " \t Check your version against the latest available version\n";
 
     print color('bold');
     print "\nOutput can be ommitted by modifying ";
@@ -126,6 +134,7 @@ sub show_help {
     print color('reset');
     print "funtoo-report config-update\n\n";
     print color('reset');
+
     return 0;
 }
 
@@ -233,6 +242,10 @@ Print usage help.
 =item C<version>
 
 Print script and module versions.
+
+=item <check-version>
+
+Check the current version against the latest version on github
 
 =back
 

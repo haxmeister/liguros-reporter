@@ -15,13 +15,14 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
 our $VERSION = '2.0.0-dev';
+my %fr_config = (
+    'git_url' => 'https://api.github.com/repos/haxmeister/funtoo-reporter/releases/latest',
+);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
 my @errors;                        # for any errors that don't cause a die
-my %fr_config = (
-    'git_url' => 'https://api.github.com/repos/haxmeister/funtoo-reporter/releases/latest',
-);
+
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
@@ -93,15 +94,16 @@ sub send_report {
 ## Check available version in github.com and warn user if a new one
 ## is available.. and add that info to error report
 sub latest_git_version{
-    my $git_url = shift;
+    
     my $latest_version;
     
     # make a json object we can use to decode the response
     my $json = JSON->new->allow_nonref;
     
     # fetch the url     
-    my $response = HTTP::Tiny->new->get($git_url);
-
+    print"Checking latest release version...\n";
+    my $response = HTTP::Tiny->new->get( $fr_config{'git_url'} );
+    
     # if the url responds successfully, 
     if ($response->{success}) {
         
@@ -114,13 +116,13 @@ sub latest_git_version{
             
             # if the version in git matches the current version
             if (index($VERSION, $latest_version ) != -1){
-                 return;
+                 print "You have the latest version $latest_version \n";
+                return;
             }
             else{
-                # if it doesn't match, report the error
-                print "A newer version of funtoo-reporter is available at $json_response->{url}\n";
-                push_error("user version $VERSION does not match git version $latest_version");
-                
+                # if it doesn't match, tell the user
+                print "Your current version is $VERSION but the latest version is $latest_version\n";
+                print "This version of funtoo-reporter is available at $json_response->{url}\n";
                 return;
             }
         }
@@ -286,8 +288,6 @@ sub add_uuid {
 ## reporting version number
 ##
 sub version {
-    # checking we have the latest version
-    latest_git_version($fr_config{git_url});
     return $VERSION;
 }
 
@@ -1139,6 +1139,8 @@ rather than importing it yourself.
 =item C<user_config>
 
 =item C<version>
+
+=item C<latest_git_version>
 
 =back
 

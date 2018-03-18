@@ -23,6 +23,7 @@ funtoo-report show-json         Show the output that will be sent, in JSON forma
 funtoo-report help              Show this help list
 funtoo-report version           Show Funtoo::Report distribution version
 funtoo-report config-update     Generate, reconfigure or update the config file /etc/funtoo-report.conf
+funtoo-report check-version     Check your version against the latest available version
 
 Output can be ommitted by modifying the /etc/funtoo-report.conf file
 ```
