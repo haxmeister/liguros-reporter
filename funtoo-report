@@ -22,7 +22,7 @@ use Term::ANSIColor;    #core
 use Funtoo::Report;     #GIT
 use HTTP::Tiny;         #core
 
-our $VERSION = '2.0.0-dev';
+our $VERSION = '2.0.0-alpha';
 
 
 my %es_config = (

@@ -14,7 +14,7 @@ use List::Util qw(any);            #core
 use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
-our $VERSION = '2.0.0-dev';
+our $VERSION = '2.0.0-alpha';
 my %fr_config = (
     'git_url' => 'https://api.github.com/repos/haxmeister/funtoo-reporter/releases/latest',
 );
@@ -42,11 +42,11 @@ sub send_report {
       
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
-    if ($VERSION =~ /dev/msx){
-        $url = "$es_conf->{'node'}/fundev-$es_conf->{'index'}/$es_conf->{'type'}";
+    if ($VERSION =~ /alpha/msx){
+        $url = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
     }
     else{
-        $url = "$es_conf->{'node'}/funtoo-$es_conf->{'index'}/$es_conf->{'type'}"
+        $url = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}"
     }
     
     # generate a json object that we can use to convert to json
@@ -310,17 +310,19 @@ sub errors {
 ##
 ## with special date formatting by request
 sub report_time {
-    my $format  = shift;
-    my $t       = gmtime;
+    my $format    = shift;
+    my $t         = gmtime;
+    my $short_fmt = $t->date; 
+    $short_fmt    =~ s/-/\./g;
     my %formats = (
 
         # ISO8601 date and time with UTC timezone suffix "Z"
         # e.g. 2018-03-09T22:37:09Z
         long => $t->datetime . 'Z',
 
-        # year and week number in UTC with static "funtoo" prefix
-        # e.g. funtoo-2018.49
-        short => lc $t->date,
+        # date with dots for elastic search
+        # e.g. 2018.03.18
+        short => $short_fmt,
 
     );
     exists $formats{$format}
