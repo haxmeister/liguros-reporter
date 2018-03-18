@@ -133,7 +133,7 @@ sub show_help {
 sub report_from_config {
     my %config = Funtoo::Report::user_config();    # fetch/parse the user config
     my %hash;
-
+    
     # look for a UUID in the config file and
     # if it's not there, add one
     if ( exists $config{'UUID'} ) {
@@ -169,6 +169,7 @@ sub report_from_config {
         # hash table to the report
         $hash{$report} = $sections{$report}->();
     }
+    
     ## adding UUID to the body of the report
     #
     $hash{'funtoo-report'}{'UUID'} = $config{'UUID'};
