@@ -74,8 +74,6 @@ my %actions = (
             $VERSION,
             Funtoo::Report::version(),
     },
-    
-    'check-version' => \&Funtoo::Report::latest_git_version,
 );
 
 # pull action from script arguments if possible

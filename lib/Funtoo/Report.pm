@@ -15,9 +15,6 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
 our $VERSION = '2.0.0-alpha';
-my %fr_config = (
-    'git_url' => 'https://api.github.com/repos/haxmeister/funtoo-reporter/releases/latest',
-);
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';
@@ -95,57 +92,6 @@ sub send_report {
         push_error('Expected location for created resource');
     }
 }
-
-##
-## Check available version in github.com and warn user if a new one
-## is available.. and add that info to error report
-sub latest_git_version{
-    
-    my $latest_version;
-    
-    # make a json object we can use to decode the response
-    my $json = JSON->new->allow_nonref;
-    
-    # fetch the url     
-    print"Checking latest release version...\n";
-    my $response = HTTP::Tiny->new->get( $fr_config{'git_url'} );
-    
-    # if the url responds successfully, 
-    if ($response->{success}) {
-        
-        # decode the response
-        my $json_response = $json->decode($response->{content});
-        
-        # extract the version from the response and remove the preceding 'v'
-        if ($json_response->{'tag_name'} =~ /^v(.*)/msx){
-            my $latest_version = $1;
-            
-            # if the version in git matches the current version
-            if (index($VERSION, $latest_version ) != -1){
-                 print "You have the latest version $latest_version \n";
-                return;
-            }
-            else{
-                # if it doesn't match, tell the user
-                print "Your current version is $VERSION but the latest version is $latest_version\n";
-                print "This version of funtoo-reporter is available at $json_response->{url}\n";
-                return;
-            }
-        }
-        else{
-            # If the tag_name doesn't start with a 'v', report the error
-            push_error('latest version tag in GIT does not match the expected format ');
-            return;
-        }
-    }
-    else{
-        # if the http request failed, report the error
-        push_error ("$response->{status} $response->{reason} $response->{url} \n");
-        return;
-    }
-    return;
-}
-
 
 ##
 ## finds the config file in /etc/funtoo-report.conf and loads its contents
