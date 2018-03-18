@@ -66,6 +66,13 @@ my %actions = (
 
     # show script help
     'help' => \&show_help,
+
+    # print script and module versions
+    'version' => sub {
+        printf "funtoo-report: %s\nFuntoo::Report: %s\n",
+            $VERSION,
+            Funtoo::Report::version(),
+    },
 );
 
 # pull action from script arguments if possible
@@ -104,6 +111,11 @@ sub show_help {
     print "funtoo-report help";
     print color('reset');
     print " \t\t Show this help list\n";
+
+    print color('bold blue');
+    print "funtoo-report version";
+    print color('reset');
+    print " \t\t Show script and module version\n";
 
     print color('bold');
     print "\nOutput can be ommitted by modifying ";
@@ -186,7 +198,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
 
 =head1 USAGE
 
-    funtoo-report [-d|--debug] (config-update|show-json|send|help)
+    funtoo-report [-d|--debug] (config-update|show-json|send|help|version)
 
 =head1 DESCRIPTION
 
@@ -216,6 +228,10 @@ Generate the system report and send it to the hardcoded ElasticSearch server.
 =item C<help>
 
 Print usage help.
+
+=item C<version>
+
+Print script and module versions.
 
 =back
 
