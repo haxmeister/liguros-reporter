@@ -28,7 +28,7 @@ my @errors;                        # for any errors that don't cause a die
 ##
 sub send_report {
     my ( $rep, $es_conf, $debug ) = @_;
-
+    my $url;
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
 
@@ -39,10 +39,16 @@ sub send_report {
             'Refusing to submit report with blank UUID; check your config');
         croak;
       };
-
-    # constructing the url we will report too
-    my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
-
+      
+    # if this is a development version we send to the fundev index
+    # otherwise to the funtoo index
+    if ($VERSION =~ /dev/msx){
+        $url = "$es_conf->{'node'}/fundev-$es_conf->{'index'}/$es_conf->{'type'}";
+    }
+    else{
+        $url = "$es_conf->{'node'}/funtoo-$es_conf->{'index'}/$es_conf->{'type'}"
+    }
+    
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
 
@@ -314,7 +320,7 @@ sub report_time {
 
         # year and week number in UTC with static "funtoo" prefix
         # e.g. funtoo-2018.49
-        short => lc 'funtoo-' . $t->date,
+        short => lc $t->date,
 
     );
     exists $formats{$format}
