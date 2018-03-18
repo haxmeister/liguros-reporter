@@ -56,23 +56,23 @@ sub send_report {
 
     # error out helpfully on failed submission
     $response->{success}
-        or do {
+      or do {
         push_error(
             "Failed submission: $response->{status} $response->{reason}");
         croak;
-        };
+      };
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-        or push_error(
+      or push_error(
         'Successful submission, but status was not the expected \'201 Created\''
-        );
+      );
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
         print "your report can be seen at: "
-            . $es_conf->{'node'}
-            . $response->{'headers'}{'location'} . "\n";
+          . $es_conf->{'node'}
+          . $response->{'headers'}{'location'} . "\n";
     }
     else {
         push_error('Expected location for created resource');
@@ -121,7 +121,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report config-update' \n\n";
+"To generate a new configuration file use 'funtoo-report config-update' \n\n";
         exit;
     }
 
@@ -153,34 +153,34 @@ sub config_update {
 
     # let's ask the user about each report setting
 
-    $new_config{'kernel-info'}
-        = get_y_or_n('Report information about your active kernel?');
+    $new_config{'kernel-info'} =
+      get_y_or_n('Report information about your active kernel?');
 
-    $new_config{'boot-dir-info'}
-        = get_y_or_n('Report available kernels in /boot ?');
+    $new_config{'boot-dir-info'} =
+      get_y_or_n('Report available kernels in /boot ?');
 
-    $new_config{'version-info'}
-        = get_y_or_n('Report versions of key system softwares?');
+    $new_config{'version-info'} =
+      get_y_or_n('Report versions of key system softwares?');
 
-    $new_config{'installed-pkgs'}
-        = get_y_or_n('Report all packages installed on the system?');
+    $new_config{'installed-pkgs'} =
+      get_y_or_n('Report all packages installed on the system?');
 
-    $new_config{'world-info'}
-        = get_y_or_n('Report the contents of your world file?');
+    $new_config{'world-info'} =
+      get_y_or_n('Report the contents of your world file?');
 
-    $new_config{'profile-info'}
-        = get_y_or_n('Report the output of "epro show-json"?');
+    $new_config{'profile-info'} =
+      get_y_or_n('Report the output of "epro show-json"?');
 
-    $new_config{'kit-info'}
-        = get_y_or_n('Report the output of "ego kit show"?');
+    $new_config{'kit-info'} =
+      get_y_or_n('Report the output of "ego kit show"?');
 
-    $new_config{'hardware-info'}
-        = get_y_or_n('Report information about your hardware and drivers?');
+    $new_config{'hardware-info'} =
+      get_y_or_n('Report information about your hardware and drivers?');
 
     # let's create or replace /etc/funtoo-report.conf
     print "Creating or replacing /etc/funtoo-report.conf\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
-        or croak "Could not open $config_file: $ERRNO\n";
+      or croak "Could not open $config_file: $ERRNO\n";
     foreach my $key ( sort keys %new_config ) {
         print $fh "$key:$new_config{$key}\n";
     }
@@ -197,8 +197,8 @@ sub add_uuid {
 
     # lets just get a random identifier from the system or die trying
     open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-        or croak
-        "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
+      or croak
+      "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
     my $UUID = <$ufh>;
     chomp $UUID;
     close $ufh;
@@ -214,7 +214,7 @@ sub add_uuid {
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
         open( my $cfh, '>>', $config_file )
-            or croak "Unable to append to $config_file: $ERRNO\n";
+          or croak "Unable to append to $config_file: $ERRNO\n";
         print $cfh "\n# A unique identifier for this reporting machine \n";
         print $cfh "UUID:$UUID\n";
         close $cfh;
@@ -315,8 +315,7 @@ sub get_net_info {
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-        or
-        do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
+      or do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
     while ( my $file = readdir $dh ) {
 
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
@@ -350,10 +349,10 @@ sub get_net_info {
         if ( -e $vendor_id_file ) {
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $vendor_id_file: $ERRNO");
                 next;
-                };
+              };
             $vendor_id = <$fh>;
             close $fh;
             chomp $vendor_id;
@@ -362,10 +361,10 @@ sub get_net_info {
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $device_id_file: $ERRNO");
                 next;
-                };
+              };
             $device_id = <$fh>;
             close $fh;
             chomp $device_id;
@@ -378,10 +377,10 @@ sub get_net_info {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
             $id_file        = $usb_ids;
             open my $fh, '<', $vendor_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $vendor_id_file: $ERRNO");
                 next;
-                };
+              };
             while (<$fh>) {
                 if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
                     $vendor_id = sprintf '%04s', $1;
@@ -397,10 +396,10 @@ sub get_net_info {
 
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
-            or do { push_error("Unable to open file $id_file $ERRNO"); next };
+          or do { push_error("Unable to open file $id_file $ERRNO"); next };
 
-     # Devices can share device IDs but not "underneath" a vendor ID, so we'll
-     # want to get the first result under the vendor
+       # Devices can share device IDs but not "underneath" a vendor ID, so we'll
+       # want to get the first result under the vendor
         my $seen = 0;
 
         while (<$fh>) {
@@ -429,7 +428,8 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my $hash;
-    my $lsblk = 'lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN';
+    my $lsblk =
+'lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN';
     if ( my $json_from_lsblk = `$lsblk` ) {
         $hash = decode_json($json_from_lsblk);
 
@@ -463,9 +463,7 @@ sub get_filesystem_info {
         }
     }
     else {
-        push_error(
-            "Unable to retrieve output from $lsblk: $ERRNO"
-        );
+        push_error("Unable to retrieve output from $lsblk: $ERRNO");
         return;
     }
     return $hash;
@@ -784,7 +782,7 @@ sub get_world_info {
     my $world_file = '/var/lib/portage/world';
     my $parent     = ( caller 1 )[3];
     open my $fh, '<', $world_file
-        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
+      or do { push_error("Unable to open dir $world_file: $ERRNO"); };
     while (<$fh>) {
         chomp;
         push @world_array, $_;
@@ -815,12 +813,12 @@ sub get_all_installed_pkg {
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
-        or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
+      or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
-            opendir my $dh2,       "$db_dir/$cat"
-                or opendir my $dh, $db_dir
-                or do { push_error("Unable to open dir $cat: $ERRNO"); next };
+            opendir my $dh2,     "$db_dir/$cat"
+              or opendir my $dh, $db_dir
+              or do { push_error("Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
