@@ -29,6 +29,14 @@ sub send_report {
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
 
+    # refuse to send a report with an unset, undefined, or empty UUID
+    length $rep->{'funtoo-report'}{UUID}
+      or do {
+        push_error(
+            'Refusing to submit report with blank UUID; check your config');
+        croak;
+      };
+
     # constructing the url we will report too
     my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
 
