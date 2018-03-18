@@ -43,10 +43,10 @@ sub send_report {
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
     if ($VERSION =~ /dev/msx){
-        $url = "$es_conf->{'node'}/fundev-$es_conf->{'index'}/$es_conf->{'type'}";
+        $url = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
     }
     else{
-        $url = "$es_conf->{'node'}/funtoo-$es_conf->{'index'}/$es_conf->{'type'}"
+        $url = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}"
     }
     
     # generate a json object that we can use to convert to json
