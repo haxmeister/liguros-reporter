@@ -1124,7 +1124,7 @@ L<JSON>
 
 =item *
 
-L<List::Util>
+L<List::Util> v1.33 or newer
 
 =item *
 
