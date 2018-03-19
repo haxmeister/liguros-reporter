@@ -24,7 +24,6 @@ use HTTP::Tiny;         #core
 
 our $VERSION = '2.0.0-alpha';
 
-
 my %es_config = (
     node  => 'http://elk.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
@@ -33,8 +32,8 @@ my %es_config = (
 
 # parse options
 my $debug = 0;
-GetOptions( 'debug|d' => \$debug)
-  or die "Error in command line arguments\n";
+GetOptions( 'debug|d' => \$debug )
+    or die "Error in command line arguments\n";
 
 # dispatch table of script actions
 my %actions = (
@@ -73,13 +72,14 @@ my %actions = (
         printf "funtoo-report: %s\nFuntoo::Report: %s\n",
             $VERSION,
             Funtoo::Report::version(),
+            ;
     },
 );
 
 # pull action from script arguments if possible
 if ( length( my $action = shift @ARGV ) ) {
     exists $actions{$action}
-      or die "Unknown action '$action'\n";
+        or die "Unknown action '$action'\n";
     $actions{$action}->();
 }
 else {
@@ -117,7 +117,7 @@ sub show_help {
     print "funtoo-report version";
     print color('reset');
     print " \t\t Show script and module version\n";
-    
+
     print color('bold blue');
     print "funtoo-report check-version";
     print color('reset');
@@ -138,9 +138,9 @@ sub show_help {
 
 ## let's read the config file and generate the report
 sub report_from_config {
-    my %config = Funtoo::Report::user_config();    # fetch/parse the user config
+    my %config = Funtoo::Report::user_config();  # fetch/parse the user config
     my %hash;
-    
+
     # look for a UUID in the config file and
     # if it's not there, add one
     if ( exists $config{'UUID'} ) {
@@ -176,7 +176,7 @@ sub report_from_config {
         # hash table to the report
         $hash{$report} = $sections{$report}->();
     }
-    
+
     ## adding UUID to the body of the report
     #
     $hash{'funtoo-report'}{'UUID'} = $config{'UUID'};
@@ -240,10 +240,6 @@ Print usage help.
 =item C<version>
 
 Print script and module versions.
-
-=item <check-version>
-
-Check the current version against the latest version on github
 
 =back
 
