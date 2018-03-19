@@ -40,7 +40,7 @@ sub send_report {
 
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
-    if ( $VERSION =~ /alpha/msx ) {
+    if ( $VERSION =~ /alpha|beta|rc/msx ) {
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
     }
