@@ -150,41 +150,37 @@ the ElasticSearch servers.
 
 =head1 REQUIRED ARGUMENTS
 
-Available options are:
-
-=over 4
-
-=item C<config-update>
-
-Generate or update the configuration file C</etc/funtoo-report.conf>.
-
-=item C<show-json>
-
-Generate the system report according to the configuration file, and print it to
-standard output.
-
-=item C<send>
-
-Generate the system report and send it to the hardcoded ElasticSearch server.
-
-=item C<help>
-
-Print usage help.
-
-=item C<version>
-
-Print script and module versions.
-
-=back
+None.
 
 =head1 OPTIONS
 
 =over 4
 
+=item C<-c>, C<--config-update>
+
+Generate or update the configuration file C</etc/funtoo-report.conf>.
+
+=item C<-j>, C<--show-json>
+
+Generate the system report according to the configuration file, and print it to
+standard output.
+
+=item C<-s>, C<--send>
+
+Generate the system report and send it to the hardcoded ElasticSearch server.
+
 =item C<-d>, C<--debug>
 
 Enable debugging mode. At present, this only prints the JSON response from the
-ElasticSearch server with the C<send> subcommand.
+ElasticSearch server with the C<--send> option.
+
+=item C<-h>, C<--help>
+
+Print usage help.
+
+=item C<-v>, C<--version>
+
+Print script and module versions.
 
 =back
 
@@ -195,12 +191,12 @@ messages that should hopefully be at least partly self-explanatory.
 
 =head1 EXIT STATUS
 
-Exits successfully unless the subcommand argument given is absent or unknown.
+Exits successfully unless the options provided don't make sense.
 
 =head1 CONFIGURATION
 
 The configuration file C</etc/funtoo-report.conf> is required and can be
-generated with the C<config-update> subcommand (recommended).
+generated with the C<--config-update> option (recommended).
 
 =head1 DEPENDENCIES
 
