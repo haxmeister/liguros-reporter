@@ -175,14 +175,8 @@ sub config_update {
     $new_config{'boot-dir-info'}
         = get_y_or_n('Report available kernels in /boot ?');
 
-    $new_config{'version-info'}
-        = get_y_or_n('Report versions of key system softwares?');
-
     $new_config{'installed-pkgs'}
         = get_y_or_n('Report all packages installed on the system?');
-
-    $new_config{'world-info'}
-        = get_y_or_n('Report the contents of your world file?');
 
     $new_config{'profile-info'}
         = get_y_or_n('Report the output of "epro show-json"?');
@@ -796,31 +790,6 @@ sub get_boot_dir_info {
 }
 
 ##
-## fetching contents of /var/lib/portage/world
-##
-sub get_world_info {
-
-    my @world_array;
-    my %hash;
-    my $world_file = '/var/lib/portage/world';
-    my $parent     = ( caller 1 )[3];
-    open my $fh, '<', $world_file
-        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
-    while (<$fh>) {
-        chomp;
-        push @world_array, $_;
-    }
-    close $fh;
-
-    # If being called from get_all_installed_pkg(), return the list of
-    # packages, otherwise create the hashes
-    if ( defined $parent && $parent =~ /get_all_installed_pkg/xms ) {
-        return @world_array;
-    }
-    return \@world_array;
-}
-
-##
 ## getting the full list of installed packages
 ##
 sub get_all_installed_pkg {
@@ -829,10 +798,12 @@ sub get_all_installed_pkg {
     my @world;
     my $db_dir     = '/var/db/pkg';
     my $world_file = '/var/lib/portage/world';
-    my $parent     = ( caller 1 )[3];
 
     # Get a list of the world packages
-    @world = get_world_info();
+    open my $fh, '<', $world_file
+        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
+    @world = <$fh>;
+    close $fh;
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
@@ -851,93 +822,19 @@ sub get_all_installed_pkg {
         }
     }
 
-# If being called from get_version_info(), return the list of packages, otherwise continue
-    if ( defined $parent && $parent =~ /get_version_info/xms ) {
-        return @all;
-    }
-
-    # Create the miscellaneous hash. Do so using List::Util's "any" since grep
-    # doesn't short-circuit after a successful match.
+   # Create the world and miscellaneous hashes. Do so using List::Util's "any"
+   # since grep doesn't short-circuit after a successful match.
     for my $line (@all) {
-        push @{ $hash{'pkgs'} }, $line;
-    }
-    $hash{'pkg-count'} = scalar @all;
-    return \%hash;
-}
-
-##
-## fetching versions of key softwares
-##
-sub get_version_info {
-
-    my @all = get_all_installed_pkg();
-    my %hash;
-
-   # specify which ebuilds to look at; use a "version" of "undef" for a single
-   # version value, and a hashref "[]" for a list of version values
-    my %ebuilds = (
-        portage => {
-            kit     => 'sys-apps',
-            version => undef,
-            section => 'portage version',
-        },
-        ego => {
-            kit     => 'app-admin',
-            version => undef,
-            section => 'ego version',
-        },
-        python => {
-            kit     => 'dev-lang',
-            version => [],
-            section => 'python versions',
-        },
-        gcc => {
-            kit     => 'sys-devel',
-            version => [],
-            section => 'gcc versions',
-        },
-        glibc => {
-            kit     => 'sys-libs',
-            version => [],
-            section => 'glibc versions',
-        },
-    );
-
-    # iterate through the ebuilds hash to fill out the result hash
-
-    for my $name ( keys %ebuilds ) {
-        my $ebuild = $ebuilds{$name};
-
-        # define a pattern for getting the version number of the ebuild from
-        # its directory name
-        my $pat = qr{
-            \Q$ebuild->{kit}/$name\E  # quoted ebuild name
-            -          # hyphen
-            (\d.*)     # string beginning with digit
-        }msx;
-
-        foreach my $entry (@all) {
-
-            # skip anything that doesn't match the version pattern
-            my ($version) = $entry =~ $pat or next;
-
-            # if the hash wants an array, push the version onto it and keep
-            # iterating
-            if ( ref $ebuild->{version} eq 'ARRAY' ) {
-                push @{ $ebuild->{version} }, $version;
-            }
-
-            # otherwise, just set the value to the version and end the loop
-            else {
-                $ebuild->{version} = $version;
-                last;
-            }
+        my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
+        if ( any {/\Q$pkg\E/xms} @world ) {
+            push @{ $hash{pkgs}{world}{$pkg} }, $version;
         }
-
-        # tie in this section of the final report
-        $hash{ $ebuild->{section} } = $ebuild->{version};
+        else {
+            push @{ $hash{pkgs}{other}{$pkg} }, $version;
+        }
     }
-    ### %hash
+    $hash{'pkg-count-world'} = scalar @world;
+    $hash{'pkg-count-total'} = scalar @all;
     return \%hash;
 }
 
@@ -1084,10 +981,6 @@ rather than importing it yourself.
 =item C<get_net_info>
 
 =item C<get_profile_info>
-
-=item C<get_version_info>
-
-=item C<get_world_info>
 
 =item C<get_y_or_n>
 
