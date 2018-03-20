@@ -14,32 +14,28 @@ package main;
 ## The accompanying "Report.pm" module
 
 use 5.014;
-use strict;             #core
-use warnings;           #core
-use Getopt::Long;       #core
-use JSON;               #cpan
-use Term::ANSIColor;    #core
-use Funtoo::Report;     #GIT
-use HTTP::Tiny;         #core
+use strict;                        #core
+use warnings;                      #core
+use English qw(-no_match_vars);    #core
+use Getopt::Long;                  #core
+use JSON;                          #cpan
+use Funtoo::Report;                #GIT
+use HTTP::Tiny;                    #core
+use Pod::Usage;                    #core
 
 our $VERSION = '2.0.0-alpha';
 
 my %es_config = (
     node  => 'http://elk.liguros.net:9200',
     index => Funtoo::Report::report_time('short'),
-    type  => 'report'
+    type  => 'report',
 );
 
 # parse options
 my $debug = 0;
-GetOptions( 'debug|d' => \$debug )
-    or die "Error in command line arguments\n";
-
-# dispatch table of script actions
-my %actions = (
-
-    # generate and print JSON report, but don't submit it
-    'show-json' => sub {
+GetOptions(
+    'config-update|c' => \&Funtoo::Report::config_update,
+    'show-json|j'     => sub {
 
         # get the entire report
         my %report = report_from_config();
@@ -53,88 +49,20 @@ my %actions = (
         print $json_pretty;
     },
 
-    # generate and send JSON report, and print URL
-    'send' => sub {
+    'send|s' => sub {
 
         # get the entire report
         my %report = report_from_config();
         Funtoo::Report::send_report( \%report, \%es_config, $debug );
     },
 
-    # update configuration file
-    'config-update' => \&Funtoo::Report::config_update,
-
-    # show script help
-    'help' => \&show_help,
-
-    # print script and module versions
-    'version' => sub {
-        printf "funtoo-report: %s\nFuntoo::Report: %s\n",
-            $VERSION,
-            Funtoo::Report::version(),
-            ;
+    'debug|d'   => \$debug,
+    'help|h'    => \&pod2usage,
+    'version|v' => sub {
+        printf "funtoo-report: %s\nFuntoo::Report: %s\n", $VERSION,
+            Funtoo::Report::version();
     },
-);
-
-# pull action from script arguments if possible
-if ( length( my $action = shift @ARGV ) ) {
-    exists $actions{$action}
-        or die "Unknown action '$action'\n";
-    $actions{$action}->();
-}
-else {
-    show_help();
-}
-
-## if you don't understand this function.. you need to just close this
-## file now before you mess something up
-sub show_help {
-    print color('bold');
-    print "\nFuntoo anonymous data reporting tool usage: \n\n";
-
-    print color('bold blue');
-    print "funtoo-report send";
-    print color('reset');
-    print "\t\t Send the report to funtoo's data collection\n";
-
-    print color('bold blue');
-    print "funtoo-report show-json";
-    print color('reset');
-    print " \t Show the output that will be sent, in JSON format\n";
-
-    print color('bold blue');
-    print "funtoo-report config-update";
-    print color('reset');
-    print " \t Generate, reconfigure or update the config file";
-    print color('reset') . " /etc/funtoo-report.conf\n";
-
-    print color('bold blue');
-    print "funtoo-report help";
-    print color('reset');
-    print " \t\t Show this help list\n";
-
-    print color('bold blue');
-    print "funtoo-report version";
-    print color('reset');
-    print " \t\t Show script and module version\n";
-
-    print color('bold blue');
-    print "funtoo-report check-version";
-    print color('reset');
-    print " \t Check your version against the latest available version\n";
-
-    print color('bold');
-    print "\nOutput can be ommitted by modifying ";
-    print color('reset');
-    print "/etc/funtoo-report.conf ";
-    print color('bold');
-    print "manually or using ";
-    print color('reset');
-    print "funtoo-report config-update\n\n";
-    print color('reset');
-
-    return 0;
-}
+) or pod2usage;
 
 ## let's read the config file and generate the report
 sub report_from_config {
@@ -207,6 +135,12 @@ funtoo-report - An anonymous Funtoo data reporting tool
 =head1 USAGE
 
     funtoo-report [-d|--debug] (config-update|show-json|send|help|version)
+    -c, --config-update Interactively updates the config file
+    -j, --show-jsoon    Shows the JSON report without sending it
+    -s, --send          Sends the JSON report
+    -d, --debug         Enables additional debug output
+    -h, --help          Display this help text
+    -v, --version       Prints the version and exits
 
 =head1 DESCRIPTION
 
@@ -291,10 +225,6 @@ L<HTTP::Tiny>
 =item *
 
 L<JSON>
-
-=item *
-
-L<Term::ANSIColor>
 
 =back
 
