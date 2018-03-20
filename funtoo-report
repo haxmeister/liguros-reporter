@@ -136,7 +136,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
 
     funtoo-report
     -c, --config-update Interactively updates the config file
-    -j, --show-jsoon    Shows the JSON report without sending it
+    -j, --show-json     Shows the JSON report without sending it
     -s, --send          Sends the JSON report
     -d, --debug         Enables additional debug output
     -h, --help          Display this help text
