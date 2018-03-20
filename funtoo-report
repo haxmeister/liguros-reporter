@@ -34,7 +34,7 @@ my %es_config = (
 # parse options
 my $debug = 0;
 GetOptions(
-    'config-update|c' => \&Funtoo::Report::config_update,
+    'config-update|u' => \&Funtoo::Report::config_update,
     'show-json|j'     => sub {
 
         # get the entire report
@@ -135,7 +135,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
 =head1 USAGE
 
     funtoo-report
-    -c, --config-update Interactively updates the config file
+    -u, --config-update Interactively updates the config file
     -j, --show-json     Shows the JSON report without sending it
     -s, --send          Sends the JSON report
     -d, --debug         Enables additional debug output
