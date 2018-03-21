@@ -14,7 +14,7 @@ use List::Util qw(any);            #core
 use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
-our $VERSION = '2.0.1-alpha';
+our $VERSION = '2.1.0-alpha';
 
 ### getting some initialization done:
 my $config_file = '/etc/funtoo-report.conf';

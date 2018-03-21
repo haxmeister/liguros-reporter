@@ -13,8 +13,10 @@ WriteMakefile(
         'Exporter'        => 0,
         'Getopt::Long'    => 0,
         'HTTP::Tiny'      => 0,
+        'IO::Socket::SSL' => '1.56',
         'JSON'            => 0,
         'List::Util'      => '1.33',
+        'Net::SSLeay'     => '1.49',
         'Term::ANSIColor' => 0,
     },
 );

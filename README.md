@@ -1,4 +1,4 @@
-# Funtoo-Report - v2.0.1-alpha
+# Funtoo-Report - v2.1.0-alpha
 
 ###### Anonymous reporting tool for Funtoo Linux
 
