@@ -1108,7 +1108,7 @@ should hopefully be at least partly self-explanatory.
 =head1 CONFIGURATION AND ENVIRONMENT
 
 The configuration file C</etc/funtoo-report.conf> is required and can be
-generated with C<funtoo-report>'s C<config-update> subcommand (recommended).
+generated with C<funtoo-report>'s C<--config-update> option (recommended).
 
 =head1 DEPENDENCIES
 
