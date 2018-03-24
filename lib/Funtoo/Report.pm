@@ -454,7 +454,10 @@ sub get_filesystem_info {
     if ( my $json_from_lsblk = `$lsblk` ) {
         $lsblk_decoded = decode_json($json_from_lsblk);
         foreach my $device (@{$lsblk_decoded->{blockdevices}}){
-			
+
+			if (not $device->{'fstype'}){
+				$device->{'fstype'}="undef-fs";
+			}
 			# skip hotplug devices like CDROMS
 			if ( $device->{hotplug} ){ next; }
 			
@@ -479,9 +482,7 @@ sub get_filesystem_info {
             # if there are no children on this device
             # stat the device itself
             else{
-				if (not $device->{'fstype'}){
-					$device->{'fstype'}="undef-fs";
-				} 
+
 				if ( defined($hash{$device->{'fstype'}}) ){
 					$hash{'fstypes'}{$device->{'fstype'}} += $device->{size};
 				}
