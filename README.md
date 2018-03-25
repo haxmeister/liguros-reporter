@@ -18,25 +18,25 @@ system files. Use the method most appropriate on your system**
 ```
 Funtoo anonymous data reporting tool usage:
 
-funtoo-report send              Send the report to funtoo's data collection
-funtoo-report show-json         Show the output that will be sent, in JSON format
-funtoo-report help              Show this help list
-funtoo-report version           Show Funtoo::Report distribution version
-funtoo-report config-update     Generate, reconfigure or update the config file /etc/funtoo-report.conf
+funtoo-report --send              Send the report to funtoo's data collection
+funtoo-report --show-json         Show the output that will be sent, in JSON format
+funtoo-report --help              Show this help list
+funtoo-report --version           Show Funtoo::Report distribution version
+funtoo-report --config-update     Generate, reconfigure or update the config file /etc/funtoo-report.conf
 
 Output can be ommitted by modifying the /etc/funtoo-report.conf file
 ```
 **help shows you the same output:**
 
-'funtoo-report help'
+'funtoo-report --help'
 
 **version shows you the script and module version numbers; ideally they should match:**
 
-'funtoo-report version'
+'funtoo-report --version'
 
 **To see what data the report is generating use the show-json option:**
 
-'funtoo-report show-json'
+'funtoo-report --show-json'
 
 **You may get an error that no config file is found at /etc/funtoo-report.conf**
 
@@ -50,17 +50,17 @@ To generate a new configuration file use 'funtoo-report config-update'
 ```
 **You can follow these warning instructions and the program will ask you which sections you want to enable in your config file**
 
-'funtoo-report config-update'
+'funtoo-report --config-update'
 
 **You can send your report to the elastic search database using the send option which will return a link to the data if successful:**
 
-'funtoo-report send'
+'funtoo-report --send'
 
 ```your report can be seen at: http://elk2.liguros.net:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
 
-**You can get HTTP debugging output for the send command with the `-d` or `--debug` option:**
+**You can get HTTP debugging output for the send command with the `--debug` or `-d` option:**
 
-'funtoo-report -d send'
+'funtoo-report --debug --send'
 
 ### Manual Configuration:
 
