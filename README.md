@@ -24,7 +24,7 @@ funtoo-report --help              Show this help list
 funtoo-report --version           Show Funtoo::Report distribution version
 funtoo-report --config-update     Generate, reconfigure or update the config file /etc/funtoo-report.conf
 
-Output can be ommitted by modifying the /etc/funtoo-report.conf file
+Output can be omitted by modifying the /etc/funtoo-report.conf file
 ```
 **help shows you the same output:**
 
