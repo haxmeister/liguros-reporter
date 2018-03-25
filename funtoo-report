@@ -156,7 +156,7 @@ None.
 
 =over 4
 
-=item C<-c>, C<--config-update>
+=item C<-u>, C<--config-update>
 
 Generate or update the configuration file C</etc/funtoo-report.conf>.
 
