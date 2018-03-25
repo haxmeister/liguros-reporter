@@ -138,7 +138,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report config-update' \n\n";
+            "To generate a new configuration file use 'funtoo-report --config-update' \n\n";
         exit;
     }
 

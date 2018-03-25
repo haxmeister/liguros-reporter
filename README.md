@@ -44,7 +44,7 @@ Output can be omitted by modifying the /etc/funtoo-report.conf file
 
 Warning!
 Could not open the configuration file at /etc/funtoo-report.conf
-To generate a new configuration file use 'funtoo-report config-update'
+To generate a new configuration file use 'funtoo-report --config-update'
 
 
 ```
