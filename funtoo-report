@@ -34,6 +34,7 @@ my %es_config = (
 # parse options
 my $debug = 0;
 GetOptions(
+    'config|c=s'      => \$Funtoo::Report::config_file,
     'config-update|u' => \&Funtoo::Report::config_update,
     'show-json|j'     => sub {
 
@@ -135,6 +136,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
 =head1 USAGE
 
     funtoo-report
+    -c, --config        Specify path to config file
     -u, --config-update Interactively updates the config file
     -j, --show-json     Shows the JSON report without sending it
     -s, --send          Sends the JSON report
@@ -158,7 +160,12 @@ None.
 
 =item C<-u>, C<--config-update>
 
-Generate or update the configuration file C</etc/funtoo-report.conf>.
+Specify the path to the configuration file; the default path is
+C</etc/funtoo-report.conf>.
+
+=item C<-u>, C<--config-update>
+
+Generate or update the configuration file.
 
 =item C<-j>, C<--show-json>
 
@@ -195,8 +202,10 @@ Exits successfully unless the options provided don't make sense.
 
 =head1 CONFIGURATION
 
-The configuration file C</etc/funtoo-report.conf> is required and can be
-generated with the C<--config-update> option (recommended).
+The configuration file is required and can be generated with the
+C<--config-update> option (recommended). The default path is
+C</etc/funtoo-report.conf>, but an alternative path can be specified with the
+C<--config> option.
 
 =head1 DEPENDENCIES
 
