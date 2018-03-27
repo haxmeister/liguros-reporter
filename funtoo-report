@@ -39,7 +39,7 @@ my $debug = 0;
 GetOptions(
     'config|c=s'      => \$Funtoo::Report::config_file,
     'config-update|u' => \my $config_update,
-    'list-config|n'   => \my $list_config,
+    'list-config|l'   => \my $list_config,
     'show-json|j'     => \my $show_json,
     'send|s'          => \my $send,
     'debug|d'         => \$debug,
