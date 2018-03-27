@@ -17,6 +17,7 @@ WriteMakefile(
         'JSON'            => 0,
         'List::Util'      => '1.33',
         'Net::SSLeay'     => '1.49',
+        'Pod::Usage'      => 0,
         'Term::ANSIColor' => 0,
     },
 );
