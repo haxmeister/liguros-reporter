@@ -17,7 +17,7 @@ use Time::Piece;                   #core
 our $VERSION = '2.1.0-alpha';
 
 ### getting some initialization done:
-my $config_file = '/etc/funtoo-report.conf';
+our $config_file = '/etc/funtoo-report.conf';
 my @errors;                        # for any errors that don't cause a die
 
 ##
@@ -97,8 +97,7 @@ sub send_report {
 }
 
 ##
-## finds the config file in /etc/funtoo-report.conf and loads its contents
-## into a hash and returns it
+## finds the config file in and loads its contents into a hash and returns it
 #
 sub user_config {
     my $args = shift;
@@ -194,8 +193,8 @@ sub config_update {
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
 
-    # let's create or replace /etc/funtoo-report.conf
-    print "Creating or replacing /etc/funtoo-report.conf\n";
+    # let's create or replace the configuration file
+    print "Creating or replacing $config_file\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
         or croak "Could not open $config_file: $ERRNO\n";
     foreach my $key ( sort keys %new_config ) {
@@ -206,7 +205,7 @@ sub config_update {
 }
 
 ##
-## adds a uuid to /etc/funtoo-report.conf and/or returns it as a string
+## adds a uuid to the config file and/or returns it as a string
 ##
 sub add_uuid {
 
@@ -1107,8 +1106,9 @@ should hopefully be at least partly self-explanatory.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-The configuration file C</etc/funtoo-report.conf> is required and can be
-generated with C<funtoo-report>'s C<--config-update> option (recommended).
+The configuration file is required and can be generated with C<funtoo-report>'s
+C<--config-update> option (recommended). Its default location is
+C</etc/funtoo-report.conf>.
 
 =head1 DEPENDENCIES
 
