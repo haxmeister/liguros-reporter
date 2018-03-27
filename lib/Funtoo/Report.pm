@@ -437,9 +437,11 @@ sub get_net_info {
             }
         }
         close $fh;
-        $hash{$device}{'vendor'} = $vendor_name;
-        $hash{$device}{'device'} = $device_name;
-        $hash{$device}{'driver'} = $driver;
+        $hash{$device} = {
+            vendor => $vendor_name,
+            device => $device_name,
+            driver => $driver,
+        };
     }
     return \%hash;
 }
