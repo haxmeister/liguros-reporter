@@ -246,6 +246,10 @@ Perl v5.14.0 or newer
 
 =item *
 
+L<English>
+
+=item *
+
 L<Funtoo::Report>
 
 =item *
@@ -259,6 +263,10 @@ L<HTTP::Tiny>
 =item *
 
 L<JSON>
+
+=item *
+
+L<Pod::Usage>
 
 =back
 

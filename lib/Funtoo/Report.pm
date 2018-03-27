@@ -1142,6 +1142,10 @@ L<List::Util> v1.33 or newer
 
 L<Term::ANSIColor>
 
+=item *
+
+L<Time::Piece>
+
 =back
 
 =head1 INCOMPATIBILITIES
