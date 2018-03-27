@@ -51,6 +51,10 @@ GetOptions(
     },
 ) or pod2usage;
 
+if (@ARGV) {
+    pod2usage();
+}
+
 # Handle options
 if ($config_update) {
     Funtoo::Report::config_update();
