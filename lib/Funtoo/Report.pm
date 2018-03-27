@@ -1041,7 +1041,7 @@ rather than importing it yourself.
     my %report = Funtoo::Report::report_from_config;
     ...
     my %es_config = (
-        node  => 'http://elk2.liguros.net:9200',
+        node  => 'https://elk2.liguros.net:9200',
         index => Funtoo::Report::report_time('short'),
         type  => 'report'
     );
