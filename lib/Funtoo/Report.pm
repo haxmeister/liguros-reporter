@@ -350,9 +350,11 @@ sub get_net_info {
 
         # Create dummy entries for virtual devices and move on
         if ( !-d "$interface_dir/$device/device/driver/module" ) {
-            $hash{$device}{'vendor'} = 'Virtual';
-            $hash{$device}{'device'} = 'Virtual device';
-            $hash{$device}{'driver'} = 'Virtual driver';
+            $hash{$device} = {
+                vendor => 'Virtual',
+                device => 'Virtual device',
+                driver => 'Virtual driver',
+            };
             next;
         }
 
