@@ -19,5 +19,6 @@ WriteMakefile(
         'Net::SSLeay'     => '1.49',
         'Pod::Usage'      => 0,
         'Term::ANSIColor' => 0,
+        'Time::Piece'     => 0,
     },
 );
