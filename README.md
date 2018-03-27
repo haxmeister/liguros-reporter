@@ -18,12 +18,14 @@ system files. Use the method most appropriate on your system**
 ```
 Funtoo anonymous data reporting tool usage:
 
-funtoo-report --config            Specify the path to the configuration file
-funtoo-report --send              Send the report to funtoo's data collection
-funtoo-report --show-json         Show the output that will be sent, in JSON format
-funtoo-report --help              Show this help list
-funtoo-report --version           Show Funtoo::Report distribution version
-funtoo-report --config-update     Generate, reconfigure or update the config file
+funtoo-report --config         Specify path to config file
+funtoo-report --config-update  Interactively updates the config file
+funtoo-report --list-config    Lists the current configuration file's settings
+funtoo-report --show-json      Shows the JSON report
+funtoo-report --send           Sends the JSON report
+funtoo-report --debug          Enables additional debug output
+funtoo-report --help           Display this help text
+funtoo-report --version        Prints the version and exits
 
 Output can be omitted by modifying the config file (default `/etc/funtoo-report.conf`):
 ```
