@@ -20,4 +20,7 @@ WriteMakefile(
         'Pod::Usage'      => 0,
         'Term::ANSIColor' => 0,
     },
+    BUILD_REQUIRES   => {
+        'Test::More' => 0,
+    },
 );
