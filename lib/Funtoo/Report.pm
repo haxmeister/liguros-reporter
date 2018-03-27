@@ -1136,11 +1136,19 @@ L<HTTP::Tiny>
 
 =item *
 
+L<IO::Socket::SSL> v1.56 or newer
+
+=item *
+
 L<JSON>
 
 =item *
 
 L<List::Util> v1.33 or newer
+
+=item *
+
+L<Net::SSLeay> v1.49 or newer
 
 =item *
 
