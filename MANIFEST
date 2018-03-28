@@ -3,8 +3,8 @@ MANIFEST
 README.md
 funtoo-report
 lib/Funtoo/Report.pm
-t/perlcriticrc
-t/perltidy.t
-t/perltidyrc
 t/require.t
+xt/perlcriticrc
+xt/perltidy.t
+xt/perltidyrc
 LICENSE

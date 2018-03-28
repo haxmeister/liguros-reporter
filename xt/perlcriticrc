@@ -1,2 +1,2 @@
 [CodeLayout::RequireTidyCode]
-perltidyrc = t/perltidyrc
+perltidyrc = xt/perltidyrc

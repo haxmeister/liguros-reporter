@@ -6,7 +6,7 @@ use warnings;
 use Perl::Critic;
 use Test::More tests => 2;
 
-my $critic = Perl::Critic->new('-single-policy' => 'tidy', '-profile' => 't/perlcriticrc');
+my $critic = Perl::Critic->new('-single-policy' => 'tidy', '-profile' => 'xt/perlcriticrc');
 my $funtoo_report = $critic->critique('funtoo-report');
 my $report_pm = $critic->critique('lib/Funtoo/Report.pm');
 
