@@ -3,7 +3,7 @@ MANIFEST
 README.md
 funtoo-report
 lib/Funtoo/Report.pm
-t/require.t
+t/basic.t
 xt/perlcriticrc
 xt/perltidy.t
 xt/perltidyrc
