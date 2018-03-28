@@ -18,14 +18,14 @@ can_ok(
       add_uuid
       config_update
       errors
-      get_all_installed_pkg,
-      get_boot_dir_info,
-      get_hardware_info,
-      get_kernel_info,
-      get_kit_info,
-      get_profile_info,
-      get_version_info,
-      get_world_info,
+      get_all_installed_pkg
+      get_boot_dir_info
+      get_hardware_info
+      get_kernel_info
+      get_kit_info
+      get_profile_info
+      get_version_info
+      get_world_info
       report_time
       send_report
       user_config
