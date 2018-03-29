@@ -810,8 +810,7 @@ sub get_all_installed_pkg {
         or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
-            opendir my $dh2,       "$db_dir/$cat"
-                or opendir my $dh, $db_dir
+            opendir my $dh2, "$db_dir/$cat"
                 or do { push_error("Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
