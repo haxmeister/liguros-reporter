@@ -478,11 +478,11 @@ sub get_filesystem_info {
 						$child->{fstype} = 'unreported';
 					}
 
-					
-                    
+
+
 					$hash{'fstypes'}{$child->{fstype}}{size} += $child->{'size'};
 					$hash{'fstypes'}{$child->{fstype}}{count} += 1;
-					
+
                 }
             }
 
@@ -1163,4 +1163,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 =cut
-
