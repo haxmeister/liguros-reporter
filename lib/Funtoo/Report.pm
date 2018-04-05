@@ -827,6 +827,9 @@ sub get_all_installed_pkg {
         my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
         if ( any {/\Q$pkg\E/xms} @world ) {
             push @{ $hash{pkgs}{world}{$pkg} }, $version;
+            # Add a separate world-info section to make it easier to handle
+            # stats in ES.
+            push @{ $hash{'world-info'} }, "$pkg-$version";
         }
         else {
             push @{ $hash{pkgs}{other}{$pkg} }, $version;
