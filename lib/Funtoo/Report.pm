@@ -462,15 +462,20 @@ sub get_filesystem_info {
             if ( defined ($device->{children}) ){
                 foreach my $child ( @{$device->{children}} ){
 
-                    # if the fstype is a null value
-					# replace it with the string "null"
+                    # if the fstype is a null or empty value
+					# replace it with the string "unreported"
 					if ( defined $child->{fstype} ){
 						if ($child->{fstype} eq ''){
-							$child->{fstype} = 'Null';
+							$child->{fstype} = 'unreported';
+						}
+						if ($child->{fstype} eq 'swap'){
+							$child->{fstype} = 'swapspace';
 						}
 					}
+
+					# if it is undefined.. define it as "unreported"
 					else{
-						$child->{fstype} = 'Null';
+						$child->{fstype} = 'unreported';
 					}
 
 					
@@ -593,19 +598,21 @@ sub get_mem_info {
         SwapFree     => undef,
     );
     my $mem_file = '/proc/meminfo';
-
-   # for each line, get the key and the first numeric value; if there's a hash
-   # bucket waiting for this value, add it, coercing the value to be numeric
-    if ( open my $fh, '<:encoding(UTF-8)', $mem_file ) {
-        while ( my $line = <$fh> ) {
-            my ( $key, $value ) = $line =~ m/ (\S+) : \s* (\d+) /msx
-                or next;
-            exists $hash{$key} or next;
-            # Convert the size from KB to GB
-            $hash{$key} = sprintf '%.2f', ($value)/(1024**2);
-            $hash{$key} += 0;
-        }
+    my @mem_file_contents;
+    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
+        @mem_file_contents = <$fh>;
         close $fh;
+
+        foreach my $row (@mem_file_contents) {
+
+            # get the key and the first numeric value
+            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
+                or next;
+
+            # if there's a hash bucket waiting for this value, add it
+            exists $hash{$key} or next;
+            $hash{$key} = int $value;
+        }
     }
     else {
         push_error("Could not open file $mem_file: $ERRNO");
