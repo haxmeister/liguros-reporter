@@ -38,13 +38,13 @@ if ( !@ARGV ) {
 my $debug = 0;
 GetOptions(
     'config|c=s'      => \$Funtoo::Report::config_file,
-    'config-update|u' => \my $config_update,
+    'update-config|u' => \my $config_update,
     'list-config|l'   => \my $list_config,
     'show-json|j'     => \my $show_json,
     'send|s'          => \my $send,
     'debug|d'         => \$debug,
     'help|h'          => \&pod2usage,
-    'version|v'       => sub {
+    'version|V'       => sub {
         printf "funtoo-report: %s\nFuntoo::Report: %s\n", $VERSION,
             Funtoo::Report::version();
         exit;
@@ -70,8 +70,10 @@ if ($list_config) {
 
 if ($show_json) {
 
-    # get the entire report
-    my %report = report_from_config();
+        # get the entire report
+        my %report = report_from_config();
+        Funtoo::Report::send_report( \%report, \%es_config, $debug );
+    },
 
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
@@ -159,13 +161,13 @@ funtoo-report - An anonymous Funtoo data reporting tool
 
     funtoo-report
     -c, --config        Specify path to config file
-    -u, --config-update Interactively updates the config file
+    -u, --update-config Interactively updates the config file
     -l, --list-config   Lists the current configuration file's settings
     -j, --show-json     Shows the JSON report
     -s, --send          Sends the JSON report
     -d, --debug         Enables additional debug output
     -h, --help          Display this help text
-    -v, --version       Prints the version and exits
+    -V, --version       Prints the version and exits
 
 =head1 DESCRIPTION
 
@@ -181,12 +183,12 @@ None.
 
 =over 4
 
-=item C<-u>, C<--config-update>
+=item C<-c>, C<--config>
 
 Specify the path to the configuration file; the default path is
 C</etc/funtoo-report.conf>.
 
-=item C<-u>, C<--config-update>
+=item C<-u>, C<--update-config>
 
 Generate or update the configuration file.
 
@@ -212,7 +214,7 @@ ElasticSearch server with the C<--send> option.
 
 Print usage help.
 
-=item C<-v>, C<--version>
+=item C<-V>, C<--version>
 
 Print script and module versions.
 
@@ -230,7 +232,7 @@ Exits successfully unless the options provided don't make sense.
 =head1 CONFIGURATION
 
 The configuration file is required and can be generated with the
-C<--config-update> option (recommended). The default path is
+C<--update-config> option (recommended). The default path is
 C</etc/funtoo-report.conf>, but an alternative path can be specified with the
 C<--config> option.
 

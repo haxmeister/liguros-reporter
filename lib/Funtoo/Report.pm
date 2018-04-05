@@ -124,7 +124,7 @@ sub user_config {
     }
     elsif ( $args and ( $args eq 'new' ) ) {
 
-        # if we arrived here due to config-update() and there isn't
+        # if we arrived here due to update-config() and there isn't
         # a config file then we return a UUID without editing the file
         $hash{'UUID'} = 'none';
         return;
@@ -137,7 +137,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report --config-update' \n\n";
+            "To generate a new configuration file use 'funtoo-report --update-config' \n\n";
         exit;
     }
 
@@ -215,7 +215,7 @@ sub add_uuid {
 
     # if we recieved the 'new' argument then we just want to return
     # the UUID without modifying the file. i.e. we came here from the
-    # config-update function
+    # update-config function
     if ( $arg and ( $arg eq 'new' ) ) {
         return $UUID;
     }
@@ -442,48 +442,94 @@ sub get_net_info {
 
 ##
 ## fetching lsblk output
+## reconstructing the output to show a more flattened list
+## with only info that actually has value as a statistic
 ##
 sub get_filesystem_info {
-    my $hash;
+    my %hash;
+    my $lsblk_decoded;
     my $lsblk
-        = 'lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN';
+        = 'lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG';
+    $hash{'device-count'} = 0;
     if ( my $json_from_lsblk = `$lsblk` ) {
-        $hash = decode_json($json_from_lsblk);
+        $lsblk_decoded = decode_json($json_from_lsblk);
+        foreach my $device (@{$lsblk_decoded->{blockdevices}}){
 
-        # iterate through the block device tree, fixing it up a little so
-        # ElasticSearch can handle it; it doesn't like lists of objects, so we
-        # convert those to objects indexed by device name
-        my @stack = ( \$hash->{blockdevices} );
-        while ( my $list = pop @stack ) {
+			# skip hotplug devices like CDROMS
+			if ( $device->{hotplug} ){ next; }
 
-            # start hash to replace the list
-            my %rep;
+            # if there are children to this device, let's deal with them
+            if ( defined ($device->{children}) ){
+                foreach my $child ( @{$device->{children}} ){
 
-            # iterate through the list
-            for my $dev ( @{ ${$list} } ) {
+                    # if the fstype is a null or empty value
+					# replace it with the string "unreported"
+					if ( defined $child->{fstype} ){
+						if ($child->{fstype} eq ''){
+							$child->{fstype} = 'unreported';
+						}
+						if ($child->{fstype} eq 'swap'){
+							$child->{fstype} = 'swapspace';
+						}
+					}
 
-                # coerce device's size to a number
-                $dev->{size} += 0;
+					# if it is undefined.. define it as "unreported"
+					else{
+						$child->{fstype} = 'unreported';
+					}
 
-                # put this device into the replacement hashref by name
-                $rep{ $dev->{name} } = $dev;
 
-                # if this device has a list of children, push a reference to
-                # that list onto the stack for the next round
-                if ( defined $dev->{children} ) {
-                    push @stack, \$dev->{children};
+
+					$hash{'fstypes'}{$child->{fstype}}{size} += $child->{'size'};
+					$hash{'fstypes'}{$child->{fstype}}{count} += 1;
+
                 }
             }
 
-            # run replacement
-            ${$list} = \%rep;
+            # if there are no children on this device
+            # stat the device itself
+            else{
+
+				if ( defined($hash{$device->{'fstype'}}) ){
+
+					# the fstype is previously defined so lets add the number to it
+					$hash{'fstypes'}{$device->{'fstype'}}{size} += $device->{size};
+				}
+				else{
+
+					# the fstype is not prev def so let's define it
+					$hash{'fstypes'}{$device->{'fstype'}}{size} = $device->{size};
+				}
+
+				if ( defined($hash{$device->{'tran'}}) ){
+
+					# the tran is previously defined so add lets the num to it
+					$hash{$device->{'tran'}} += 1;
+				}
+				else{
+
+					# the tran is not prev def so let's define it
+					$hash{$device->{'tran'}} = 1;
+				}
+            }
+
+            # Counting the number of devices
+            $hash{'device-count'} += 1;
+
+            # counting tran types
+            $hash{'tran-types'}{$device->{'tran'}} += 1;
         }
     }
     else {
         push_error("Unable to retrieve output from $lsblk: $ERRNO");
         return;
     }
-    return $hash;
+    # Convert the total size from bytes to GB
+    for my $fstype (keys %{$hash{fstypes} }) {
+        $hash{'fstypes'}{$fstype}{'size'} = sprintf '%.2f', ($hash{'fstypes'}{$fstype}{'size'})/(1024**3);
+        $hash{'fstypes'}{$fstype}{'size'} += 0;
+    }
+    return \%hash;
 }
 
 ##
@@ -552,17 +598,24 @@ sub get_mem_info {
         SwapFree     => undef,
     );
     my $mem_file = '/proc/meminfo';
-
-   # for each line, get the key and the first numeric value; if there's a hash
-   # bucket waiting for this value, add it, coercing the value to be numeric
-    if ( open my $fh, '<:encoding(UTF-8)', $mem_file ) {
-        while ( my $line = <$fh> ) {
-            my ( $key, $value ) = $line =~ m/ (\S+) : \s* (\d+) /msx
-                or next;
-            exists $hash{$key} or next;
-            $hash{$key} = $value + 0;
-        }
+    my @mem_file_contents;
+    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
+        @mem_file_contents = <$fh>;
         close $fh;
+
+        foreach my $row (@mem_file_contents) {
+
+            # get the key and the first numeric value
+            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
+                or next;
+
+            # if there's a hash bucket waiting for this value, add it
+            exists $hash{$key} or next;
+
+            # Convert the size from KB to GB
+            $hash{$key} = sprintf '%.2f', ($value)/(1024**2);
+            $hash{$key} += 0;
+        }
     }
     else {
         push_error("Could not open file $mem_file: $ERRNO");
@@ -1006,7 +1059,7 @@ should hopefully be at least partly self-explanatory.
 =head1 CONFIGURATION AND ENVIRONMENT
 
 The configuration file is required and can be generated with C<funtoo-report>'s
-C<--config-update> option (recommended). Its default location is
+C<--update-config> option (recommended). Its default location is
 C</etc/funtoo-report.conf>.
 
 =head1 DEPENDENCIES
