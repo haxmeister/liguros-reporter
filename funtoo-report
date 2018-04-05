@@ -70,10 +70,8 @@ if ($list_config) {
 
 if ($show_json) {
 
-        # get the entire report
-        my %report = report_from_config();
-        Funtoo::Report::send_report( \%report, \%es_config, $debug );
-    },
+    # get the entire report
+    my %report = report_from_config();
 
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;

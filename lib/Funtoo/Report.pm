@@ -453,80 +453,83 @@ sub get_filesystem_info {
     $hash{'device-count'} = 0;
     if ( my $json_from_lsblk = `$lsblk` ) {
         $lsblk_decoded = decode_json($json_from_lsblk);
-        foreach my $device (@{$lsblk_decoded->{blockdevices}}){
+        foreach my $device ( @{ $lsblk_decoded->{blockdevices} } ) {
 
-			# skip hotplug devices like CDROMS
-			if ( $device->{hotplug} ){ next; }
+            # skip hotplug devices like CDROMS
+            if ( $device->{hotplug} ) { next; }
 
             # if there are children to this device, let's deal with them
-            if ( defined ($device->{children}) ){
-                foreach my $child ( @{$device->{children}} ){
+            if ( defined( $device->{children} ) ) {
+                foreach my $child ( @{ $device->{children} } ) {
 
                     # if the fstype is a null or empty value
-					# replace it with the string "unreported"
-					if ( defined $child->{fstype} ){
-						if ($child->{fstype} eq ''){
-							$child->{fstype} = 'unreported';
-						}
-						if ($child->{fstype} eq 'swap'){
-							$child->{fstype} = 'swapspace';
-						}
-					}
+                    # replace it with the string "unreported"
+                    if ( defined $child->{fstype} ) {
+                        if ( $child->{fstype} eq '' ) {
+                            $child->{fstype} = 'unreported';
+                        }
+                        if ( $child->{fstype} eq 'swap' ) {
+                            $child->{fstype} = 'swapspace';
+                        }
+                    }
 
-					# if it is undefined.. define it as "unreported"
-					else{
-						$child->{fstype} = 'unreported';
-					}
+                    # if it is undefined.. define it as "unreported"
+                    else {
+                        $child->{fstype} = 'unreported';
+                    }
 
-
-
-					$hash{'fstypes'}{$child->{fstype}}{size} += $child->{'size'};
-					$hash{'fstypes'}{$child->{fstype}}{count} += 1;
+                    $hash{'fstypes'}{ $child->{fstype} }{size}
+                        += $child->{'size'};
+                    $hash{'fstypes'}{ $child->{fstype} }{count} += 1;
 
                 }
             }
 
             # if there are no children on this device
             # stat the device itself
-            else{
+            else {
 
-				if ( defined($hash{$device->{'fstype'}}) ){
+                if ( defined( $hash{ $device->{'fstype'} } ) ) {
 
-					# the fstype is previously defined so lets add the number to it
-					$hash{'fstypes'}{$device->{'fstype'}}{size} += $device->{size};
-				}
-				else{
+               # the fstype is previously defined so lets add the number to it
+                    $hash{'fstypes'}{ $device->{'fstype'} }{size}
+                        += $device->{size};
+                }
+                else {
 
-					# the fstype is not prev def so let's define it
-					$hash{'fstypes'}{$device->{'fstype'}}{size} = $device->{size};
-				}
+                    # the fstype is not prev def so let's define it
+                    $hash{'fstypes'}{ $device->{'fstype'} }{size}
+                        = $device->{size};
+                }
 
-				if ( defined($hash{$device->{'tran'}}) ){
+                if ( defined( $hash{ $device->{'tran'} } ) ) {
 
-					# the tran is previously defined so add lets the num to it
-					$hash{$device->{'tran'}} += 1;
-				}
-				else{
+                    # the tran is previously defined so add lets the num to it
+                    $hash{ $device->{'tran'} } += 1;
+                }
+                else {
 
-					# the tran is not prev def so let's define it
-					$hash{$device->{'tran'}} = 1;
-				}
+                    # the tran is not prev def so let's define it
+                    $hash{ $device->{'tran'} } = 1;
+                }
             }
 
             # Counting the number of devices
             $hash{'device-count'} += 1;
 
             # counting tran types
-            $hash{'tran-types'}{$device->{'tran'}} += 1;
+            $hash{'tran-types'}{ $device->{'tran'} } += 1;
         }
     }
     else {
         push_error("Unable to retrieve output from $lsblk: $ERRNO");
         return;
     }
+
     # Convert the total size from bytes to GB
-    for my $fstype (keys %{$hash{fstypes} }) {
-        $hash{'fstypes'}{$fstype}{'size'} = sprintf '%.2f', ($hash{'fstypes'}{$fstype}{'size'})/(1024**3);
+    for my $fstype ( keys %{ $hash{fstypes} } ) {
+        $hash{'fstypes'}{$fstype}{'size'} = sprintf '%.2f',
+            ( $hash{'fstypes'}{$fstype}{'size'} ) / ( 1024**3 );
         $hash{'fstypes'}{$fstype}{'size'} += 0;
     }
     return \%hash;
@@ -613,7 +616,7 @@ sub get_mem_info {
             exists $hash{$key} or next;
 
             # Convert the size from KB to GB
-            $hash{$key} = sprintf '%.2f', ($value)/(1024**2);
+            $hash{$key} = sprintf '%.2f', ($value) / ( 1024**2 );
             $hash{$key} += 0;
         }
     }
@@ -880,6 +883,7 @@ sub get_all_installed_pkg {
         my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
         if ( any {/\Q$pkg\E/xms} @world ) {
             push @{ $hash{pkgs}{world}{$pkg} }, $version;
+
             # Add a separate world-info section to make it easier to handle
             # stats in ES.
             push @{ $hash{'world-info'} }, "$pkg-$version";
