@@ -14,7 +14,7 @@ use List::Util qw(any);            #core
 use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
-our $VERSION = '3.0.0-alpha';
+our $VERSION = '3.0.0-beta';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -927,7 +927,7 @@ Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
 
 =head1 VERSION
 
-Version 3.0.0-dev
+Version 3.0.0-beta
 
 =head1 DESCRIPTION
 

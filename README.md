@@ -1,4 +1,4 @@
-# Funtoo-Report - v2.1.0-alpha
+# Funtoo-Report - v3.0.0-beta
 
 ###### Anonymous reporting tool for Funtoo Linux
 
@@ -119,5 +119,3 @@ You can uninstall the tool by running:
 ```
 emerge -C Funtoo-Report
 ```
-
-
