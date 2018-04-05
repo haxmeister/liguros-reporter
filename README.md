@@ -1,4 +1,4 @@
-# Funtoo-Report - v3.0.0-beta
+# Funtoo-Report - v3.0.0-beta ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=develop "Build test badge")
 
 ###### Anonymous reporting tool for Funtoo Linux
 
@@ -19,7 +19,7 @@ system files. Use the method most appropriate on your system**
 Funtoo anonymous data reporting tool usage:
 
 funtoo-report --config         Specify path to config file
-funtoo-report --config-update  Interactively updates the config file
+funtoo-report --update-config  Interactively updates the config file
 funtoo-report --list-config    Lists the current configuration file's settings
 funtoo-report --show-json      Shows the JSON report
 funtoo-report --send           Sends the JSON report
@@ -47,13 +47,13 @@ Output can be omitted by modifying the config file (default `/etc/funtoo-report.
 
 Warning!
 Could not open the configuration file at /etc/funtoo-report.conf
-To generate a new configuration file use 'funtoo-report --config-update'
+To generate a new configuration file use 'funtoo-report --update-config'
 
 
 ```
 **You can follow these warning instructions and the program will ask you which sections you want to enable in your config file**
 
-'funtoo-report --config-update'
+'funtoo-report --update-config'
 
 **You can send your report to the elastic search database using the send option which will return a link to the data if successful:**
 

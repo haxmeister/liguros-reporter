@@ -124,7 +124,7 @@ sub user_config {
     }
     elsif ( $args and ( $args eq 'new' ) ) {
 
-        # if we arrived here due to config-update() and there isn't
+        # if we arrived here due to update-config() and there isn't
         # a config file then we return a UUID without editing the file
         $hash{'UUID'} = 'none';
         return;
@@ -137,7 +137,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report --config-update' \n\n";
+            "To generate a new configuration file use 'funtoo-report --update-config' \n\n";
         exit;
     }
 
@@ -215,7 +215,7 @@ sub add_uuid {
 
     # if we recieved the 'new' argument then we just want to return
     # the UUID without modifying the file. i.e. we came here from the
-    # config-update function
+    # update-config function
     if ( $arg and ( $arg eq 'new' ) ) {
         return $UUID;
     }
@@ -1059,7 +1059,7 @@ should hopefully be at least partly self-explanatory.
 =head1 CONFIGURATION AND ENVIRONMENT
 
 The configuration file is required and can be generated with C<funtoo-report>'s
-C<--config-update> option (recommended). Its default location is
+C<--update-config> option (recommended). Its default location is
 C</etc/funtoo-report.conf>.
 
 =head1 DEPENDENCIES
