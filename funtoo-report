@@ -23,7 +23,7 @@ use Funtoo::Report;                #GIT
 use HTTP::Tiny;                    #core
 use Pod::Usage;                    #core
 
-our $VERSION = '2.1.0-alpha';
+our $VERSION = '3.0.0-beta';
 
 my %es_config = (
     node  => 'https://elk.liguros.net:9200',
@@ -111,8 +111,6 @@ sub report_from_config {
         'kernel-info'    => \&Funtoo::Report::get_kernel_info,
         'kit-info'       => \&Funtoo::Report::get_kit_info,
         'profile-info'   => \&Funtoo::Report::get_profile_info,
-        'version-info'   => \&Funtoo::Report::get_version_info,
-        'world-info'     => \&Funtoo::Report::get_world_info,
         'installed-pkgs' => \&Funtoo::Report::get_all_installed_pkg,
         'hardware-info'  => \&Funtoo::Report::get_hardware_info,
 
