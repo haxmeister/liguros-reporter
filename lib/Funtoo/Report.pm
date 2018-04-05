@@ -491,7 +491,17 @@ sub get_filesystem_info {
 
                 if ( defined( $hash{ $device->{'fstype'} } ) ) {
 
-               # the fstype is previously defined so lets add the number to it
+					#handle pesky null tran types
+					if( $hash{device->{'fstype'}} eq '' ){
+						$hash{device->{'fstype'}} = 'unreported';
+					}
+
+					#handle swap keyword issues
+					if( $hash{device->{'fstype'}} eq 'swap' ){
+						$hash{device->{'fstype'}} = 'swapspace';
+					}
+
+					# the fstype is previously defined so lets add the number to it
                     $hash{'fstypes'}{ $device->{'fstype'} }{size}
                         += $device->{size};
                 }
