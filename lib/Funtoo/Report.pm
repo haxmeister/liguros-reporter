@@ -457,6 +457,8 @@ sub get_filesystem_info {
 
             # skip hotplug devices like CDROMS
             if ( $device->{hotplug} ) { next; }
+            # skip loop devices
+            if ( $device->{name} =~ /loop/msx ){ next; }
 
             # if there are children to this device, let's deal with them
             if ( defined( $device->{children} ) ) {
