@@ -917,10 +917,10 @@ sub fs_recurse{
                 $hash_ref->{fstypes}{ $item->{fstype} }{'size'} += $item->{size};
                 $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
             }
-            #else{
-            #    $hash_ref->{fstypes}{'unreported'}{'size'} += $item->{size} / 1024;
-            #    $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
-            #}
+            else{
+                $hash_ref->{fstypes}{'unreported'}{'size'} += $item->{size} / 1024;
+                $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
+            }
         }
     }
 }
