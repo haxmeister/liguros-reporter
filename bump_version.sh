@@ -1,78 +1,82 @@
-#!/usr/bin/env bash
-# ------------------
+#!/bin/sh
+
 # bump-version.sh - update the versions in our project
-#
-# usage:
-#   ./bump-version.sh major          : x.y.z -> x+1.0.0 ; use for breaking changes
-#   ./bump-version.sh minor          : x.y.z -> x.y+1.0 ; use for new backward compatible features
-#   ./bump-version.sh <no arguments> : x.y.z -> x.y.z+1 ; use for bugfixes or minor updates
-# ------------------
 
-PWD=`pwd`
-FILE_NAME=( funtoo-report lib/Funtoo/Report.pm README.md)
-VERSION=""
-MAJOR=0
-MINOR=0
-PACKAGE=0
+path=$(cd "$(dirname "$0")" && pwd)
+file_names="funtoo-report
+lib/Funtoo/Report.pm
+README.md"
+version=""
+major=0
+minor=0
+patch=0
 
-function read_version {
-	# Using the latest git tag here as the last release number
-	VERSION=`git tag |sort -rV|head -1|sed -e 's/v//'`
-	MAJOR=`echo $VERSION | perl -ne 'if (m/(\d+)\.(\d+)\.(\d+)/) { print "$1" }'`
-	MINOR=`echo $VERSION | perl -ne 'if (m/(\d+)\.(\d+)\.(\d+)/) { print "$2" }'`
-	PACKAGE=`echo $VERSION | perl -ne 'if (m/(\d+)\.(\d+)\.(\d+)/) { print "$3" }'`
+usage() {
+    echo "\
+Usage: $0 [type]
+
+major : x.y.z -> x+1.0.0 ; use for breaking changes
+minor : x.y.z -> x.y+1.0 ; use for new backward compatible features
+patch : x.y.z -> x.y.z+1 ; use for bugfixes or minor updates
+    "
+    exit
 }
 
-function write_version {
-	for f in ${FILE_NAME[@]}
-	do
-		echo "Bumping $f ..."
-
-		# This line searches for our $VERSION in funtoo-report and in Report.pm
-		# FIXME: This line currently doesn't work, please correct it so it searches for our $VERSION and replaces it.
-		perl -pi -e "s/^our[ ]\$VERSION[ ]=[ ]'\d+[.]\d+[.]\d+(-.*)?'/our \$VERSION = '$MAJOR.$MINOR.$PACKAGE'/xms" $PWD/$f
-
-		# The rest works
-		# This line searches for Version x.y.z found in Report.pm in POD
-		perl -pi -e "s/^Version(\s?)+\d+\.\d+\.\d+(-?)+(\w?)*/Version $MAJOR.$MINOR.$PACKAGE/" $PWD/$f
-		# This line searches for version number in README.md
-		perl -pi -e "s/^# Funtoo-Report - v(\s?)+\d+\.\d+\.\d+(-?)+(\w?)*/# Funtoo-Report - v$MAJOR.$MINOR.$PACKAGE/" $PWD/$f
-
-		# Here are all the version strings we need to bump with their file names.
-		#./funtoo-report:our $VERSION = '3.0.0-beta';
-		#./lib/Funtoo/Report.pm:our $VERSION = '3.0.0-beta';
-		#./lib/Funtoo/Report.pm:Version 3.0.0-beta
-		#./README.md:# Funtoo-Report - v3.0.0-beta ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=develop "Build test badge")
-
-	done
+read_version() {
+    # Using the latest git tag here as the last release number
+    version=$(git tag | sort -rV | head -1 | sed -e 's/v//')
+    major=$(echo "$version" | sed -n -e 's/\([0-9]\+\)[.]\([0-9]\+\)[.]\([0-9]\+\)/\1/p')
+    minor=$(echo "$version" | sed -n -e 's/\([0-9]\+\)[.]\([0-9]\+\)[.]\([0-9]\+\)/\2/p')
+    patch=$(echo "$version" | sed -n -e 's/\([0-9]\+\)[.]\([0-9]\+\)[.]\([0-9]\+\)/\3/p')
 
 }
 
-read_version
+write_version() {
+    echo "$file_names" | awk -F/ '{if (!seen[$NF]++) print }' | \
+        while IFS="$'\n'" read -r file;
+        do
+            echo "Bumping $file ..."
 
-if [ "$VERSION" == "" ]
-then
-	echo "ERROR: couldn't parse version string from git tags."
-	exit 1
-fi
+            # This line searches for our $VERSION in funtoo-report and in Report.pm
+            sed -i -e "s/^our \$VERSION = '\([0-9]\+[.]\)\{2\}[0-9].*/our \$VERSION = '$major.$minor.$patch';/" "$path/$file"
+            # This line searches for Version x.y.z found in Report.pm in POD
+            sed -i -e "s/^Version \([0-9]\+[.]\)\{2\}[0-9].*/Version $major.$minor.$patch/" "$path/$file"
+            # This line searches for version number in README.md
+            sed -i -e "s/^# Funtoo-Report - v\([0-9]\+[.]\)\{2\}[0-9].*!/# Funtoo-Report - v$major.$minor.$patch !/" "$path/$file"
 
-if [ "$1" == "major" ]
-then
-	let MAJOR+=1
-	MINOR=0
-	PACKAGE=0
-elif [ "$1" == "minor" ]
-then
-	let MINOR+=1
-	PACKAGE=0
-else
-	let PACKAGE+=1
-fi
+        done
+    }
 
-echo "Funtoo::Report updating $VERSION -> $MAJOR.$MINOR.$PACKAGE"
-echo "**************************************"
+    read_version
 
-write_version
+    if [ "$version" = "" ]
+    then
+        echo "ERROR: couldn't parse version string from git tags."
+        exit 1
+    fi
 
-echo "--------------------------------------"
-echo "done"
+    case "$1" in
+        major)
+            major=$((major+1))
+            minor=0
+            patch=0
+            ;;
+        minor)
+            minor=$((minor+1))
+            patch=0
+            ;;
+        patch)
+            patch=$((patch+1))
+            ;;
+        *)
+            usage
+            ;;
+    esac
+
+    echo "Funtoo::Report updating $version -> $major.$minor.$patch"
+    echo "**************************************"
+
+    write_version
+
+    echo "--------------------------------------"
+    echo "done"
