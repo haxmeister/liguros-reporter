@@ -914,11 +914,11 @@ sub fs_recurse{
             # capture fstype as key and size as value, renaming nulls
             if ( defined $item->{fstype} ){
 
-                $hash_ref->{fstypes}{ $item->{fstype} }{'size'} += $item->{size};
+                $hash_ref->{fstypes}{ $item->{fstype} }{'size'} += sprintf("%.2f", ($item->{size} / 1024**3));
                 $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
             }
             else{
-                $hash_ref->{fstypes}{'unreported'}{'size'} += $item->{size} / 1024;
+                $hash_ref->{fstypes}{'unreported'}{'size'} += sprintf("%.2f", ($item->{size} / 1024**3));
                 $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
             }
         }
