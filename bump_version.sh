@@ -13,7 +13,7 @@ patch=0
 
 usage() {
     echo "\
-Usage: $0 [type]
+Usage: $0 type
 
 major : x.y.z -> x+1.0.0 ; use for breaking changes
 minor : x.y.z -> x.y+1.0 ; use for new backward compatible features
