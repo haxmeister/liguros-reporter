@@ -447,103 +447,11 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my %hash;
-    my $lsblk_decoded;
-    my $lsblk
-        = 'lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG';
-    $hash{'device-count'} = 0;
-    if ( my $json_from_lsblk = `$lsblk` ) {
-        $lsblk_decoded = decode_json($json_from_lsblk);
-        foreach my $device ( @{ $lsblk_decoded->{blockdevices} } ) {
+    my $lsblk = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
+    my $lsblk_decoded = decode_json($lsblk);
 
-            # skip hotplug devices like CDROMS
-            if ( $device->{hotplug} ) { next; }
-            # skip loop devices
-            if ( $device->{name} =~ /loop/msx ){ next; }
 
-            # if there are children to this device, let's deal with them
-            if ( defined( $device->{children} ) ) {
-                foreach my $child ( @{ $device->{children} } ) {
-
-                    # if the fstype is a null or empty value
-                    # replace it with the string "unreported"
-                    if ( defined $child->{fstype} ) {
-                        if ( $child->{fstype} eq '' ) {
-                            $child->{fstype} = 'unreported';
-                        }
-                        if ( $child->{fstype} eq 'swap' ) {
-                            $child->{fstype} = 'swapspace';
-                        }
-                    }
-
-                    # if it is undefined.. define it as "unreported"
-                    else {
-                        $child->{fstype} = 'unreported';
-                    }
-
-                    $hash{'fstypes'}{ $child->{fstype} }{size}
-                        += $child->{'size'};
-                    $hash{'fstypes'}{ $child->{fstype} }{count} += 1;
-
-                }
-            }
-
-            # if there are no children on this device
-            # stat the device itself
-            else {
-
-                if ( defined( $hash{ $device->{'fstype'} } ) ) {
-
-                    #handle pesky null tran types
-                    if ( $hash{ $device->{'fstype'} } eq '' ) {
-                        $hash{ $device->{'fstype'} } = 'unreported';
-                    }
-
-                    #handle swap keyword issues
-                    if ( $hash{ $device->{'fstype'} } eq 'swap' ) {
-                        $hash{ $device->{'fstype'} } = 'swapspace';
-                    }
-
-               # the fstype is previously defined so lets add the number to it
-                    $hash{'fstypes'}{ $device->{'fstype'} }{size}
-                        += $device->{size};
-                }
-                else {
-
-                    # the fstype is not prev def so let's define it
-                    $hash{'fstypes'}{ $device->{'fstype'} }{size}
-                        = $device->{size};
-                }
-
-                if ( defined( $hash{ $device->{'tran'} } ) ) {
-
-                    # the tran is previously defined so add lets the num to it
-                    $hash{ $device->{'tran'} } += 1;
-                }
-                else {
-
-                    # the tran is not prev def so let's define it
-                    $hash{ $device->{'tran'} } = 1;
-                }
-            }
-
-            # Counting the number of devices
-            $hash{'device-count'} += 1;
-
-            # counting tran types
-            $hash{'tran-types'}{ $device->{'tran'} } += 1;
-        }
-    }
-    else {
-        push_error("Unable to retrieve output from $lsblk: $ERRNO");
-        return;
-    }
-
-    # Convert the total size from bytes to GB
-    for my $fstype ( keys %{ $hash{fstypes} } ) {
-        $hash{'fstypes'}{$fstype}{'size'} = sprintf '%.2f',
-            ( $hash{'fstypes'}{$fstype}{'size'} ) / ( 1024**3 );
-        $hash{'fstypes'}{$fstype}{'size'} += 0;
-    }
+    fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
 }
 
@@ -982,6 +890,39 @@ sub push_error {
     print {*STDERR} "$parent: $error_message at line $line\n";
     push @errors, "$parent: $error_message at line $line";
     return;
+}
+
+## recursively crawls lsblk json output tree and modifies
+## the hash in place who's reference is sent by the caller
+sub fs_recurse{
+    my $data_ref = shift;
+    my $hash_ref = shift;
+
+    foreach my $item ( @{$data_ref} ){
+        if (defined $item->{tran}){
+            $hash_ref->{"tran-types"}{ $item->{tran} } += 1;
+        }
+
+        # follow children recursively
+        if (defined $item->{children}){
+            fs_recurse( \@{$item->{children}}, $hash_ref );
+            next;
+        }
+
+        else{
+
+            # capture fstype as key and size as value, renaming nulls
+            if ( defined $item->{fstype} ){
+
+                $hash_ref->{fstypes}{ $item->{fstype} }{'size'} += $item->{size};
+                $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
+            }
+            #else{
+            #    $hash_ref->{fstypes}{'unreported'}{'size'} += $item->{size} / 1024;
+            #    $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
+            #}
+        }
+    }
 }
 
 1;
