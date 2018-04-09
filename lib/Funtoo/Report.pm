@@ -38,9 +38,10 @@ sub send_report {
         croak;
         };
 
-    # if this is a development version we send to the fundev index
-    # otherwise to the funtoo index
-    if ( $VERSION =~ /alpha|beta|rc/msx ) {
+    # if this is a development version we send to the fundev index otherwise to
+    # the funtoo index; a development version is assumed to be any version with
+    # a dash suffix.
+    if ( $VERSION =~ /-/msx ) {
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
     }

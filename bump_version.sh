@@ -16,9 +16,10 @@ usage() {
     echo "\
 Usage: $0 type [stage]
 
-major : x.y.z -> x+1.0.0 ; use for breaking changes
-minor : x.y.z -> x.y+1.0 ; use for new backward compatible features
-patch : x.y.z -> x.y.z+1 ; use for bugfixes or minor updates
+major    : x.y.z -> x+1.0.0 ; use for breaking changes
+minor    : x.y.z -> x.y+1.0 ; use for new backward compatible features
+patch    : x.y.z -> x.y.z+1 ; use for bugfixes or minor updates
+describe : x.y.z -> git tag ; use for 9999 ebuilds to get the specific git commit
 
 stages can be any one of 'alpha', 'beta', or 'rc'
     "
@@ -61,15 +62,23 @@ write_version() {
     case "$1" in
         major)
             major=$((major+1))
-            minor=0
-            patch=0
+            minor=.0
+            patch=.0
             ;;
         minor)
-            minor=$((minor+1))
-            patch=0
+            major=$major
+            minor=.$((minor+1))
+            patch=.0
             ;;
         patch)
-            patch=$((patch+1))
+            major=$major
+            minor=.$minor
+            patch=.$((patch+1))
+            ;;
+        describe)
+            major=$(git describe --tags | sed -e 's/v//')
+            minor=""
+            patch=""
             ;;
         *)
             usage
@@ -93,7 +102,7 @@ write_version() {
             ;;
     esac
 
-    echo "Funtoo::Report updating $version -> $major.$minor.$patch$stage"
+    echo "Funtoo::Report updating $version -> $major$minor$patch$stage"
     echo "**************************************"
 
     write_version
