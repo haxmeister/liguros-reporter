@@ -59,7 +59,7 @@ To generate a new configuration file use 'funtoo-report --update-config'
 
 'funtoo-report --send'
 
-```your report can be seen at: http://elk2.liguros.net:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
+```your report can be seen at: https://es.host.funtoo.org:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
 
 **You can get HTTP debugging output for the send command with the `--debug` or `-d` option:**
 
