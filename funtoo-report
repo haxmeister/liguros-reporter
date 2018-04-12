@@ -14,14 +14,14 @@ package main;
 ## The accompanying "Report.pm" module
 
 use 5.014;
-use strict;                        #core
-use warnings;                      #core
-use English qw(-no_match_vars);    #core
-use Getopt::Long;                  #core
-use JSON;                          #cpan
-use Funtoo::Report;                #GIT
-use HTTP::Tiny;                    #core
-use Pod::Usage;                    #core
+use strict;                                     #core
+use warnings;                                   #core
+use English qw(-no_match_vars);                 #core
+use Getopt::Long qw(:config no_ignore_case);    #core
+use JSON;                                       #cpan
+use Funtoo::Report;                             #GIT
+use HTTP::Tiny;                                 #core
+use Pod::Usage;                                 #core
 
 our $VERSION = '3.0.0-beta';
 
@@ -42,6 +42,7 @@ GetOptions(
     'list-config|l'   => \my $list_config,
     'show-json|j'     => \my $show_json,
     'send|s'          => \my $send,
+    'verbose|v'       => sub { $Funtoo::Report::VERBOSE = 1 },
     'debug|d'         => \$debug,
     'help|h'          => \&pod2usage,
     'version|V'       => sub {
@@ -164,6 +165,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
     -j, --show-json     Shows the JSON report
     -s, --send          Sends the JSON report
     -d, --debug         Enables additional debug output
+    -v, --verbose       Enables non-error output when sending
     -h, --help          Display this help text
     -V, --version       Prints the version and exits
 
@@ -207,6 +209,11 @@ Generate the system report and send it to the hardcoded ElasticSearch server.
 
 Enable debugging mode. At present, this only prints the JSON response from the
 ElasticSearch server with the C<--send> option.
+
+=item C<-v>, C<--verbose>
+
+Enables non-error output when sending. At present, this only prints the report
+URL from the ElasticSearch server with the C<--send> option.
 
 =item C<-h>, C<--help>
 

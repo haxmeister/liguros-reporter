@@ -24,6 +24,7 @@ funtoo-report --list-config    Lists the current configuration file's settings
 funtoo-report --show-json      Shows the JSON report
 funtoo-report --send           Sends the JSON report
 funtoo-report --debug          Enables additional debug output
+funtoo-report --verbose        Enables non-error output when sending
 funtoo-report --help           Display this help text
 funtoo-report --version        Prints the version and exits
 
@@ -55,9 +56,9 @@ To generate a new configuration file use 'funtoo-report --update-config'
 
 'funtoo-report --update-config'
 
-**You can send your report to the elastic search database using the send option which will return a link to the data if successful:**
+**You can send your report to the elastic search database using the send option which can return a link to the data if successful in conjunction with --verbose:**
 
-'funtoo-report --send'
+'funtoo-report --send [--verbose]'
 
 ```your report can be seen at: https://es.host.funtoo.org:9200/funtoo-2018.10/report/C5DOC2IB4MpucymM_TFy```
 
