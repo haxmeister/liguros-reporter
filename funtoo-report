@@ -26,7 +26,7 @@ use Pod::Usage;                                 #core
 our $VERSION = '3.0.0-beta';
 
 my %es_config = (
-    node  => 'https://elk.liguros.net:9200',
+    node  => 'https://es.host.funtoo.org:9200',
     index => Funtoo::Report::report_time('short'),
     type  => 'report',
 );
