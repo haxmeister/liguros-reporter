@@ -18,6 +18,7 @@ our $VERSION = '3.0.0-beta';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
+our $VERBOSE;
 my @errors;                        # for any errors that don't cause a die
 
 ##
@@ -88,9 +89,11 @@ sub send_report {
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        print "your report can be seen at: "
-            . $es_conf->{'node'}
-            . $response->{'headers'}{'location'} . "\n";
+        if ($VERBOSE) {
+            print "your report can be seen at: "
+                . $es_conf->{'node'}
+                . $response->{'headers'}{'location'} . "\n";
+        }
     }
     else {
         push_error('Expected location for created resource');
