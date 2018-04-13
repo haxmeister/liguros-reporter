@@ -24,9 +24,13 @@ my @errors;                        # for any errors that don't cause a die
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
+##
+## generates report, creates user agent, and sends to elastic search
+##
 sub send_report {
     my ( $rep, $es_conf, $debug ) = @_;
     my $url;
+    my $settings_url;
 
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
@@ -39,16 +43,19 @@ sub send_report {
         croak;
         };
 
-    # if this is a development version we send to the fundev index otherwise to
-    # the funtoo index; a development version is assumed to be any version with
-    # a dash suffix.
-    if ( $VERSION =~ /-/msx ) {
+    # if this is a development version we send to the fundev index
+    # otherwise to the funtoo index
+    if ( $VERSION =~ /alpha|beta|rc/msx ) {
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
     }
     else {
         $url
             = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            ="$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
     }
 
     # generate a json object that we can use to convert to json
@@ -76,6 +83,35 @@ sub send_report {
     # error out helpfully on failed submission
     $response->{success}
         or do {
+
+        # decode response contents
+        my $response_decoded = decode_json($response->{content});
+        my $current_limit = 0;
+
+        # check the root cause of each error for field limit error
+        foreach my $error_reason ( @{$response_decoded->{error}{root_cause}} ){
+
+            # capture the field limit number from any field limit error
+            if ($error_reason->{reason} =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx ){
+                $current_limit = $1;
+            };
+        }
+
+        # if we have found a field limit error
+        # we will call a function to attempt to raise it by 1000
+        # unless the limit is already at 5000 or more
+        if ($current_limit){
+            if ( fix_es_limit($current_limit, $settings_url) ){
+                send_report($rep, $es_conf, $debug);
+            }
+            if ($current_limit >= 5000){
+                exit;
+                push_error(
+                    "Field limit error but field limit already at 5000 or more");
+                croak;
+            }
+        }
+
         push_error(
             "Failed submission: $response->{status} $response->{reason}");
         croak;
@@ -89,11 +125,9 @@ sub send_report {
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        if ($VERBOSE) {
-            print "your report can be seen at: "
-                . $es_conf->{'node'}
-                . $response->{'headers'}{'location'} . "\n";
-        }
+        print "your report can be seen at: "
+            . $es_conf->{'node'}
+            . $response->{'headers'}{'location'} . "\n";
     }
     else {
         push_error('Expected location for created resource');
@@ -923,7 +957,48 @@ sub fs_recurse{
         }
     }
 }
+# This gets called by send-report()
+# when a submission error is about the field limit
+# it will attempt to tell ES to increase the field limit by 1000 and
+sub fix_es_limit{
+    my $old_limit = shift;
+    my $es_url = shift;
 
+    print "\nAttempting to raise limit \n";
+
+    # create a json object to encode the message
+    my $new_json = JSON->new->allow_nonref;
+
+    # create a new HTTP object
+    my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $new_http = HTTP::Tiny->new( agent => $new_agent );
+
+    # capture the current limit setting from the response
+    my $new_limit = $old_limit += 1000;
+
+    # creating the command that will be sent
+    my %limit_command = ( "index.mapping.total_fields.limit" => $new_limit,
+                          "acknowledged"                     => 'true'
+                        );
+
+
+    # creating new http options
+    my %new_header = ( "Content-Type" => "application/json" );
+    my %new_options = (
+        'content' => '{"index.mapping.total_fields.limit" : 2000}{"acknowledged" : true}',
+        'headers' => \%new_header
+    );
+
+    # sending command to ES to raise limit
+    my $new_response = $new_http->request( 'PUT', "$es_url", \%new_options );
+
+    if ($new_response->{success}){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
 1;
 
 __END__
