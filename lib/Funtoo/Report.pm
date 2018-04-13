@@ -45,7 +45,7 @@ sub send_report {
 
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
-    if ( $VERSION =~ /alpha|beta|rc/msx ) {
+    if ( $VERSION =~ /-/msx ){
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url
@@ -125,9 +125,11 @@ sub send_report {
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        print "your report can be seen at: "
-            . $es_conf->{'node'}
-            . $response->{'headers'}{'location'} . "\n";
+        if ($VERBOSE) {
+            print "your report can be seen at: "
+                . $es_conf->{'node'}
+                . $response->{'headers'}{'location'} . "\n";
+        }
     }
     else {
         push_error('Expected location for created resource');
