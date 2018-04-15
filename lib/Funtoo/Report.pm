@@ -153,7 +153,7 @@ sub user_config {
 ## ensures all new possibilities are in the config file from previous
 ## versions, etc.
 #
-sub config_update {
+sub update_config {
 
     # check for existing config
     my %old_config = user_config('new');
@@ -192,11 +192,14 @@ sub config_update {
         = get_y_or_n('Report information about your hardware and drivers?');
 
     # let's create or replace the configuration file
+    my $timestamp = localtime;
     print "Creating or replacing $config_file\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
         or croak "Could not open $config_file: $ERRNO\n";
+    printf {$fh} "# Generated on %s for v%s of funtoo-report\n", $timestamp,
+        $VERSION;
     foreach my $key ( sort keys %new_config ) {
-        print $fh "$key:$new_config{$key}\n";
+        print {$fh} "$key:$new_config{$key}\n";
     }
     close $fh;
 
@@ -229,8 +232,7 @@ sub add_uuid {
         # open the config file and append the UUID properly into the file
         open( my $cfh, '>>', $config_file )
             or croak "Unable to append to $config_file: $ERRNO\n";
-        print $cfh "\n# A unique identifier for this reporting machine \n";
-        print $cfh "UUID:$UUID\n";
+        print {$cfh} "UUID:$UUID\n";
         close $cfh;
     }
     return $UUID;
@@ -965,7 +967,7 @@ rather than importing it yourself.
 
 =item C<add_uuid>
 
-=item C<config_update>
+=item C<update_config>
 
 =item C<errors>
 
