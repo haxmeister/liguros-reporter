@@ -19,14 +19,18 @@ our $VERSION = '3.0.0-beta';
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
 our $VERBOSE;
-my @errors;                        # for any errors that don't cause a die
+my @errors;                  # for any errors that don't cause a die
 
+##
+## generates report, creates user agent, and sends to elastic search
+##
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
 sub send_report {
     my ( $rep, $es_conf, $debug ) = @_;
     my $url;
+    my $settings_url;
 
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
@@ -39,16 +43,19 @@ sub send_report {
         croak;
         };
 
-    # if this is a development version we send to the fundev index otherwise to
-    # the funtoo index; a development version is assumed to be any version with
-    # a dash suffix.
-    if ( $VERSION =~ /-/msx ) {
+    # if this is a development version we send to the fundev index
+    # otherwise to the funtoo index
+    if ( $VERSION =~ /-/msx ){
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
     }
     else {
         $url
             = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            ="$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
     }
 
     # generate a json object that we can use to convert to json
@@ -73,12 +80,42 @@ sub send_report {
         print {*STDERR} "$response->{content}\n";
     }
 
-    # error out helpfully on failed submission
+    # error out or retry helpfully on failed submission
     $response->{success}
         or do {
-        push_error(
-            "Failed submission: $response->{status} $response->{reason}");
-        croak;
+
+        # decode response contents
+        my $response_decoded = decode_json($response->{content});
+        my $current_limit = 0;
+
+        # check the root cause of each error for field limit error
+        foreach my $error_reason ( @{$response_decoded->{error}{root_cause}} ){
+
+            # capture the field limit number from any field limit error
+            if ($error_reason->{reason} =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx ){
+                $current_limit = $1;
+            };
+        }
+
+        # if we have found a field limit error
+        # we will call a function to attempt to raise it by 1000
+        # unless the limit is already at 5000 or more
+        if ($current_limit){
+
+            # check current field limit
+            if ($current_limit >= 5000){
+                croak "field limit error but field limit is already at max 5000 or more";
+            }
+
+            # if we successfully increased the field limit
+            # then we can call send_report again and start over
+            if ( fix_es_limit($current_limit, $settings_url, $debug) ){
+                send_report($rep, $es_conf, $debug);
+                exit;
+            }
+        }
+
+        croak "Failed submission: $response->{status} $response->{reason}";
         };
 
     # warn if the response code wasn't 201 (Created)
@@ -925,7 +962,50 @@ sub fs_recurse{
         }
     }
 }
+# This gets called by send-report()
+# when a submission error is about the field limit
+# it will attempt to tell ES to increase the field limit by 1000
+sub fix_es_limit{
+    my $old_limit = shift;
+    my $es_url = shift;
+    my $debug = shift;
 
+
+    # create a json object to encode the message
+    my $new_json = JSON->new->allow_nonref;
+
+    # create a new HTTP object
+    my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $new_http = HTTP::Tiny->new( agent => $new_agent );
+
+    # determine the new field limit
+    my $new_limit = $old_limit + 1000;
+
+    if($debug){
+        print "\nAttempting to raise limit from $old_limit to $new_limit \n";
+    }
+
+    # creating new http options
+    my %new_header = ( "Content-Type" => "application/json" );
+    my %new_options = (
+        'content' => "{\"index.mapping.total_fields.limit\" : $new_limit}",
+        'headers' => \%new_header
+    );
+
+    # sending command to ES to raise limit
+    my $new_response = $new_http->request( 'PUT', $es_url, \%new_options );
+
+    if($debug){
+        print $new_response->{content}."\n";
+    }
+
+    if ($new_response->{success}){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
 1;
 
 __END__
@@ -1006,6 +1086,8 @@ rather than importing it yourself.
 =item C<user_config>
 
 =item C<version>
+
+=item C<fix_es_limit>
 
 =back
 
