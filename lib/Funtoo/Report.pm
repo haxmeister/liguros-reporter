@@ -104,9 +104,7 @@ sub send_report {
 
             # check current field limit
             if ($current_limit >= 5000){
-                push_error(
-                    "Field limit error but field limit already at 5000 or more");
-                croak;
+                croak "field limit error but field limit is already at max 5000 or more";
             }
 
             # if we successfully increased the field limit
@@ -117,9 +115,7 @@ sub send_report {
             }
         }
 
-        push_error(
-            "Failed submission: $response->{status} $response->{reason}");
-        croak;
+        croak "Failed submission: $response->{status} $response->{reason}";
         };
 
     # warn if the response code wasn't 201 (Created)
@@ -998,7 +994,7 @@ sub fix_es_limit{
     my $new_response = $new_http->request( 'PUT', $es_url, \%new_options );
 
     if($debug){
-        print $new_response->{content}."/n";
+        print $new_response->{content}."\n";
     }
 
     if ($new_response->{success}){
@@ -1088,6 +1084,8 @@ rather than importing it yourself.
 =item C<user_config>
 
 =item C<version>
+
+=item C<fix_es_limit>
 
 =back
 
