@@ -28,7 +28,7 @@ sub send_report {
     my ( $rep, $es_conf, $debug ) = @_;
     my $url;
 
-    # if we weren't told whether to show debugging output, don't
+    # if we weren't told whether to show debugging output,  don't
     $debug //= 0;
 
     # refuse to send a report with an unset, undefined, or empty UUID
