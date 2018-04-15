@@ -19,7 +19,7 @@ our $VERSION = '3.0.0-beta';
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
 our $VERBOSE;
-my @errors;                        # for any errors that don't cause a die
+my @errors;                  # for any errors that don't cause a die
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -80,7 +80,7 @@ sub send_report {
         print {*STDERR} "$response->{content}\n";
     }
 
-    # error out helpfully on failed submission
+    # error out or retry helpfully on failed submission
     $response->{success}
         or do {
 
@@ -101,14 +101,19 @@ sub send_report {
         # we will call a function to attempt to raise it by 1000
         # unless the limit is already at 5000 or more
         if ($current_limit){
-            if ( fix_es_limit($current_limit, $settings_url) ){
-                send_report($rep, $es_conf, $debug);
-            }
+
+            # check current field limit
             if ($current_limit >= 5000){
-                exit;
                 push_error(
                     "Field limit error but field limit already at 5000 or more");
                 croak;
+            }
+
+            # if we successfully increased the field limit
+            # then we can call send_report again and start over
+            if ( fix_es_limit($current_limit, $settings_url, $debug) ){
+                send_report($rep, $es_conf, $debug);
+                exit;
             }
         }
 
@@ -961,12 +966,12 @@ sub fs_recurse{
 }
 # This gets called by send-report()
 # when a submission error is about the field limit
-# it will attempt to tell ES to increase the field limit by 1000 and
+# it will attempt to tell ES to increase the field limit by 1000
 sub fix_es_limit{
     my $old_limit = shift;
     my $es_url = shift;
+    my $debug = shift;
 
-    print "\nAttempting to raise limit \n";
 
     # create a json object to encode the message
     my $new_json = JSON->new->allow_nonref;
@@ -975,24 +980,26 @@ sub fix_es_limit{
     my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
     my $new_http = HTTP::Tiny->new( agent => $new_agent );
 
-    # capture the current limit setting from the response
-    my $new_limit = $old_limit += 1000;
+    # determine the new field limit
+    my $new_limit = $old_limit + 1000;
 
-    # creating the command that will be sent
-    my %limit_command = ( "index.mapping.total_fields.limit" => $new_limit,
-                          "acknowledged"                     => 'true'
-                        );
-
+    if($debug){
+        print "\nAttempting to raise limit from $old_limit to $new_limit \n";
+    }
 
     # creating new http options
     my %new_header = ( "Content-Type" => "application/json" );
     my %new_options = (
-        'content' => '{"index.mapping.total_fields.limit" : 2000}{"acknowledged" : true}',
+        'content' => "{\"index.mapping.total_fields.limit\" : $new_limit}",
         'headers' => \%new_header
     );
 
     # sending command to ES to raise limit
-    my $new_response = $new_http->request( 'PUT', "$es_url", \%new_options );
+    my $new_response = $new_http->request( 'PUT', $es_url, \%new_options );
+
+    if($debug){
+        print $new_response->{content}."/n";
+    }
 
     if ($new_response->{success}){
         return 1;
