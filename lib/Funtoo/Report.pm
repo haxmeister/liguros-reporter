@@ -19,11 +19,8 @@ our $VERSION = '3.0.0-beta';
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
 our $VERBOSE;
-my @errors;                  # for any errors that don't cause a die
+my @errors;                        # for any errors that don't cause a die
 
-##
-## generates report, creates user agent, and sends to elastic search
-##
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
@@ -45,7 +42,7 @@ sub send_report {
 
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
-    if ( $VERSION =~ /-/msx ){
+    if ( $VERSION =~ /-/msx ) {
         $url
             = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url
@@ -55,7 +52,7 @@ sub send_report {
         $url
             = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url
-            ="$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
+            = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
     }
 
     # generate a json object that we can use to convert to json
@@ -85,32 +82,37 @@ sub send_report {
         or do {
 
         # decode response contents
-        my $response_decoded = decode_json($response->{content});
-        my $current_limit = 0;
+        my $response_decoded = decode_json( $response->{content} );
+        my $current_limit    = 0;
 
         # check the root cause of each error for field limit error
-        foreach my $error_reason ( @{$response_decoded->{error}{root_cause}} ){
+        foreach
+            my $error_reason ( @{ $response_decoded->{error}{root_cause} } )
+        {
 
             # capture the field limit number from any field limit error
-            if ($error_reason->{reason} =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx ){
+            if ( $error_reason->{reason}
+                =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx )
+            {
                 $current_limit = $1;
-            };
+            }
         }
 
         # if we have found a field limit error
         # we will call a function to attempt to raise it by 1000
         # unless the limit is already at 5000 or more
-        if ($current_limit){
+        if ($current_limit) {
 
             # check current field limit
-            if ($current_limit >= 5000){
-                croak "field limit error but field limit is already at max 5000 or more";
+            if ( $current_limit >= 5000 ) {
+                croak
+                    "field limit error but field limit is already at max 5000 or more";
             }
 
             # if we successfully increased the field limit
             # then we can call send_report again and start over
-            if ( fix_es_limit($current_limit, $settings_url, $debug) ){
-                send_report($rep, $es_conf, $debug);
+            if ( fix_es_limit( $current_limit, $settings_url, $debug ) ) {
+                send_report( $rep, $es_conf, $debug );
                 exit;
             }
         }
@@ -139,7 +141,7 @@ sub send_report {
 
 ##
 ## finds the config file in and loads its contents into a hash and returns it
-#
+##
 sub user_config {
     my $args = shift;
     my %hash;
@@ -189,7 +191,6 @@ sub user_config {
 ## prompts user as it generates settings for a new config file
 ## ensures all new possibilities are in the config file from previous
 ## versions, etc.
-#
 sub update_config {
 
     # check for existing config
@@ -485,9 +486,9 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my %hash;
-    my $lsblk = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
+    my $lsblk
+        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
     my $lsblk_decoded = decode_json($lsblk);
-
 
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
@@ -919,7 +920,7 @@ sub get_y_or_n {
 }
 
 ## Accepts reportable errors, puts them
-## into a hash, and prints the error to
+## into an array, and prints the error to
 ## *STDERR
 sub push_error {
     my $error_message = shift;
@@ -931,45 +932,47 @@ sub push_error {
 }
 
 ## recursively crawls lsblk json output tree and modifies
-## the hash in place who's reference is sent by the caller
-sub fs_recurse{
+## the hash in-place whose reference is sent by the caller
+sub fs_recurse {
     my $data_ref = shift;
     my $hash_ref = shift;
 
-    foreach my $item ( @{$data_ref} ){
-        if (defined $item->{tran}){
+    foreach my $item ( @{$data_ref} ) {
+        if ( defined $item->{tran} ) {
             $hash_ref->{"tran-types"}{ $item->{tran} } += 1;
         }
 
         # follow children recursively
-        if (defined $item->{children}){
-            fs_recurse( \@{$item->{children}}, $hash_ref );
+        if ( defined $item->{children} ) {
+            fs_recurse( \@{ $item->{children} }, $hash_ref );
             next;
         }
 
-        else{
+        else {
 
             # capture fstype as key and size as value, renaming nulls
-            if ( defined $item->{fstype} ){
+            if ( defined $item->{fstype} ) {
 
-                $hash_ref->{fstypes}{ $item->{fstype} }{'size'} += sprintf("%.2f", ($item->{size} / 1024**3));
+                $hash_ref->{fstypes}{ $item->{fstype} }{'size'}
+                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
                 $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
             }
-            else{
-                $hash_ref->{fstypes}{'unreported'}{'size'} += sprintf("%.2f", ($item->{size} / 1024**3));
+            else {
+                $hash_ref->{fstypes}{'unreported'}{'size'}
+                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
                 $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
             }
         }
     }
 }
+
 # This gets called by send-report()
 # when a submission error is about the field limit
 # it will attempt to tell ES to increase the field limit by 1000
-sub fix_es_limit{
+sub fix_es_limit {
     my $old_limit = shift;
-    my $es_url = shift;
-    my $debug = shift;
-
+    my $es_url    = shift;
+    my $debug     = shift;
 
     # create a json object to encode the message
     my $new_json = JSON->new->allow_nonref;
@@ -981,7 +984,7 @@ sub fix_es_limit{
     # determine the new field limit
     my $new_limit = $old_limit + 1000;
 
-    if($debug){
+    if ($debug) {
         print "\nAttempting to raise limit from $old_limit to $new_limit \n";
     }
 
@@ -995,14 +998,14 @@ sub fix_es_limit{
     # sending command to ES to raise limit
     my $new_response = $new_http->request( 'PUT', $es_url, \%new_options );
 
-    if($debug){
-        print $new_response->{content}."\n";
+    if ($debug) {
+        print $new_response->{content} . "\n";
     }
 
-    if ($new_response->{success}){
+    if ( $new_response->{success} ) {
         return 1;
     }
-    else{
+    else {
         return 0;
     }
 }
@@ -1039,7 +1042,7 @@ rather than importing it yourself.
         index => Funtoo::Report::report_time('short'),
         type  => 'report'
     );
-    Funtoo::Report::send_report(\%report, \%es_config);
+    Funtoo::Report::send_report(\%report, \%es_config, $debug);
 
 =head1 SUBROUTINES/METHODS
 
@@ -1047,49 +1050,129 @@ rather than importing it yourself.
 
 =item C<add_uuid>
 
-=item C<update_config>
+Adds a UUID to the config file and/or returns it as a string. Can exit with
+failure if unable to read C</proc/sys/kernel/random/uuid> or the config file.
 
 =item C<errors>
 
-=item C<get_all_installed_pkg>
-
-=item C<get_boot_dir_info>
-
-=item C<get_chassis_info>
-
-=item C<get_cpu_info>
-
-=item C<get_filesystem_info>
-
-=item C<get_hardware_info>
-
-=item C<get_kernel_info>
-
-=item C<get_kit_info>
-
-=item C<get_lspci>
-
-=item C<get_mem_info>
-
-=item C<get_net_info>
-
-=item C<get_profile_info>
-
-=item C<get_y_or_n>
-
-=item C<push_error>
-
-=item C<report_time>
-
-=item C<send_report>
-
-=item C<user_config>
-
-=item C<version>
+Returns a reference to the @errors array. See also L</push_errors>, which is
+used to manipulate this array.
 
 =item C<fix_es_limit>
 
+Used by L</send_report> when a submission error is received about the field
+limit. Calling it will make an attempt to tell the ElasticSearch server to
+increase the field limit by 1,000. Returns 1 if successful, 0 otherwise.
+
 =item C<fs_recurse>
+
+Recursively crawls supplied C<lsblk> JSON output, modifying the main hash
+in-place with whose reference is sent by the caller. No return value. Used by
+L</get_filesystem_info>.
+
+=item C<get_all_installed_pkg>
+
+Returns the full list of installed packages as a hash, separated into "world"
+and "misc" sections containing the packages as well as their count.
+Additionally, reports the contents of the "world" file as a separate, redundant
+section for ease of parsing in ElasticSearch. Uses L</push_errors> for error
+reporting.
+
+=item C<get_boot_dir_info>
+
+Finds kernel files in /boot. Returns the list of files found as part of the
+main hash. Uses L</push_errors> for error reporting. Valid file names are
+expected to begin with "kernel", "vmlinuz", or "bzImage".
+
+=item C<get_chassis_info>
+
+Returns information about the system chassis as a hash. Uses L</push_errors>
+for error reporting. Used by L</get_hardware_info>.
+
+=item C<get_cpu_info>
+
+Returns information about the CPU as a hash. Uses L</push_errors> for error
+reporting. Used by L</get_hardware_info>.
+
+=item C<get_filesystem_info>
+
+Returns C<lsblk> output as a hash. Reconstructs the output to show a more
+flattened list containing only information deemed statistically valuable. Uses
+L</push_error> for error reporting. Makes use of L</fs_recurse> and is used by
+L</get_hardware_info>.
+
+=item C<get_hardware_info>
+
+Returns information about the hardware using several other subs (L</get_lspci>,
+L</get_net_info>, L</get_filesystem_info>, L</get_cpu_info>, L</get_mem_info>,
+L</get_chassis_info>) as a hash. Uses L</push_errors> for error reporting.
+
+=item C<get_kernel_info>
+
+Returns information about the currently running kernel as part of the main
+hash. Uses L</push_errors> for error reporting.
+
+=item C<get_kit_info>
+
+Returns active kits as a hash. Uses L</push_errors> for error reporting.
+
+=item C<get_lspci>
+
+Returns massaged hardware information via C<lspci> as a hash. Used by
+L</get_hardware_info>. Uses L</push_errors> for error reporting.
+
+=item C<get_mem_info>
+
+Returns information about system memory as a hash. Uses L</push_errors> for
+error reporting.
+
+=item C<get_net_info>
+
+Returns information about network devices as a hash. Uses L</push_errors> for
+error reporting. Used by L</get_hardware_info>.
+
+=item C<get_profile_info>
+
+Returns active profiles as reported by C<epro> as a hash. Uses L</push_errors>
+for error reporting.
+
+=item C<get_y_or_n>
+
+Accepts a string as a question. Returns "y" or "n" based on the answer,
+defaulting to "y" if nothing is provided. Repeats the question until valid
+input is received. Used by L</update_config>.
+
+=item C<push_error>
+
+Accepts reportable errors, puts them into an array (@errors), and prints the
+error to STDERR. See also L</errors>.
+
+=item C<report_time>
+
+Returns a long date string for the report body or a string that is like
+"funtoo-year.week" that is suitable for ElasticSearch historical data
+management. Accepts "long" or "short" as input, which determines the output.
+
+=item C<send_report>
+
+Generates the report, creates a user agent, and sends it to the ElasticSearch
+server. Uses L</push_errors> for error reporting.
+
+=item C<update_config>
+
+Retrieves the UUID from the config file if present, and then prompts the user
+as it generates settings for a new config file via L</get_y_or_n>. Inserts a
+comment containing a timestamp and the version of funtoo-report used to create
+the configuration. Can exit with failure if unable to read the config file.
+
+=item C<user_config>
+
+Parses the config file, returning the results as a hash. Can exit if unable to
+read the config file.
+
+=item C<version>
+
+Returns $VERSION.
 
 =back
 

@@ -177,7 +177,7 @@ the ElasticSearch servers.
 
 =head1 REQUIRED ARGUMENTS
 
-None.
+--send for the intended purpose; all others are strictly optional.
 
 =head1 OPTIONS
 
@@ -190,20 +190,25 @@ C</etc/funtoo-report.conf>.
 
 =item C<-u>, C<--update-config>
 
-Generate or update the configuration file.
+Generate or update the configuration file. Files created this way will include
+a comment with a timestamp and the version of funtoo-report the file was
+created for.
 
 =item C<-l>, C<--list-config>
 
-Lists the current configuration file's settings.
+List the current configuration file's settings. This is primarily a
+troubleshooting aid to ensure that variables are being assigned correctly and
+will exclude any comments present in the configuration file.
 
 =item C<-j>, C<--show-json>
 
-Generate the system report according to the configuration file, and print it to
+Generate the system report according to the configuration file and print it to
 standard output.
 
 =item C<-s>, C<--send>
 
 Generate the system report and send it to the hardcoded ElasticSearch server.
+See also the C<--verbose> option.
 
 =item C<-d>, C<--debug>
 
@@ -217,7 +222,7 @@ URL from the ElasticSearch server with the C<--send> option.
 
 =item C<-h>, C<--help>
 
-Print usage help.
+Print usage information.
 
 =item C<-V>, C<--version>
 
@@ -232,7 +237,8 @@ messages that should hopefully be at least partly self-explanatory.
 
 =head1 EXIT STATUS
 
-Exits successfully unless the options provided don't make sense.
+This front-end exits successfully unless the options provided don't make sense.
+Errors with the reporting module will generate their own specific exit codes.
 
 =head1 CONFIGURATION
 
