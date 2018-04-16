@@ -1089,6 +1089,8 @@ rather than importing it yourself.
 
 =item C<fix_es_limit>
 
+=item C<fs_recurse>
+
 =back
 
 =head1 DIAGNOSTICS
