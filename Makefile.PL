@@ -8,7 +8,6 @@ WriteMakefile(
     EXE_FILES        => ['funtoo-report'],
     MIN_PERL_VERSION => '5.014',
     PREREQ_PM        => {
-        'autodie'         => 0,
         'Carp'            => 0,
         'English'         => 0,
         'Exporter'        => 0,
@@ -18,7 +17,8 @@ WriteMakefile(
         'JSON'            => 0,
         'List::Util'      => '1.33',
         'Net::SSLeay'     => '1.49',
-        'POSIX'           => 0,
+        'Pod::Usage'      => 0,
         'Term::ANSIColor' => 0,
+        'Time::Piece'     => 0,
     },
 );

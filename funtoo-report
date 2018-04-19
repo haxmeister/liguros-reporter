@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
+package main;
 
 ## Author : Joshua S. Day (haxmeister)
-## Purpose : A anonymous funtoo data reporting tool
-## t
-## With code from: Palica, Tom Ryder and ShaddowM00n
+## Purpose : An anonymous funtoo data reporting tool
+## With code from: Palica, Tom Ryder and ShadowM00n
 ##
 ## written with the following additional packages
 ##
@@ -14,105 +14,80 @@
 ## The accompanying "Report.pm" module
 
 use 5.014;
-use strict;             #core
-use warnings;           #core
-use Getopt::Long;       #core
-use JSON;               #cpan
-use Term::ANSIColor;    #core
-use Funtoo::Report;     #GIT
-use HTTP::Tiny;         #core
+use strict;                                     #core
+use warnings;                                   #core
+use English qw(-no_match_vars);                 #core
+use Getopt::Long qw(:config no_ignore_case);    #core
+use JSON;                                       #cpan
+use Funtoo::Report;                             #GIT
+use HTTP::Tiny;                                 #core
+use Pod::Usage;                                 #core
+
+our $VERSION = '3.0.0';
 
 my %es_config = (
-    node  => 'https://elk.liguros.net:9200',
+    node  => 'https://es.host.funtoo.org:9200',
     index => Funtoo::Report::report_time('short'),
-    type  => 'report'
+    type  => 'report',
 );
 
 # parse options
+if ( !@ARGV ) {
+    pod2usage();
+}
 my $debug = 0;
-GetOptions( 'debug|d' => \$debug )
-    or die "Error in command line arguments\n";
-
-# dispatch table of script actions
-my %actions = (
-
-    # generate and print JSON report, but don't submit it
-    'show-json' => sub {
-
-        # get the entire report
-        my %report = report_from_config();
-
-        # generate a json object that we can use to convert to json
-        my $json = JSON->new->allow_nonref;
-
-        # send the report to the json object to be encoded to json
-        # and print the results with proper indents (pretty)
-        my $json_pretty = $json->pretty->encode( \%report );
-        print $json_pretty;
+GetOptions(
+    'config|c=s'      => \$Funtoo::Report::config_file,
+    'update-config|u' => \my $update_config,
+    'list-config|l'   => \my $list_config,
+    'show-json|j'     => \my $show_json,
+    'send|s'          => \my $send,
+    'verbose|v'       => sub { $Funtoo::Report::VERBOSE = 1 },
+    'debug|d'         => \$debug,
+    'help|h'          => \&pod2usage,
+    'version|V'       => sub {
+        printf "funtoo-report: %s\nFuntoo::Report: %s\n", $VERSION,
+            Funtoo::Report::version();
+        exit;
     },
+) or pod2usage;
 
-    # generate and send JSON report, and print URL
-    'send' => sub {
-
-        # get the entire report
-        my %report = report_from_config();
-        Funtoo::Report::send_report( \%report, \%es_config, $debug );
-    },
-
-    # update configuration file
-    'config-update' => \&Funtoo::Report::config_update,
-
-    # show script help
-    'help' => \&show_help,
-);
-
-# pull action from script arguments if possible
-if ( length( my $action = shift @ARGV ) ) {
-    exists $actions{$action}
-        or die "Unknown action '$action'\n";
-    $actions{$action}->();
-}
-else {
-    show_help();
+if (@ARGV) {
+    pod2usage();
 }
 
-## if you don't understand this function.. you need to just close this
-## file now before you mess something up
-sub show_help {
-    print color('bold');
-    print "\n\nFuntoo anonymous data reporting tool usage: \n\n";
+# Handle options
+if ($update_config) {
+    Funtoo::Report::update_config();
+}
 
-    print color('bold blue');
-    print "funtoo-report send";
-    print color('reset');
-    print "\t\t Send the report to funtoo's data collection\n";
+if ($list_config) {
+    my %config = Funtoo::Report::user_config();
+    print "Current configuration of $Funtoo::Report::config_file:\n\n";
+    for my $key ( sort keys %config ) {
+        print "$key: $config{$key}\n";
+    }
+}
 
-    print color('bold blue');
-    print "funtoo-report show-json";
-    print color('reset');
-    print " \t Show the output that will be sent, in JSON format\n";
+if ($show_json) {
 
-    print color('bold blue');
-    print "funtoo-report config-update";
-    print color('reset');
-    print " \t Generate, reconfigure or update the config file";
-    print color('reset') . " /etc/funtoo-report.conf\n";
+    # get the entire report
+    my %report = report_from_config();
 
-    print color('bold blue');
-    print "funtoo-report help";
-    print color('reset');
-    print " \t\t Show this help list\n";
+    # generate a json object that we can use to convert to json
+    my $json = JSON->new->allow_nonref;
 
-    print color('bold');
-    print "\nOutput can be ommitted by modifying ";
-    print color('reset');
-    print "/etc/funtoo-report.conf ";
-    print color('bold');
-    print "manually or using ";
-    print color('reset');
-    print "funtoo-report config-update\n\n";
-    print color('reset');
-    return 0;
+    # send the report to the json object to be encoded to json
+    # and print the results with proper indents (pretty)
+    my $json_pretty = $json->pretty->encode( \%report );
+    print $json_pretty;
+}
+
+if ($send) {
+
+    # get the entire report
+    my %report = report_from_config();
+    Funtoo::Report::send_report( \%report, \%es_config, $debug );
 }
 
 ## let's read the config file and generate the report
@@ -137,8 +112,6 @@ sub report_from_config {
         'kernel-info'    => \&Funtoo::Report::get_kernel_info,
         'kit-info'       => \&Funtoo::Report::get_kit_info,
         'profile-info'   => \&Funtoo::Report::get_profile_info,
-        'version-info'   => \&Funtoo::Report::get_version_info,
-        'world-info'     => \&Funtoo::Report::get_world_info,
         'installed-pkgs' => \&Funtoo::Report::get_all_installed_pkg,
         'hardware-info'  => \&Funtoo::Report::get_hardware_info,
 
@@ -155,6 +128,7 @@ sub report_from_config {
         # hash table to the report
         $hash{$report} = $sections{$report}->();
     }
+
     ## adding UUID to the body of the report
     #
     $hash{'funtoo-report'}{'UUID'} = $config{'UUID'};
@@ -173,3 +147,195 @@ sub report_from_config {
 
     return %hash;
 }
+
+__END__
+
+=pod
+
+=head1 NAME
+
+funtoo-report - An anonymous Funtoo data reporting tool
+
+=head1 USAGE
+
+    funtoo-report
+    -c, --config        Specify path to config file
+    -u, --update-config Interactively updates the config file
+    -l, --list-config   Lists the current configuration file's settings
+    -j, --show-json     Shows the JSON report
+    -s, --send          Sends the JSON report
+    -d, --debug         Enables additional debug output
+    -v, --verbose       Enables non-error output when sending
+    -h, --help          Display this help text
+    -V, --version       Prints the version and exits
+
+=head1 DESCRIPTION
+
+This script is the frontend to C<Funtoo::Report>, allowing you to create
+configuration files and generate full report data in JSON to view and submit to
+the ElasticSearch servers.
+
+=head1 REQUIRED ARGUMENTS
+
+--send for the intended purpose; all others are strictly optional.
+
+=head1 OPTIONS
+
+=over 4
+
+=item C<-c>, C<--config>
+
+Specify the path to the configuration file; the default path is
+C</etc/funtoo-report.conf>.
+
+=item C<-u>, C<--update-config>
+
+Generate or update the configuration file. Files created this way will include
+a comment with a timestamp and the version of funtoo-report the file was
+created for.
+
+=item C<-l>, C<--list-config>
+
+List the current configuration file's settings. This is primarily a
+troubleshooting aid to ensure that variables are being assigned correctly and
+will exclude any comments present in the configuration file.
+
+=item C<-j>, C<--show-json>
+
+Generate the system report according to the configuration file and print it to
+standard output.
+
+=item C<-s>, C<--send>
+
+Generate the system report and send it to the hardcoded ElasticSearch server.
+See also the C<--verbose> option.
+
+=item C<-d>, C<--debug>
+
+Enable debugging mode. At present, this only prints the JSON response from the
+ElasticSearch server with the C<--send> option.
+
+=item C<-v>, C<--verbose>
+
+Enables non-error output when sending. At present, this only prints the report
+URL from the ElasticSearch server with the C<--send> option.
+
+=item C<-h>, C<--help>
+
+Print usage information.
+
+=item C<-V>, C<--version>
+
+Print script and module versions.
+
+=back
+
+=head1 DIAGNOSTICS
+
+This section to be completed. The code (well, its module) emits very many error
+messages that should hopefully be at least partly self-explanatory.
+
+=head1 EXIT STATUS
+
+This front-end exits successfully unless the options provided don't make sense.
+Errors with the reporting module will generate their own specific exit codes.
+
+=head1 CONFIGURATION
+
+The configuration file is required and can be generated with the
+C<--update-config> option (recommended). The default path is
+C</etc/funtoo-report.conf>, but an alternative path can be specified with the
+C<--config> option.
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item *
+
+Perl v5.14.0 or newer
+
+=item *
+
+L<English>
+
+=item *
+
+L<Funtoo::Report>
+
+=item *
+
+L<Getopt::Long>
+
+=item *
+
+L<HTTP::Tiny>
+
+=item *
+
+L<JSON>
+
+=item *
+
+L<Pod::Usage>
+
+=back
+
+=head1 INCOMPATIBILITIES
+
+This script is almost certainly only useful on a Funtoo computer.
+
+=head1 BUGS AND LIMITATIONS
+
+Definitely. To report bugs or make feature requests, please raise an issue on
+GitHub at L<https://github.com/haxmeister/funtoo-reporter>.
+
+=head1 AUTHOR
+
+The Funtoo::Report development team:
+
+=over 4
+
+=item *
+
+Joshua Day C<< <haxmeister@hotmail.com> >>
+
+=item *
+
+Palica C<< <palica@cupka.name> >>
+
+=item *
+
+ShadowM00n C<< <shadowm00n@airmail.cc> >>
+
+=item *
+
+Tom Ryder C<< <tom@sanctum.geek.nz> >>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+MIT License
+
+Copyright (c) 2018 Haxmeister
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=cut
