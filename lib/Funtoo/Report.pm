@@ -11,28 +11,49 @@ use English qw(-no_match_vars);    #core
 use HTTP::Tiny;                    #core
 use JSON;                          #cpan
 use List::Util qw(any);            #core
-use POSIX qw(ceil);                #core
 use Term::ANSIColor;               #core
+use Time::Piece;                   #core
 
-our $VERSION = '2.0.1';
+our $VERSION = '3.0.0';
 
 ### getting some initialization done:
-my $config_file = '/etc/funtoo-report.conf';
+our $config_file = '/etc/funtoo-report.conf';
+our $VERBOSE;
 my @errors;                        # for any errors that don't cause a die
 
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
 sub send_report {
-    my $rep     = shift;
-    my $es_conf = shift;
-    my $debug   = shift;
+    my ( $rep, $es_conf, $debug ) = @_;
+    my $url;
+    my $settings_url;
 
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
 
-    # constructing the url we will report too
-    my $url = "$es_conf->{'node'}/$es_conf->{'index'}/$es_conf->{'type'}";
+    # refuse to send a report with an unset, undefined, or empty UUID
+    length $rep->{'funtoo-report'}{UUID}
+        or do {
+        push_error(
+            'Refusing to submit report with blank UUID; check your config');
+        croak;
+        };
+
+    # if this is a development version we send to the fundev index
+    # otherwise to the funtoo index
+    if ( $VERSION =~ /-/msx ) {
+        $url
+            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
+    }
+    else {
+        $url
+            = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url
+            = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
+    }
 
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
@@ -56,12 +77,47 @@ sub send_report {
         print {*STDERR} "$response->{content}\n";
     }
 
-    # error out helpfully on failed submission
+    # error out or retry helpfully on failed submission
     $response->{success}
         or do {
-        push_error(
-            "Failed submission: $response->{status} $response->{reason}");
-        croak;
+
+        # decode response contents
+        my $response_decoded = decode_json( $response->{content} );
+        my $current_limit    = 0;
+
+        # check the root cause of each error for field limit error
+        foreach
+            my $error_reason ( @{ $response_decoded->{error}{root_cause} } )
+        {
+
+            # capture the field limit number from any field limit error
+            if ( $error_reason->{reason}
+                =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx )
+            {
+                $current_limit = $1;
+            }
+        }
+
+        # if we have found a field limit error
+        # we will call a function to attempt to raise it by 1000
+        # unless the limit is already at 5000 or more
+        if ($current_limit) {
+
+            # check current field limit
+            if ( $current_limit >= 5000 ) {
+                croak
+                    "field limit error but field limit is already at max 5000 or more";
+            }
+
+            # if we successfully increased the field limit
+            # then we can call send_report again and start over
+            if ( fix_es_limit( $current_limit, $settings_url, $debug ) ) {
+                send_report( $rep, $es_conf, $debug );
+                exit;
+            }
+        }
+
+        croak "Failed submission: $response->{status} $response->{reason}";
         };
 
     # warn if the response code wasn't 201 (Created)
@@ -72,9 +128,11 @@ sub send_report {
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        print "your report can be seen at: "
-            . $es_conf->{'node'}
-            . $response->{'headers'}{'location'} . "\n";
+        if ($VERBOSE) {
+            print "your report can be seen at: "
+                . $es_conf->{'node'}
+                . $response->{'headers'}{'location'} . "\n";
+        }
     }
     else {
         push_error('Expected location for created resource');
@@ -82,9 +140,8 @@ sub send_report {
 }
 
 ##
-## finds the config file in /etc/funtoo-report.conf and loads its contents
-## into a hash and returns it
-#
+## finds the config file in and loads its contents into a hash and returns it
+##
 sub user_config {
     my $args = shift;
     my %hash;
@@ -106,16 +163,11 @@ sub user_config {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
                 $hash{$key} = $value;
             }
-
-            # skip the empty lines also
-            else {
-                next;
-            }
         }
     }
     elsif ( $args and ( $args eq 'new' ) ) {
 
-        # if we arrived here due to config-update() and there isn't
+        # if we arrived here due to update-config() and there isn't
         # a config file then we return a UUID without editing the file
         $hash{'UUID'} = 'none';
         return;
@@ -128,7 +180,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report config-update' \n\n";
+            "To generate a new configuration file use 'funtoo-report --update-config' \n\n";
         exit;
     }
 
@@ -139,8 +191,7 @@ sub user_config {
 ## prompts user as it generates settings for a new config file
 ## ensures all new possibilities are in the config file from previous
 ## versions, etc.
-#
-sub config_update {
+sub update_config {
 
     # check for existing config
     my %old_config = user_config('new');
@@ -166,14 +217,8 @@ sub config_update {
     $new_config{'boot-dir-info'}
         = get_y_or_n('Report available kernels in /boot ?');
 
-    $new_config{'version-info'}
-        = get_y_or_n('Report versions of key system softwares?');
-
     $new_config{'installed-pkgs'}
         = get_y_or_n('Report all packages installed on the system?');
-
-    $new_config{'world-info'}
-        = get_y_or_n('Report the contents of your world file?');
 
     $new_config{'profile-info'}
         = get_y_or_n('Report the output of "epro show-json"?');
@@ -184,35 +229,38 @@ sub config_update {
     $new_config{'hardware-info'}
         = get_y_or_n('Report information about your hardware and drivers?');
 
-    # let's create or replace /etc/funtoo-report.conf
-    print "Creating or replacing /etc/funtoo-report.conf\n";
+    # let's create or replace the configuration file
+    my $timestamp = localtime;
+    print "Creating or replacing $config_file\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
         or croak "Could not open $config_file: $ERRNO\n";
-    foreach my $key ( keys %new_config ) {
-        print $fh "$key" . ":" . "$new_config{$key}\n";
+    printf {$fh} "# Generated on %s for v%s of funtoo-report\n", $timestamp,
+        $VERSION;
+    foreach my $key ( sort keys %new_config ) {
+        print {$fh} "$key:$new_config{$key}\n";
     }
     close $fh;
 
 }
 
 ##
-## adds a uuid to /etc/funtoo-report.conf and/or returns it as a string
+## adds a uuid to the config file and/or returns it as a string
 ##
 sub add_uuid {
 
     my $arg = shift;
 
     # lets just get a random identifier from the system or die trying
-    open( my $fh, '<', '/proc/sys/kernel/random/uuid' )
+    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
         or croak
         "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-    my $UUID = <$fh>;
+    my $UUID = <$ufh>;
     chomp $UUID;
-    close $fh;
+    close $ufh;
 
     # if we recieved the 'new' argument then we just want to return
     # the UUID without modifying the file. i.e. we came here from the
-    # config-update function
+    # update-config function
     if ( $arg and ( $arg eq 'new' ) ) {
         return $UUID;
     }
@@ -220,11 +268,10 @@ sub add_uuid {
 
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
-        open( $fh, '>>', $config_file )
+        open( my $cfh, '>>', $config_file )
             or croak "Unable to append to $config_file: $ERRNO\n";
-        print $fh "\n# A unique identifier for this reporting machine \n";
-        print $fh "UUID:$UUID\n";
-        close $fh;
+        print {$cfh} "UUID:$UUID\n";
+        close $cfh;
     }
     return $UUID;
 }
@@ -249,36 +296,24 @@ sub errors {
 ##
 ## with special date formatting by request
 sub report_time {
-    my $format  = shift;
+    my $format    = shift;
+    my $t         = gmtime;
+    my $short_fmt = $t->date;
+    $short_fmt =~ s/-/\./g;
     my %formats = (
 
         # ISO8601 date and time with UTC timezone suffix "Z"
         # e.g. 2018-03-09T22:37:09Z
-        long => sub {
-            my @t    = @_;
-            my $year = $t[5] + 1900;
-            my $mon  = $t[4] + 1;
-            my $day  = $t[3];
-            my $hour = $t[2];
-            my $min  = $t[1];
-            my $sec  = $t[0];
-            return sprintf '%04u-%02u-%02uT%02u:%02u:%02uZ',
-                $year, $mon, $day, $hour, $min, $sec;
-        },
+        long => $t->datetime . 'Z',
 
-        # year and week number in UTC with static "funtoo" prefix
-        # e.g. funtoo-2018.49
-        short => sub {
-            my @t    = @_;
-            my $year = $t[5] + 1900;
-            my $week = ceil( ( $t[7] + 1 ) / 7 );
-            return sprintf 'funtoo-%04u.%02u', $year, $week;
-        },
+        # date with dots for elastic search
+        # e.g. 2018.03.18
+        short => $short_fmt,
 
     );
     exists $formats{$format}
         or do { push_error('Unable to determine the time'); return };
-    return $formats{$format}->(gmtime);
+    return $formats{$format};
 }
 
 ##
@@ -351,11 +386,8 @@ sub get_net_info {
     for my $device (@interfaces) {
         my ( $vendor_id, $device_id, $id_file );
 
-        # Create dummy entries for virtual devices and move on
+        # Ignore virtual devices
         if ( !-d "$interface_dir/$device/device/driver/module" ) {
-            $hash{$device}{'vendor'} = 'Virtual';
-            $hash{$device}{'device'} = 'Virtual device';
-            $hash{$device}{'driver'} = 'Virtual driver';
             next;
         }
 
@@ -438,60 +470,28 @@ sub get_net_info {
             }
         }
         close $fh;
-        $hash{$device}{'vendor'} = $vendor_name;
-        $hash{$device}{'device'} = $device_name;
-        $hash{$device}{'driver'} = $driver;
+        $hash{$device} = {
+            vendor => $vendor_name,
+            device => $device_name,
+            driver => $driver,
+        };
     }
     return \%hash;
 }
 
 ##
 ## fetching lsblk output
+## reconstructing the output to show a more flattened list
+## with only info that actually has value as a statistic
 ##
 sub get_filesystem_info {
-    my $hash;
-    if ( my $json_from_lsblk
-        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN`
-        )
-    {
-        $hash = decode_json($json_from_lsblk);
+    my %hash;
+    my $lsblk
+        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
+    my $lsblk_decoded = decode_json($lsblk);
 
-        # iterate through the block device tree, fixing it up a little so
-        # ElasticSearch can handle it; it doesn't like lists of objects, so we
-        # convert those to objects indexed by device name
-        my @stack = ( \$hash->{blockdevices} );
-        while ( my $list = pop @stack ) {
-
-            # start hash to replace the list
-            my %rep;
-
-            # iterate through the list
-            for my $dev ( @{ ${$list} } ) {
-
-                # coerce device's size to a number
-                $dev->{size} += 0;
-
-                # put this device into the replacement hashref by name
-                $rep{ $dev->{name} } = $dev;
-
-             # if this device has a list of children, push a reference to that
-             # list onto the stack for the next round
-                if ( defined $dev->{children} ) {
-                    push @stack, \$dev->{children};
-                }
-            }
-
-            # run replacement
-            ${$list} = \%rep;
-        }
-    }
-    else {
-        push_error(
-            "Unable to retrieve output from lsblk --bytes --json -o NAME,FSTYPE,SIZE,MOUNTPOINT,PARTTYPE,RM,HOTPLUG,TRAN: $ERRNO"
-        );
-        return;
-    }
-    return $hash;
+    fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
+    return \%hash;
 }
 
 ##
@@ -534,7 +534,6 @@ sub get_cpu_info {
                     # including logical and physical cores
                     $proc_count = $proc_count + 1;
                 }
-                else {next}
             }
         }
     }
@@ -574,7 +573,10 @@ sub get_mem_info {
 
             # if there's a hash bucket waiting for this value, add it
             exists $hash{$key} or next;
-            $hash{$key} = int $value;
+
+            # Convert the size from KB to GB
+            $hash{$key} = sprintf '%.2f', ($value) / ( 1024**2 );
+            $hash{$key} += 0;
         }
     }
     else {
@@ -660,7 +662,8 @@ sub get_chassis_info {
 sub get_profile_info {
 
     # execute 'epro show-json' and capture its output
-    if ( my $json_from_epro = `epro show-json` ) {
+    my $epro = 'epro show-json';
+    if ( my $json_from_epro = `$epro` ) {
         my %profiles;
         my %sorted;
 
@@ -680,7 +683,7 @@ sub get_profile_info {
         return \%sorted;
     }
     else {
-        push_error("Unable to retrieve epro show-json output: $ERRNO");
+        push_error("Unable to retrieve output from $epro: $ERRNO");
         return;
     }
 }
@@ -707,7 +710,7 @@ sub get_kit_info {
 
         # let's define our hash keys from the array found in this file
         foreach my $key ( @{ $meta_data->{"kit_order"} } ) {
-            $hash{$key} = "undef";
+            $hash{$key} = undef;
         }
     }
     else {
@@ -742,7 +745,7 @@ sub get_kit_info {
     # now let's finish filling out our hash with default settings
     # anywhere it is undef
     foreach my $key ( keys %hash ) {
-        if ( $hash{$key} eq "undef" ) {
+        if ( !defined $hash{$key} ) {
             $hash{$key} = $meta_data->{kit_settings}{$key}{default};
         }
     }
@@ -754,45 +757,20 @@ sub get_kit_info {
 ##
 sub get_kernel_info {
 
-    my $directory = '/proc/sys/kernel';
+    my @keys = qw( osrelease ostype version );
     my %hash;
-    my @dir_contents;
 
-    # pulling relevant info from /proc/sys/kernel
-    if ( opendir( DIR, $directory ) ) {
-        @dir_contents = readdir(DIR);
-        closedir(DIR);
-
-        # let's search the directory tree and find the files we want
-        foreach my $file (@dir_contents) {
-            next unless ( -f "$directory/$file" );    #only want files
-
-            # could be easy to add another file here
-            if (   ( $file eq 'ostype' )
-                or ( $file eq 'osrelease' )
-                or ( $file eq 'version' ) )
-            {
-                # let's open the file we found and get its contents
-                if ( open( my $fh, '<:encoding(UTF-8)', "$directory/$file" ) )
-                {
-
-                 # just want the first line (there shouldn't be anything else)
-                    my $row = <$fh>;
-                    close $fh;
-                    chomp $row;
-                    $hash{$file} = $row;
-                }
-                else {
-                    push_error("Could not open file $file: $ERRNO");
-                    return;
-                }
-            }
+    for my $fn (@keys) {
+        if ( open my $fh, '<:encoding(UTF-8)', "/proc/sys/kernel/$fn" ) {
+            chomp( $hash{$fn} = <$fh> );
+            close $fh;
+        }
+        else {
+            push_error("Could not open file $fn: $ERRNO");
+            return;
         }
     }
-    else {
-        push_error("Could not open directory $directory: $ERRNO");
-        return;
-    }
+
     return \%hash;
 }
 
@@ -805,8 +783,8 @@ sub get_boot_dir_info {
     my @kernel_list;
 
     # pulling list of kernels in /boot
-    if ( opendir( DIR, $boot_dir ) ) {
-        foreach my $file ( readdir(DIR) ) {
+    if ( opendir( my $dh, $boot_dir ) ) {
+        foreach my $file ( readdir($dh) ) {
             next unless ( -f "$boot_dir/$file" );    #only want files
             chomp $file;
 
@@ -816,39 +794,14 @@ sub get_boot_dir_info {
                 push @kernel_list, $file;
             }
         }
+        closedir($dh);
     }
     else {
         push_error("Cannot open directory $boot_dir, $ERRNO");
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
-    closedir(DIR);
     return \%hash;
-}
-
-##
-## fetching contents of /var/lib/portage/world
-##
-sub get_world_info {
-
-    my @world_array;
-    my %hash;
-    my $world_file = '/var/lib/portage/world';
-    my $parent     = ( caller 1 )[3];
-    open my $fh, '<', $world_file
-        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
-    while (<$fh>) {
-        chomp;
-        push @world_array, $_;
-    }
-    close $fh;
-
-    # If being called from get_all_installed_pkg(), return the list of
-    # packages, otherwise create the hashes
-    if ( defined $parent && $parent =~ /get_all_installed_pkg/xms ) {
-        return @world_array;
-    }
-    return \@world_array;
 }
 
 ##
@@ -860,18 +813,19 @@ sub get_all_installed_pkg {
     my @world;
     my $db_dir     = '/var/db/pkg';
     my $world_file = '/var/lib/portage/world';
-    my $parent     = ( caller 1 )[3];
 
     # Get a list of the world packages
-    @world = get_world_info();
+    open my $fh, '<', $world_file
+        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
+    @world = <$fh>;
+    close $fh;
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
         or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
-            opendir my $dh2,       "$db_dir/$cat"
-                or opendir my $dh, $db_dir
+            opendir my $dh2, "$db_dir/$cat"
                 or do { push_error("Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
@@ -882,93 +836,23 @@ sub get_all_installed_pkg {
         }
     }
 
-# If being called from get_version_info(), return the list of packages, otherwise continue
-    if ( defined $parent && $parent =~ /get_version_info/xms ) {
-        return @all;
-    }
-
-    # Create the miscellaneous hash. Do so using List::Util's "any" since grep
-    # doesn't short-circuit after a successful match.
+   # Create the world and miscellaneous hashes. Do so using List::Util's "any"
+   # since grep doesn't short-circuit after a successful match.
     for my $line (@all) {
-        push @{ $hash{'pkgs'} }, $line;
-    }
-    $hash{'pkg-count'} = scalar @all;
-    return \%hash;
-}
+        my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
+        if ( any {/\Q$pkg\E/xms} @world ) {
+            push @{ $hash{pkgs}{world}{$pkg} }, $version;
 
-##
-## fetching versions of key softwares
-##
-sub get_version_info {
-
-    my @all = get_all_installed_pkg();
-    my %hash;
-
-   # specify which ebuilds to look at; use a "version" of "undef" for a single
-   # version value, and a hashref "[]" for a list of version values
-    my %ebuilds = (
-        portage => {
-            kit     => 'sys-apps',
-            version => undef,
-            section => 'portage version',
-        },
-        ego => {
-            kit     => 'app-admin',
-            version => undef,
-            section => 'ego version',
-        },
-        python => {
-            kit     => 'dev-lang',
-            version => [],
-            section => 'python versions',
-        },
-        gcc => {
-            kit     => 'sys-devel',
-            version => [],
-            section => 'gcc versions',
-        },
-        glibc => {
-            kit     => 'sys-libs',
-            version => [],
-            section => 'glibc versions',
-        },
-    );
-
-    # iterate through the ebuilds hash to fill out the result hash
-
-    for my $name ( keys %ebuilds ) {
-        my $ebuild = $ebuilds{$name};
-
-        # define a pattern for getting the version number of the ebuild from
-        # its directory name
-        my $pat = qr{
-            \Q$ebuild->{kit}/$name\E  # quoted ebuild name
-            -          # hyphen
-            (\d.*)     # string beginning with digit
-        }msx;
-
-        foreach my $entry (@all) {
-
-            # skip anything that doesn't match the version pattern
-            my ($version) = $entry =~ $pat or next;
-
-            # if the hash wants an array, push the version onto it and keep
-            # iterating
-            if ( ref $ebuild->{version} eq 'ARRAY' ) {
-                push @{ $ebuild->{version} }, $version;
-            }
-
-            # otherwise, just set the value to the version and end the loop
-            else {
-                $ebuild->{version} = $version;
-                last;
-            }
+            # Add a separate world-info section to make it easier to handle
+            # stats in ES.
+            push @{ $hash{'world-info'} }, "$pkg-$version";
         }
-
-        # tie in this section of the final report
-        $hash{ $ebuild->{section} } = $ebuild->{version};
+        else {
+            push @{ $hash{pkgs}{other}{$pkg} }, $version;
+        }
     }
-    ### %hash
+    $hash{'pkg-count-world'} = scalar @world;
+    $hash{'pkg-count-total'} = scalar @all;
     return \%hash;
 }
 
@@ -978,8 +862,8 @@ sub get_version_info {
 ##
 sub get_lspci {
     my %hash;
-    if ( my $lspci_output = `lspci -kmmvvv` ) {
-        my @hardware_list;
+    my $lspci = 'lspci -kmmvvv';
+    if ( my $lspci_output = `$lspci` ) {
         my @hw_item_section = split( /^\n/msx, $lspci_output );
 
         my %item;
@@ -1004,7 +888,7 @@ sub get_lspci {
         }
     }
     else {
-        push_error("Could not retrieve output from lspci -kmmvvv: $ERRNO");
+        push_error("Could not retrieve output from $lspci: $ERRNO");
         return;
     }
     return \%hash;
@@ -1036,7 +920,7 @@ sub get_y_or_n {
 }
 
 ## Accepts reportable errors, puts them
-## into a hash, and prints the error to
+## into an array, and prints the error to
 ## *STDERR
 sub push_error {
     my $error_message = shift;
@@ -1047,4 +931,363 @@ sub push_error {
     return;
 }
 
+## recursively crawls lsblk json output tree and modifies
+## the hash in-place whose reference is sent by the caller
+sub fs_recurse {
+    my $data_ref = shift;
+    my $hash_ref = shift;
+
+    foreach my $item ( @{$data_ref} ) {
+        if ( defined $item->{tran} ) {
+            $hash_ref->{"tran-types"}{ $item->{tran} } += 1;
+        }
+
+        # follow children recursively
+        if ( defined $item->{children} ) {
+            fs_recurse( \@{ $item->{children} }, $hash_ref );
+            next;
+        }
+
+        else {
+
+            # capture fstype as key and size as value, renaming nulls
+            if ( defined $item->{fstype} ) {
+
+                $hash_ref->{fstypes}{ $item->{fstype} }{'size'}
+                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
+                $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
+            }
+            else {
+                $hash_ref->{fstypes}{'unreported'}{'size'}
+                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
+                $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
+            }
+        }
+    }
+}
+
+# This gets called by send-report()
+# when a submission error is about the field limit
+# it will attempt to tell ES to increase the field limit by 1000
+sub fix_es_limit {
+    my $old_limit = shift;
+    my $es_url    = shift;
+    my $debug     = shift;
+
+    # create a json object to encode the message
+    my $new_json = JSON->new->allow_nonref;
+
+    # create a new HTTP object
+    my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $new_http = HTTP::Tiny->new( agent => $new_agent );
+
+    # determine the new field limit
+    my $new_limit = $old_limit + 1000;
+
+    if ($debug) {
+        print "\nAttempting to raise limit from $old_limit to $new_limit \n";
+    }
+
+    # creating new http options
+    my %new_header = ( "Content-Type" => "application/json" );
+    my %new_options = (
+        'content' => "{\"index.mapping.total_fields.limit\" : $new_limit}",
+        'headers' => \%new_header
+    );
+
+    # sending command to ES to raise limit
+    my $new_response = $new_http->request( 'PUT', $es_url, \%new_options );
+
+    if ($debug) {
+        print $new_response->{content} . "\n";
+    }
+
+    if ( $new_response->{success} ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
+
+=head1 VERSION
+
+Version 3.0.0
+
+=head1 DESCRIPTION
+
+This module contains functions to generate the sections of a report for Funtoo
+Linux, build the whole report, and send it to an ElasticSearch server.
+
+You almost certainly want to drive this using the C<funtoo-report> script,
+rather than importing it yourself.
+
+=head1 SYNOPSIS
+
+    use Funtoo::Report;
+    ...
+    my %report = Funtoo::Report::report_from_config;
+    ...
+    my %es_config = (
+        node  => 'https://es.host.funtoo.org:9200',
+        index => Funtoo::Report::report_time('short'),
+        type  => 'report'
+    );
+    Funtoo::Report::send_report(\%report, \%es_config, $debug);
+
+=head1 SUBROUTINES/METHODS
+
+=over 4
+
+=item C<add_uuid>
+
+Adds a UUID to the config file and/or returns it as a string. Can exit with
+failure if unable to read C</proc/sys/kernel/random/uuid> or the config file.
+
+=item C<errors>
+
+Returns a reference to the @errors array. See also L</push_errors>, which is
+used to manipulate this array.
+
+=item C<fix_es_limit>
+
+Used by L</send_report> when a submission error is received about the field
+limit. Calling it will make an attempt to tell the ElasticSearch server to
+increase the field limit by 1,000. Returns 1 if successful, 0 otherwise.
+
+=item C<fs_recurse>
+
+Recursively crawls supplied C<lsblk> JSON output, modifying the main hash
+in-place with whose reference is sent by the caller. No return value. Used by
+L</get_filesystem_info>.
+
+=item C<get_all_installed_pkg>
+
+Returns the full list of installed packages as a hash, separated into "world"
+and "misc" sections containing the packages as well as their count.
+Additionally, reports the contents of the "world" file as a separate, redundant
+section for ease of parsing in ElasticSearch. Uses L</push_errors> for error
+reporting.
+
+=item C<get_boot_dir_info>
+
+Finds kernel files in /boot. Returns the list of files found as part of the
+main hash. Uses L</push_errors> for error reporting. Valid file names are
+expected to begin with "kernel", "vmlinuz", or "bzImage".
+
+=item C<get_chassis_info>
+
+Returns information about the system chassis as a hash. Uses L</push_errors>
+for error reporting. Used by L</get_hardware_info>.
+
+=item C<get_cpu_info>
+
+Returns information about the CPU as a hash. Uses L</push_errors> for error
+reporting. Used by L</get_hardware_info>.
+
+=item C<get_filesystem_info>
+
+Returns C<lsblk> output as a hash. Reconstructs the output to show a more
+flattened list containing only information deemed statistically valuable. Uses
+L</push_error> for error reporting. Makes use of L</fs_recurse> and is used by
+L</get_hardware_info>.
+
+=item C<get_hardware_info>
+
+Returns information about the hardware using several other subs (L</get_lspci>,
+L</get_net_info>, L</get_filesystem_info>, L</get_cpu_info>, L</get_mem_info>,
+L</get_chassis_info>) as a hash. Uses L</push_errors> for error reporting.
+
+=item C<get_kernel_info>
+
+Returns information about the currently running kernel as part of the main
+hash. Uses L</push_errors> for error reporting.
+
+=item C<get_kit_info>
+
+Returns active kits as a hash. Uses L</push_errors> for error reporting.
+
+=item C<get_lspci>
+
+Returns massaged hardware information via C<lspci> as a hash. Used by
+L</get_hardware_info>. Uses L</push_errors> for error reporting.
+
+=item C<get_mem_info>
+
+Returns information about system memory as a hash. Uses L</push_errors> for
+error reporting.
+
+=item C<get_net_info>
+
+Returns information about network devices as a hash. Uses L</push_errors> for
+error reporting. Used by L</get_hardware_info>.
+
+=item C<get_profile_info>
+
+Returns active profiles as reported by C<epro> as a hash. Uses L</push_errors>
+for error reporting.
+
+=item C<get_y_or_n>
+
+Accepts a string as a question. Returns "y" or "n" based on the answer,
+defaulting to "y" if nothing is provided. Repeats the question until valid
+input is received. Used by L</update_config>.
+
+=item C<push_error>
+
+Accepts reportable errors, puts them into an array (@errors), and prints the
+error to STDERR. See also L</errors>.
+
+=item C<report_time>
+
+Returns a long date string for the report body or a string that is like
+"funtoo-year.week" that is suitable for ElasticSearch historical data
+management. Accepts "long" or "short" as input, which determines the output.
+
+=item C<send_report>
+
+Generates the report, creates a user agent, and sends it to the ElasticSearch
+server. Uses L</push_errors> for error reporting.
+
+=item C<update_config>
+
+Retrieves the UUID from the config file if present, and then prompts the user
+as it generates settings for a new config file via L</get_y_or_n>. Inserts a
+comment containing a timestamp and the version of funtoo-report used to create
+the configuration. Can exit with failure if unable to read the config file.
+
+=item C<user_config>
+
+Parses the config file, returning the results as a hash. Can exit if unable to
+read the config file.
+
+=item C<version>
+
+Returns $VERSION.
+
+=back
+
+=head1 DIAGNOSTICS
+
+This section to be completed. The module emits very many error messages that
+should hopefully be at least partly self-explanatory.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+The configuration file is required and can be generated with C<funtoo-report>'s
+C<--update-config> option (recommended). Its default location is
+C</etc/funtoo-report.conf>.
+
+=head1 DEPENDENCIES
+
+=over 4
+
+=item *
+
+Perl v5.14.0 or newer
+
+=item *
+
+L<Carp>
+
+=item *
+
+L<English>
+
+=item *
+
+L<HTTP::Tiny>
+
+=item *
+
+L<IO::Socket::SSL> v1.56 or newer
+
+=item *
+
+L<JSON>
+
+=item *
+
+L<List::Util> v1.33 or newer
+
+=item *
+
+L<Net::SSLeay> v1.49 or newer
+
+=item *
+
+L<Term::ANSIColor>
+
+=item *
+
+L<Time::Piece>
+
+=back
+
+=head1 INCOMPATIBILITIES
+
+This module is almost certainly only useful on a Funtoo computer.
+
+=head1 BUGS AND LIMITATIONS
+
+Definitely. To report bugs or make feature requests, please raise an issue on
+GitHub at L<https://github.com/haxmeister/funtoo-reporter>.
+
+=head1 AUTHOR
+
+The Funtoo::Report development team:
+
+=over 4
+
+=item *
+
+Joshua Day C<< <haxmeister@hotmail.com> >>
+
+=item *
+
+Palica C<< <palica@cupka.name> >>
+
+=item *
+
+ShadowM00n C<< <shadowm00n@airmail.cc> >>
+
+=item *
+
+Tom Ryder C<< <tom@sanctum.geek.nz> >>
+
+=back
+
+=head1 LICENSE AND COPYRIGHT
+
+MIT License
+
+Copyright (c) 2018 Haxmeister
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=cut
