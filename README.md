@@ -1,4 +1,4 @@
-# Funtoo-Report - v3.0.0-beta ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=develop "Build test badge")
+# Funtoo-Report - v3.0.0 ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=master "Build test badge")
 
 ###### Anonymous reporting tool for Funtoo Linux
 
@@ -18,23 +18,24 @@ system files. Use the method most appropriate on your system**
 ```
 Funtoo anonymous data reporting tool usage:
 
-funtoo-report --config         Specify path to config file
-funtoo-report --update-config  Interactively updates the config file
-funtoo-report --list-config    Lists the current configuration file's settings
-funtoo-report --show-json      Shows the JSON report
-funtoo-report --send           Sends the JSON report
-funtoo-report --debug          Enables additional debug output
-funtoo-report --verbose        Enables non-error output when sending
-funtoo-report --help           Display this help text
-funtoo-report --version        Prints the version and exits
+funtoo-report
+              -c, --config        Specify path to config file
+              -u, --update-config Interactively updates the config file
+              -l, --list-config   Lists the current configuration file's settings
+              -j, --show-json     Shows the JSON report
+              -s, --send          Sends the JSON report
+              -d, --debug         Enables additional debug output
+              -v, --verbose       Enables non-error output when sending
+              -h, --help          Display this help text
+              -V, --version       Prints the version and exits
 
 Output can be omitted by modifying the config file (default `/etc/funtoo-report.conf`):
 ```
-**help shows you the same output:**
+**The --help option shows you the same output:**
 
 'funtoo-report --help'
 
-**version shows you the script and module version numbers; ideally they should match:**
+**The --version option shows you the script and module version numbers; ideally they should match:**
 
 'funtoo-report --version'
 
@@ -56,7 +57,7 @@ To generate a new configuration file use 'funtoo-report --update-config'
 
 'funtoo-report --update-config'
 
-**You can send your report to the elastic search database using the send option which can return a link to the data if successful in conjunction with --verbose:**
+**You can send your report to the Elasticsearch database using the send option which can return a link to the data if successful in conjunction with --verbose:**
 
 'funtoo-report --send [--verbose]'
 
@@ -77,7 +78,7 @@ ignored if they do not match any expected setting. You can manually change the
 settings from 'y' to 'n' to disable a particular category. Using the show-json
 option, you can confirm that this portion of the report is not being output,
 since the show-json option actually shows exactly what is reported to
-elasticsearch.
+Elasticsearch.
 
 **Here is an example of all possible values in the config file**
 
@@ -105,7 +106,7 @@ profile-info:y
 # extracted from ego kit show
 kit-info:y
 
-# To report all installed packages (takes a few secs)
+# To report all installed packages
 installed-pkgs:y
 
 # To report hardware info as is typical from lspci
