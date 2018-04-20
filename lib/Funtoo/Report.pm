@@ -136,13 +136,11 @@ sub send_report {
             print "your report can be seen at: "
                 . $es_conf->{'node'}
                 . $response->{'headers'}{'location'} . "\n";
-            print "Execution time: ".sprintf("%.4f", (gettimeofday - $start_time)*1000)." \n";
         }
     }
     else {
         push_error('Expected location for created resource');
     }
-
 }
 
 ##
@@ -292,7 +290,7 @@ sub version {
 }
 
 ##
-##
+## returns hash of times and also a total of them all
 ##
 sub timer {
     my $total;
