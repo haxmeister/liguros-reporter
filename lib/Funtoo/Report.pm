@@ -15,7 +15,7 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 use Time::HiRes qw(gettimeofday);                   #core
 
-our $VERSION = '3.0.0';
+our $VERSION = '3.0.0-alpha';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -135,7 +135,7 @@ sub send_report {
             print "your report can be seen at: "
                 . $es_conf->{'node'}
                 . $response->{'headers'}{'location'} . "\n";
-            print "Execution time: ".sprintf("%.4f", (gettimeofday - $start_time))." \n";
+            print "Execution time: ".sprintf("%.4f", (gettimeofday - $start_time)*1000)." \n";
         }
     }
     else {
@@ -279,7 +279,7 @@ sub add_uuid {
         print {$cfh} "UUID:$UUID\n";
         close $cfh;
     }
-    $timers{'add_uuid'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'add_uuid'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return $UUID;
 }
 
@@ -373,7 +373,7 @@ sub get_hardware_info {
     # fetching chassis info
     $hash{'chassis'} = get_chassis_info();
 
-    $timers{'get_hardware_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_hardware_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -496,7 +496,7 @@ sub get_net_info {
             driver => $driver,
         };
     }
-    $timers{'get_net_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_net_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -513,7 +513,7 @@ sub get_filesystem_info {
     my $lsblk_decoded = decode_json($lsblk);
 
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
-    $timers{'get_filesystem_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_filesystem_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -568,7 +568,7 @@ sub get_cpu_info {
         return;
     }
     $hash{"processors"} = $proc_count;
-    $timers{'get_cpu_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_cpu_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -609,7 +609,7 @@ sub get_mem_info {
         push_error("Could not open file $mem_file: $ERRNO");
         return;
     }
-    $timers{'get_mem_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_mem_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -679,7 +679,7 @@ sub get_chassis_info {
             $hash{$file} = $possible_id[0];
         }
     }
-    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 
 }
@@ -709,7 +709,7 @@ sub get_profile_info {
                 }
             }
         }
-        $timers{'get_profile_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+        $timers{'get_profile_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
         return \%sorted;
     }
     else {
@@ -779,7 +779,7 @@ sub get_kit_info {
             $hash{$key} = $meta_data->{kit_settings}{$key}{default};
         }
     }
-    $timers{'get_kit_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_kit_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -801,7 +801,7 @@ sub get_kernel_info {
             return;
         }
     }
-    $timers{'get_kernel_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_kernel_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -833,7 +833,7 @@ sub get_boot_dir_info {
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
-    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -887,7 +887,7 @@ sub get_all_installed_pkg {
     }
     $hash{'pkg-count-world'} = scalar @world;
     $hash{'pkg-count-total'} = scalar @all;
-    $timers{'get_all_installed_pkg'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_all_installed_pkg'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -927,7 +927,7 @@ sub get_lspci {
         push_error("Could not retrieve output from $lspci: $ERRNO");
         return;
     }
-    $timers{'get_lspci'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'get_lspci'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
     return \%hash;
 }
 
@@ -1039,7 +1039,7 @@ sub fix_es_limit {
     if ($debug) {
         print $new_response->{content} . "\n";
     }
-    $timers{'fix_es_limit'} = sprintf("%.4f", (gettimeofday - $start_time));
+    $timers{'fix_es_limit'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
 
     if ( $new_response->{success} ) {
         return 1;
