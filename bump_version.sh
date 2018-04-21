@@ -37,7 +37,7 @@ read_version() {
 
 write_version() {
     echo "$file_names" | \
-        while IFS="$'\n'" read -r file;
+        while read -r file;
         do
             echo "Bumping $file ..."
 
