@@ -145,6 +145,9 @@ sub report_from_config {
     #
     $hash{'funtoo-report'}{'errors'} = Funtoo::Report::errors();
 
+    ## adding timers to report
+    $hash{'execution-timers'} = Funtoo::Report::timer();
+
     return %hash;
 }
 
