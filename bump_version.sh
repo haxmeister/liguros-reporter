@@ -85,21 +85,10 @@ write_version() {
             ;;
     esac
 
-    case "$2" in
-        alpha)
-            stage='-alpha'
-            ;;
-        beta)
-            stage='-beta'
-            ;;
-        rc)
-            stage='-rc'
-            ;;
-        "")
-            ;;
-        *)
-            usage
-            ;;
+    case $2 in
+        alpha|beta|rc) stage="-$2" ;;
+        '') ;;
+        *) usage ;;
     esac
 
     echo "Funtoo::Report updating $version -> $major$minor$patch$stage"
