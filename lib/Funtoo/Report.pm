@@ -14,7 +14,7 @@ use List::Util qw(any);            #core
 use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 
-our $VERSION = '3.0.0-beta';
+our $VERSION = '3.1.0-beta';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -149,6 +149,10 @@ sub user_config {
     if ( open( my $fh, '<:encoding(UTF-8)', $config_file ) ) {
         my @lines = <$fh>;
         close $fh;
+
+        my @known_options
+            = qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info);
+
         foreach my $line (@lines) {
             chomp $line;
 
@@ -159,9 +163,24 @@ sub user_config {
 
             # split the line on the colon
             # left side becomes a key, right side a value
+            # then check that it's a known option...
             elsif ($line) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
-                $hash{$key} = $value;
+                if ( any { $_ eq $key } @known_options ) {
+                    $hash{$key} = $value;
+                }
+                else {
+                    die
+                        "Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
+                }
+            }
+        }
+
+        # ...and that all the options are present
+        for my $option (@known_options) {
+            if ( !exists $hash{$option} ) {
+                die
+                    "Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
             }
         }
     }
@@ -1021,7 +1040,7 @@ Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
 
 =head1 VERSION
 
-Version 3.0.0-beta
+Version 3.1.0-beta
 
 =head1 DESCRIPTION
 
@@ -1168,7 +1187,8 @@ the configuration. Can exit with failure if unable to read the config file.
 =item C<user_config>
 
 Parses the config file, returning the results as a hash. Can exit if unable to
-read the config file.
+read the config file, if the detected options are not in the list of known-good
+options, or if known-good options are misisng.
 
 =item C<version>
 
