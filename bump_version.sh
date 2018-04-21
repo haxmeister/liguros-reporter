@@ -36,7 +36,7 @@ read_version() {
 }
 
 write_version() {
-    echo "$file_names" | awk -F/ '{if (!seen[$NF]++) print }' | \
+    echo "$file_names" | \
         while IFS="$'\n'" read -r file;
         do
             echo "Bumping $file ..."
