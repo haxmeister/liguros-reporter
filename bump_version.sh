@@ -53,7 +53,7 @@ write_version() {
 
     read_version
 
-    if [ "$version" = "" ]
+    if [ -z "$version" ]
     then
         echo "ERROR: couldn't parse version string from git tags."
         exit 1
