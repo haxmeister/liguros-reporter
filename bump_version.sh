@@ -3,14 +3,14 @@
 # bump-version.sh - update the versions in our project
 
 path=$(cd "$(dirname "$0")" && pwd)
-file_names="funtoo-report
+file_names='funtoo-report
 lib/Funtoo/Report.pm
-README.md"
-version=""
+README.md'
+version=
 major=0
 minor=0
 patch=0
-stage=""
+stage=
 
 usage() {
     echo "\
@@ -59,7 +59,7 @@ write_version() {
         exit 1
     fi
 
-    case "$1" in
+    case $1 in
         major)
             major=$((major+1))
             minor=.0
@@ -77,8 +77,8 @@ write_version() {
             ;;
         describe)
             major=$(git describe --tags | sed -e 's/v//')
-            minor=""
-            patch=""
+            minor=
+            patch=
             ;;
         *)
             usage
@@ -92,9 +92,9 @@ write_version() {
     esac
 
     echo "Funtoo::Report updating $version -> $major$minor$patch$stage"
-    echo "**************************************"
+    echo '**************************************'
 
     write_version
 
-    echo "--------------------------------------"
-    echo "done"
+    echo '--------------------------------------'
+    echo 'done'
