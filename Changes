@@ -14,7 +14,6 @@ Revision history for Funtoo-Report
  - Simplify an interpolated string
  - Adjust formatting and indent for a comment
  - Use actual undef, not string "undef" for hash work
- - Adjust formatting and indent for a comment
  - Add $VERSION to funtoo-reporter script
  - Add explicit package to funtoo-reporter script
  - Switch to development version and ELK settings
@@ -30,9 +29,7 @@ Revision history for Funtoo-Report
  - Remove autodie from Makefile.PL dependencies list
  - creating daily indexing for ES
  - Remove POSIX dependency
- - Perl::Tidy run over funtoo-report
  - Add 'version' arg to print script/module versions
- - Perl::Tidy run
  - Short-circuit submission if UUID is obviously bad
  - Mention required version for List::Util in POD
  - Added a function to check latest version in GIT
@@ -44,7 +41,6 @@ Revision history for Funtoo-Report
  - added version in index string
  - formatting date string for index
  - Removed the version check function and remnants
- - perltidy
  - Update Report.pm
  - Adjusted USAGE and finished Getopt integration
  - Remove previous cmd line with outdate opt format
@@ -53,7 +49,6 @@ Revision history for Funtoo-Report
  - Adjusted short option for config update in anticipation of
    alternative configuration option
  - Changed hard-coded http to https and bumped the version
- - Bump version in the other three places
  - Correct short letter for --config-update option
  - Update README.md to reflect new options syntax
  - Correct a spelling error in README.md
@@ -69,17 +64,12 @@ Revision history for Funtoo-Report
  - Update protocol URL in module POD
  - Combine dummy dev hash creation in get_net_info()
  - Combine hashref declaration in get_net_info()
- - Bump version number in module POD
  - Correct short --list-config: -n to -l
  - Add HTTP::Tiny HTTPS depends to module POD
  - Create .travis.yml
  - Alternative form of get_all_installed_pkg()
  - Removing apparently nonsensical line
- - Merge branch 'alternative-getall' of
-   https://github.com/haxmeister/funtoo-reporter into alternative-getall
- - Create .travis.yml
  - Add a separate world-info section
- - Preparing to merge to develop
  - Initial work on restructuring filesystem info
  - added device-count
  - adjusted to coerce numbers for filesystem sizes
@@ -87,35 +77,23 @@ Revision history for Funtoo-Report
  - minor device count modification #94
  - switched to a datastructure of totals
  - adapting for null fstypes found on my container
- - tweaks
  - cleaned up, good candidate issue #94
  - failures from null values fixed finally?
  - added size and count of fstypes #94
- - tweaks
- - tweaks again
- - Create .travis.yml
  - Convert filesystem and memory to GB
  - Add +=0 to coerce the new values to pure numbers instead of strings
  - #94 with renamed unreported and swapspace
- - Merge branch 'feature/filesystems' of
-   https://github.com/haxmeister/funtoo-reporter into
-   feature/filesystems
  - #94 restoring GB in meminfo
- - Preparing to merge to develop
  - changes in options
- - Minor corrections + perltidy
  - patching error from null fstypes that are not children
  - patch missing sigil
- - Ran perltidy
- - Update Report.pm
- - Adding first try to implement #102 - README.md and	POD version
+ - Adding first try to implement #102 - README.md and POD version
    update working - not working: bumping our $VERSION, please fix
  - #105 now recursive, should follow children and avoid null errors
  - Changed to pure shell, regexes working
  - Correcting usage to imply mandatory arguments
  - picking up nulls
  - Formatting for GB
- - Added support for alpha/beta/rc stages alongside normal bumps
  - Skips virtual devices as requested by #106
  - Add "describe" option as per request in #102
  - Fixing '.' in version output.
@@ -125,25 +103,19 @@ Revision history for Funtoo-Report
  - Updating documentation that references the ES URL
  - Updated URLs to make merging with develop easier
  - #107 field limit fix
- - #107 repairing merge mess
  - Add comment with version to config as per #112
  - set verbose output and clean up
- - Update Report.pm
  - Revert "Update Report.pm"
- - Update Report.pm
  - adding POD for new function
  - Perltidy + start of additional documentation
- - Bumping the version to 3.0.0 in preparation for new major release
 
 2.0.1	2018-03-21
 
  - Switch to HTTPS URL, add Makefile.PL depend spec
- - Bump version number
 
 2.0.0	2018-03-17
 
  - Normalized error-handling
- - Ran Report.pm and funtoo-report through perltidy
  - Removing old instance of autodie
  - Changed error-reporting to a flattened array
  - Added line numbers to @errors
@@ -157,23 +129,18 @@ Revision history for Funtoo-Report
    /etc/funtoo-report.conf
  - Update funtoo-report
  - simple error fix
- - Now shows sound card data issue #36 and ran perltidy
  - added video card data to hardware-info
  - hardware listings should no longer contain special chars issue #43
  - added filesystem information
  - Update Report.pm
  - added netowrk interface info per issue #37
  - removed extra hash layer in networking section
- - adding patches
- - more patches
- - patching again
  - get_kit_info function no longer needs to parse ego output
  - Re-wrote get_y_or_n
  - Correct a hash key I accidentally made plural
  - Remove JSON substitutions in get_filesystem_info()
  - Translate block device arrayrefs to hashrefs
  - Replaced ES module with the core module HTTP::Tiny for issue #42
- - just a perltidy and remove extra lines
  - Add --bytes (-b) to lsblk call to get byte sizes
  - for issue #47 replaced array items with slot number hashes
  - combined hardware information into a complete structure issue #47
@@ -204,7 +171,6 @@ Revision history for Funtoo-Report
  - Add three more dependencies to Makefile.PL
  - sending report now returns a URL to that data, also changed back the
    shebang to normal
- - Update README.md
  - just fixing credits
  - Add comments, examples for `report_time` formats
  - Use English variable names throughout module
@@ -222,7 +188,6 @@ Revision history for Funtoo-Report
  - Define a custom User-Agent for the HTTP submit
  - Adjust hash structure and error-handling
  - adjusting new function
- - test commit
  - Re-work get_all_installed_pkg, etc. for release
  - switch to elk instead of elk2
  - tweaking data structure for original ES
@@ -233,8 +198,6 @@ Revision history for Funtoo-Report
  - Trivial comment fixes
  - Make comment refs to `lspci` calls consistent
  - Correct comment description of short date format
- - Update Report.pm
- - Update funtoo-report
 
 1.3	2018-02-18
 
@@ -260,16 +223,11 @@ Revision history for Funtoo-Report
    info
  - Rename README.txt to README.md
  - Update README.md
- - Update README.md
- - Update README.md
  - Added the full list of chassis possibilities from www.dmtf.org
    official provider of these docs
- - bump version to 1.2
  - update readme with install instructions for now
- - Update README.md
  - change layout of the project and add Funtoo:: before the Report
    module
- - Update Report.pm
  - add Makefile.PL and MANIFEST
  - commenting out use of lib folder as we will have it in our perl
    install
@@ -286,10 +244,8 @@ Revision history for Funtoo-Report
  - update Readme
  - Addressed issue #31, added dynamic index name by date and fancy date
    format for the report body
- - Update README.md
  - Update funtoo-report
  - added leading 0 to timestamp
  - fix for offset when GMT+x
- - Update funtoo-report
  - remove CPAN ref
  - fix typo in glibc version
