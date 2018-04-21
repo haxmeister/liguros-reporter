@@ -113,6 +113,13 @@ installed-pkgs:y
 hardware-info:y
 ```
 
+### Shell completion
+
+Options completion for GNU bash is available in
+`share/bash-completion/funtoo-report.bash`:
+
+    bash$ source share/bash-completion/funtoo-report.bash
+
 ### Uninstall
 We are sorry to see you go!
 
