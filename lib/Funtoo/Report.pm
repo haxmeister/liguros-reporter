@@ -15,7 +15,7 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 use Time::HiRes qw(gettimeofday);                   #core
 
-our $VERSION = '3.0.0-alpha';
+our $VERSION = '3.1.0-alpha';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
