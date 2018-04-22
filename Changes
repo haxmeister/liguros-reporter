@@ -110,8 +110,8 @@ Revision history for Funtoo-Report
  - Perltidy + start of additional documentation
 
 2.0.1	2018-03-21
-
- - Switch to HTTPS URL, add Makefile.PL depend spec
+  Bug fixes:
+    - Switch to HTTPS URL, add Makefile.PL depend spec
 
 2.0.0	2018-03-17
 
@@ -120,132 +120,72 @@ Revision history for Funtoo-Report
  - Changed error-reporting to a flattened array
  - Added line numbers to @errors
  - Relocating errors to the funtoo-report hash
- - Update README.md
- - Update Report.pm
 
 1.4	2018-03-17
+  Breaking changes:
+    - moving /etc/report.conf => /etc/funtoo-report.conf
+    - cpu-info, mem-info, chassis-info, filesystem-info, networking-info combined into hardware-info (backend)
+    - Coerce numeric types for block device sizes (backend)
 
- - For issue #27 now generates a conf and also is converted to use
-   /etc/funtoo-report.conf
- - Update funtoo-report
- - simple error fix
- - added video card data to hardware-info
- - hardware listings should no longer contain special chars issue #43
- - added filesystem information
- - Update Report.pm
- - added netowrk interface info per issue #37
- - removed extra hash layer in networking section
- - get_kit_info function no longer needs to parse ego output
- - Re-wrote get_y_or_n
- - Correct a hash key I accidentally made plural
- - Remove JSON substitutions in get_filesystem_info()
- - Translate block device arrayrefs to hashrefs
- - Replaced ES module with the core module HTTP::Tiny for issue #42
- - Add --bytes (-b) to lsblk call to get byte sizes
- - for issue #47 replaced array items with slot number hashes
- - combined hardware information into a complete structure issue #47
- - Update README.md
- - Correct formatting error in `equery` output
- - Rewrite report_time() with UTC everywhere
- - Specify imported functions for `POSIX` module
- - Date format correction
- - Don't retrieve lspci output on module load
- - Factor out arrayref transform into separate sub
- - Correct a comment about traversal type
- - Coerce numeric types for block device sizes
- - Remove unneeded parens
- - Replace `transform_es_arrayref` with simple method
- - with code to reveal the response from ES
- - Add trail comma to last line of Makefile.PL args
- - Add binscript to Makefile.PL EXE_FILES
- - Ignore Makefile.PL build artifacts
- - Use magic #!perl shebang for binscript
- - Ignore some `make` artifact files
- - Remove `use lib` from binscript
- - Add version, strict, and warnings to Makefile.PL
- - Ignore built distribution tarballs
- - Specify minimum Perl of v5.14
- - Specify module dependencies in Makefile.PL
- - Ignore old Makefiles
- - Remove comment referring to removed module
- - Add three more dependencies to Makefile.PL
- - sending report now returns a URL to that data, also changed back the
-   shebang to normal
- - just fixing credits
- - Add comments, examples for `report_time` formats
- - Use English variable names throughout module
- - Promote `Carp` import to package scope
- - Realign `use` comments
- - Remove unneeded sub exports
- - Re-work get_all_installed_pkg()
- - Add dependency on List::Util >=v1.33
- - Add some HTTP error handling and output
- - Add Getopt::Long with a --debug/-d flag
- - Skip package DB dirs beginning with -MERGING-
- - Lowercase a comment
- - Refactor script actions with dispatch table
- - added error section for issue #58
- - Define a custom User-Agent for the HTTP submit
- - Adjust hash structure and error-handling
- - adjusting new function
- - Re-work get_all_installed_pkg, etc. for release
- - switch to elk instead of elk2
- - tweaking data structure for original ES
- - Correct documented config file path
- - Correct and rewrap a mis-wrapped README paragraph
- - Correct another mis-wrapped README paragraph
- - Mention -d/--debug option in README.md
- - Trivial comment fixes
- - Make comment refs to `lspci` calls consistent
- - Correct comment description of short date format
+  Changes:
+  - replaced Search::Elasticsearch with HTTP::Tiny
+  - ability to update/generate configuration file
+  - added reporting on:
+    - sound cards
+    - video cards
+    - filesystem information
+      - expressed in bytes
+    - network cards
+  - configuration file generation - re-write of yes_or_no function
+  - translated block device arrayrefs to hashrefs
+  - report time now with UTC everywhere
+  - index name funtoo-2018-01 => funtoo-2018.01
+  - factor out arrayref transform into separate sub for filesystem-info
+  - replace `transform_es_arrayref` with simple method
+  - added code to reveal the response from ES
+  - expanded Makefile.PL to allow a full Perl dist, specified dependencies including minimum Perl version
+  - sending report now returns a URL to that data
+  - use English variable names throughout module
+  - added some HTTP error handling and output
+  - added Getopt::Long with a --debug/-d flag
+  - added error section in report
+  - defined a custom User-Agent for the HTTP submit
+  - adjusted hash structure and error-handling
 
-1.3	2018-02-18
+  Bug fixes:
+    - lots of small bugfixes in readme and comments
 
- - Delete README.md
- - Create README.txt
- - Update Report.pm
- - Update report
- - Added UUID, fixed config file fail safes
- - Fix profiles to remove shortname key
- - fixes cpu-info to show siblings instead of cores, numerical instead
-   of strings
- - removed /n from id
- - Added function to send the report, also shortened the config file
-   algorythm
- - no change
- - set cpu-info to count processors from file
- - now reporting world file again
- - datestamp is back
- - added versioning and removed trailing space from UUID
- - changing timestamp to epochtime in seconds
- - Just added some notes to make it easier to follow
- - added installed packages, added conf file generator, also chassis
-   info
- - Rename README.txt to README.md
- - Update README.md
- - Added the full list of chassis possibilities from www.dmtf.org
-   official provider of these docs
- - update readme with install instructions for now
- - change layout of the project and add Funtoo:: before the Report
-   module
- - add Makefile.PL and MANIFEST
- - commenting out use of lib folder as we will have it in our perl
-   install
- - forgot to rename file
- - update manifest
- - Updating README and preparing for release
- - update readme
- - changed help
- - moved UUID to the body of the report and changed ES header to report
-   a blank string as _ID
- - Added credits in comments
- - Create License
- - add LICENSE file once it gets added to the repo
- - update Readme
- - Addressed issue #31, added dynamic index name by date and fancy date
-   format for the report body
- - Update funtoo-report
- - added leading 0 to timestamp
- - fix for offset when GMT+x
- - remove CPAN ref
- - fix typo in glibc version
+1.3	2018-02-17
+  Breaking changes:
+    - changing the timestamp format (breaking change from the backend view)
+    - changing _type from user to report (backend)
+
+  Changes:
+    - changing report index to funtoo-yyyy-ww format
+
+  Bug fixes:
+    - fix typo in glibc version reporting
+
+1.2	2018-02-14
+  Breaking changes:
+    - changing layout of modules modules/Report.pm => lib/Funtoo/Report.pm
+    - renaming report file to funtoo-report
+
+  Changes:
+    - adding basic MANIFEST and Makefile.PL
+
+1.1	2018-01-23
+  - ability to show json data structure that would be submitted to the Elasticsearch instance
+  - a unique UUID random identifier is generated according to RFC4122
+  - timestamp is recorded as part of report
+  - the tool can generate info about:
+    - CPU, memory, running kernel, kernels in /boot directory (kernel, vmlinuz, bzImage)
+    - chassis info
+    - packages in @world set, Funtoo profiles, Funtoo kits
+    - all installed packages
+    - and is specifically reporting versions of:
+      - portage, ego, python, gcc, glibc
+    - funtoo-report version
+  - ability to send data reports to Elasticsearch instance
+  - configuration file for report sections
+  - ability to generate configuration file if none exists
