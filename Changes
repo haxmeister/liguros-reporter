@@ -2,112 +2,22 @@ Revision history for Funtoo-Report
 
 3.0.0	2018-04-19
 
- - Sort keys in generated configuration file
- - Make a few corrections to script leading comment
- - Use Time::Piece to massively simplify report_time
- - Place get_boot_dir_info() closedir more logically
- - Use lexical filehandles instead of barewords
- - Use arg unpack not repeated shift in send_report
- - Put lsblk command in variable to dedupe
- - Put lspci command in variable to dedupe
- - Put epro command in variable to dedupe
- - Simplify an interpolated string
- - Adjust formatting and indent for a comment
- - Use actual undef, not string "undef" for hash work
- - Add $VERSION to funtoo-reporter script
- - Add explicit package to funtoo-reporter script
- - Switch to development version and ELK settings
- - Remove two no-op else-next conditions
- - Remove unused @hardware_list variable
- - Use separate filehandles within add_uuid()
- - Reimplement get_kernel_info to read fewer files
- - Refactor get_mem_info to parse as we read
- - Use more idiomatic numeric coerce for memory vals
- - Add explicit close for meminfo filehandle
- - Add -dev suffix to README.md version
- - Add the beginnings of some POD documentation
- - Remove autodie from Makefile.PL dependencies list
- - creating daily indexing for ES
- - Remove POSIX dependency
- - Add 'version' arg to print script/module versions
- - Short-circuit submission if UUID is obviously bad
- - Mention required version for List::Util in POD
- - Added a function to check latest version in GIT
- - restored version number after testing
- - Add check-version option and modified other files to reflect this
-   change
- - now reporting to funtoo or fundev with version number in index
-   respectively
- - added version in index string
- - formatting date string for index
- - Removed the version check function and remnants
- - Update Report.pm
- - Adjusted USAGE and finished Getopt integration
- - Remove previous cmd line with outdate opt format
- - Correct typo
- - Amend POD detail to reflect new option invocation
- - Adjusted short option for config update in anticipation of
-   alternative configuration option
- - Changed hard-coded http to https and bumped the version
- - Correct short letter for --config-update option
- - Update README.md to reflect new options syntax
- - Correct a spelling error in README.md
- - Update reference to old --config-update subcommand
- - Allow specifying alt path to config file
- - Change option-handling and add priority levels
- - Added a quick check for extra invalid options
- - Specify Pod::Usage as a Makefile.PL dependency
- - Update README.md option docs from POD
- - Bring version numbers back into parallel
- - Update POD dependencies for script and module
- - Add Time::Piece dependency to Makefile.PL
- - Update protocol URL in module POD
- - Combine dummy dev hash creation in get_net_info()
- - Combine hashref declaration in get_net_info()
- - Correct short --list-config: -n to -l
- - Add HTTP::Tiny HTTPS depends to module POD
- - Create .travis.yml
- - Alternative form of get_all_installed_pkg()
- - Removing apparently nonsensical line
- - Add a separate world-info section
- - Initial work on restructuring filesystem info
- - added device-count
- - adjusted to coerce numbers for filesystem sizes
- - added tran type ... #94
- - minor device count modification #94
- - switched to a datastructure of totals
- - adapting for null fstypes found on my container
- - cleaned up, good candidate issue #94
- - failures from null values fixed finally?
- - added size and count of fstypes #94
- - Convert filesystem and memory to GB
- - Add +=0 to coerce the new values to pure numbers instead of strings
- - #94 with renamed unreported and swapspace
- - #94 restoring GB in meminfo
- - changes in options
- - patching error from null fstypes that are not children
- - patch missing sigil
- - Adding first try to implement #102 - README.md and POD version
-   update working - not working: bumping our $VERSION, please fix
- - #105 now recursive, should follow children and avoid null errors
- - Changed to pure shell, regexes working
- - Correcting usage to imply mandatory arguments
- - picking up nulls
- - Formatting for GB
- - Skips virtual devices as requested by #106
- - Add "describe" option as per request in #102
- - Fixing '.' in version output.
- - Added --verbose option as per #103
- - Updated README to reflect --verbose
- - changing address of ES
- - Updating documentation that references the ES URL
- - Updated URLs to make merging with develop easier
- - #107 field limit fix
- - Add comment with version to config as per #112
- - set verbose output and clean up
- - Revert "Update Report.pm"
- - adding POD for new function
- - Perltidy + start of additional documentation
+Breaking changes:
+  - changing subcommands to options (eg. send => --send|-s)
+
+Changes:
+  - support for alternate config file
+  - automated travis-ci testing of develop branch
+  - alternative way of get_all_installed_pkg
+  - removing veth network devices information
+  - version bumping script for internal use and for use in ebuilds
+  - added verbose option
+  - timestamp is now added to the config file upon updating or creation
+  - auto-fixing ES field limits
+
+Bug fixes:
+  - filesystems information fixes (ignoring usb mounts)
+
 
 2.0.1	2018-03-21
   Bug fixes:
