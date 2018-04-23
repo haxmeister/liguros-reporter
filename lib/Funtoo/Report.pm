@@ -165,26 +165,30 @@ sub user_config {
                 next;
             }
 
-            # split the line on the colon
-            # left side becomes a key, right side a value
-            # then check that it's a known option...
+           # split the line on the colon
+           # left side becomes a key, right side a value
+           # then, unless it's a new config, check that it's a known option...
             elsif ($line) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
-                if ( any { $_ eq $key } @known_options ) {
-                    $hash{$key} = $value;
-                }
-                else {
-                    die
-                        "Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
+                if ( !$args ) {
+                    if ( any { $_ eq $key } @known_options ) {
+                        $hash{$key} = $value;
+                    }
+                    else {
+                        die
+                            "Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
+                    }
                 }
             }
         }
 
         # ...and that all the options are present
-        for my $option (@known_options) {
-            if ( !exists $hash{$option} ) {
-                die
-                    "Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
+        if ( !$args ) {
+            for my $option (@known_options) {
+                if ( !exists $hash{$option} ) {
+                    die
+                        "Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
+                }
             }
         }
     }
