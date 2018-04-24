@@ -1,0 +1,109 @@
+Revision history for Funtoo-Report
+
+Next-release 2018-xx-yy
+
+Changes:
+  - adding bash-completion for the tool
+  - reporting how long each section took to generate
+  - added Changes file to track changed code and added features
+  - added config check logic, that will check configuration file for errors
+
+3.0.0	2018-04-19
+
+Breaking changes:
+  - changing subcommands to options (eg. send => --send|-s)
+
+Changes:
+  - support for alternate config file
+  - automated travis-ci testing of develop branch
+  - alternative way of get_all_installed_pkg
+  - removing veth network devices information
+  - version bumping script for internal use and for use in ebuilds
+  - added verbose option
+  - timestamp is now added to the config file upon updating or creation
+  - auto-fixing ES field limits
+
+Bug fixes:
+  - filesystems information fixes (ignoring usb mounts)
+
+
+2.0.1	2018-03-21
+  Bug fixes:
+    - Switch to HTTPS URL, add Makefile.PL depend spec
+
+2.0.0	2018-03-17
+
+ - Normalized error-handling
+ - Removing old instance of autodie
+ - Changed error-reporting to a flattened array
+ - Added line numbers to @errors
+ - Relocating errors to the funtoo-report hash
+
+1.4	2018-03-17
+  Breaking changes:
+    - moving /etc/report.conf => /etc/funtoo-report.conf
+    - cpu-info, mem-info, chassis-info, filesystem-info, networking-info combined into hardware-info (backend)
+    - Coerce numeric types for block device sizes (backend)
+
+  Changes:
+  - replaced Search::Elasticsearch with HTTP::Tiny
+  - ability to update/generate configuration file
+  - added reporting on:
+    - sound cards
+    - video cards
+    - filesystem information
+      - expressed in bytes
+    - network cards
+  - configuration file generation - re-write of yes_or_no function
+  - translated block device arrayrefs to hashrefs
+  - report time now with UTC everywhere
+  - index name funtoo-2018-01 => funtoo-2018.01
+  - factor out arrayref transform into separate sub for filesystem-info
+  - replace `transform_es_arrayref` with simple method
+  - added code to reveal the response from ES
+  - expanded Makefile.PL to allow a full Perl dist, specified dependencies including minimum Perl version
+  - sending report now returns a URL to that data
+  - use English variable names throughout module
+  - added some HTTP error handling and output
+  - added Getopt::Long with a --debug/-d flag
+  - added error section in report
+  - defined a custom User-Agent for the HTTP submit
+  - adjusted hash structure and error-handling
+
+  Bug fixes:
+    - lots of small bugfixes in readme and comments
+
+1.3	2018-02-17
+  Breaking changes:
+    - changing the timestamp format (breaking change from the backend view)
+    - changing _type from user to report (backend)
+
+  Changes:
+    - changing report index to funtoo-yyyy-ww format
+
+  Bug fixes:
+    - fix typo in glibc version reporting
+
+1.2	2018-02-14
+  Breaking changes:
+    - changing layout of modules modules/Report.pm => lib/Funtoo/Report.pm
+    - renaming report file to funtoo-report
+
+  Changes:
+    - adding basic MANIFEST and Makefile.PL
+
+1.1	2018-01-23
+  - ability to show json data structure that would be submitted to the Elasticsearch instance
+  - a unique UUID random identifier is generated according to RFC4122
+  - timestamp is recorded as part of report
+  - the tool can generate info about:
+    - CPU, memory, running kernel, kernels in /boot directory (kernel, vmlinuz, bzImage)
+    - chassis info
+    - packages in @world set, Funtoo profiles, Funtoo kits
+    - all installed packages
+    - and is specifically reporting versions of:
+      - portage, ego, python, gcc, glibc
+    - funtoo-report version
+  - ability to send data reports to Elasticsearch instance
+  - configuration file for report sections
+  - ability to generate configuration file if none exists
