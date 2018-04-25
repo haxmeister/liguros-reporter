@@ -3,7 +3,8 @@ Revision history for Funtoo-Report
 Next-release 2018-xx-yy
 
 Changes:
-  - adding bash-completion for the tool
+  - added bash-completion for the tool
+  - added zsh-completion for the tool
   - reporting how long each section took to generate
   - added Changes file to track changed code and added features
   - added config check logic, that will check configuration file for errors
