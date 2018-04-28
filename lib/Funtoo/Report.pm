@@ -107,7 +107,7 @@ sub send_report {
         if ($current_limit) {
 
             # check current field limit
-            if ( $current_limit >= 5000 ) {
+            if ( $current_limit >= 10000 ) {
                 croak
                     "field limit error but field limit is already at max 5000 or more";
             }
