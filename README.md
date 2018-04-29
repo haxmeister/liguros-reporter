@@ -1,4 +1,4 @@
-# Funtoo-Report - v3.1.0-beta ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=develop "Build test badge")
+# Funtoo-Report - v3.1.0 ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=master "Build test badge")
 
 ###### Anonymous reporting tool for Funtoo Linux
 
