@@ -1,0 +1,33 @@
+#compdef funtoo-report
+
+_funtoo-report(){
+	local -a opt_args
+	opt_args=(
+		"--config:Specify path to config file" "-c:Specify path to config file"
+		"--debug:Enables additional debug output" "-d:Enables additional debug output"
+		"--help:Display this help text" "-h:Display this help text"
+		"--list-config:Lists the current configuration file's settings" "-l:Lists the current configuration file's settings"
+		"--send:Sends the JSON report" "-s:Sends the JSON report"
+		"--show-json:Shows the JSON report" "-j:Shows the JSON report"
+		"--update-config:Interactively updates the config file" "-u:Interactively updates the config file"
+		"--verbose:Enables non-error output when sending" "-v:Enables non-error output when sending"
+		"--version:Prints the version and exits" "-V:Prints the version and exits"
+	)
+
+	_describe -t options "funtoo-report options" opt_args -V1
+
+}
+
+_funtoo-report "$@"
+
+
+#--config         -c  -- Specify path to config file
+#--debug          -d  -- Enables additional debug output
+#--help           -h  -- Display this help text
+#--list-config    -l  -- Lists the current configuration file's settings
+#--send           -s  -- Sends the JSON report
+#--show-json      -j  -- Shows the JSON report
+#--update-config  -u  -- Interactively updates the config file
+#--verbose        -v  -- Enables non-error output when sending
+#--version        -V  -- Prints the version and exits
+

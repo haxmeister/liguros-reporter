@@ -3,14 +3,14 @@
 # bump-version.sh - update the versions in our project
 
 path=$(cd "$(dirname "$0")" && pwd)
-file_names="funtoo-report
+file_names='funtoo-report
 lib/Funtoo/Report.pm
-README.md"
-version=""
+README.md'
+version=
 major=0
 minor=0
 patch=0
-stage=""
+stage=
 
 usage() {
     echo "\
@@ -36,8 +36,8 @@ read_version() {
 }
 
 write_version() {
-    echo "$file_names" | awk -F/ '{if (!seen[$NF]++) print }' | \
-        while IFS="$'\n'" read -r file;
+    echo "$file_names" | \
+        while read -r file;
         do
             echo "Bumping $file ..."
 
@@ -53,13 +53,13 @@ write_version() {
 
     read_version
 
-    if [ "$version" = "" ]
+    if [ -z "$version" ]
     then
         echo "ERROR: couldn't parse version string from git tags."
         exit 1
     fi
 
-    case "$1" in
+    case $1 in
         major)
             major=$((major+1))
             minor=.0
@@ -77,35 +77,24 @@ write_version() {
             ;;
         describe)
             major=$(git describe --tags | sed -e 's/v//')
-            minor=""
-            patch=""
+            minor=
+            patch=
             ;;
         *)
             usage
             ;;
     esac
 
-    case "$2" in
-        alpha)
-            stage='-alpha'
-            ;;
-        beta)
-            stage='-beta'
-            ;;
-        rc)
-            stage='-rc'
-            ;;
-        "")
-            ;;
-        *)
-            usage
-            ;;
+    case $2 in
+        alpha|beta|rc) stage="-$2" ;;
+        '') ;;
+        *) usage ;;
     esac
 
     echo "Funtoo::Report updating $version -> $major$minor$patch$stage"
-    echo "**************************************"
+    echo '**************************************'
 
     write_version
 
-    echo "--------------------------------------"
-    echo "done"
+    echo '--------------------------------------'
+    echo 'done'

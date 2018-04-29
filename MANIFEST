@@ -1,6 +1,8 @@
+Changes
 Makefile.PL
 MANIFEST
 README.md
 funtoo-report
 lib/Funtoo/Report.pm
+share/bash-completion/funtoo-report.bash
 LICENSE
