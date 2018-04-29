@@ -23,7 +23,7 @@ use Funtoo::Report;                             #GIT
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
 
-our $VERSION = '3.1.0-beta';
+our $VERSION = '3.1.0';
 
 my %es_config = (
     node  => 'https://es.host.funtoo.org:9200',

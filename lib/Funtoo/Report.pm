@@ -15,7 +15,7 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 use Time::HiRes qw(gettimeofday);                   #core
 
-our $VERSION = '3.1.0-beta';
+our $VERSION = '3.1.0';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -1082,7 +1082,7 @@ Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
 
 =head1 VERSION
 
-Version 3.1.0-beta
+Version 3.1.0
 
 =head1 DESCRIPTION
 
