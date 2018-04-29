@@ -1,4 +1,4 @@
-# Funtoo-Report - v3.0.0 ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=master "Build test badge")
+# Funtoo-Report - v3.1.0 ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=master "Build test badge")
 
 ###### Anonymous reporting tool for Funtoo Linux
 
@@ -112,6 +112,16 @@ installed-pkgs:y
 # To report hardware info as is typical from lspci
 hardware-info:y
 ```
+
+### Shell completions
+
+Options completion for GNU bash is available in
+`share/bash-completion/funtoo-report.bash`:
+
+    bash$ source share/bash-completion/funtoo-report.bash
+
+Options completion for zsh is available in
+`share/zsh-completion/_funtoo-report`.
 
 ### Uninstall
 We are sorry to see you go!
