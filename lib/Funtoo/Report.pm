@@ -6,21 +6,21 @@ package Funtoo::Report;
 use 5.014;
 use strict;
 use warnings;
-use Carp;                          #core
-use English qw(-no_match_vars);    #core
-use HTTP::Tiny;                    #core
-use JSON;                          #cpan
-use List::Util qw(any);            #core
-use Term::ANSIColor;               #core
-use Time::Piece;                   #core
-use Time::HiRes qw(gettimeofday);                   #core
+use Carp;                            #core
+use English qw(-no_match_vars);      #core
+use HTTP::Tiny;                      #core
+use JSON;                            #cpan
+use List::Util qw(any);              #core
+use Term::ANSIColor;                 #core
+use Time::Piece;                     #core
+use Time::HiRes qw(gettimeofday);    #core
 
 our $VERSION = '3.2.0';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
 our $VERBOSE;
-my @errors;                        # for any errors that don't cause a die
+my @errors;                          # for any errors that don't cause a die
 my %timers;
 
 ##
@@ -37,25 +37,25 @@ sub send_report {
 
     # refuse to send a report with an unset, undefined, or empty UUID
     length $rep->{'funtoo-report'}{UUID}
-        or do {
+      or do {
         push_error(
             'Refusing to submit report with blank UUID; check your config');
         croak;
-        };
+      };
 
     # if this is a development version we send to the fundev index
     # otherwise to the funtoo index
     if ( $VERSION =~ /-/msx ) {
-        $url
-            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
-        $settings_url
-            = "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
+        $url =
+"$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url =
+          "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
     }
     else {
-        $url
-            = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
-        $settings_url
-            = "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
+        $url =
+"$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+        $settings_url =
+          "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
     }
 
     # generate a json object that we can use to convert to json
@@ -82,20 +82,19 @@ sub send_report {
 
     # error out or retry helpfully on failed submission
     $response->{success}
-        or do {
+      or do {
 
         # decode response contents
         my $response_decoded = decode_json( $response->{content} );
         my $current_limit    = 0;
 
         # check the root cause of each error for field limit error
-        foreach
-            my $error_reason ( @{ $response_decoded->{error}{root_cause} } )
+        foreach my $error_reason ( @{ $response_decoded->{error}{root_cause} } )
         {
 
             # capture the field limit number from any field limit error
-            if ( $error_reason->{reason}
-                =~ /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx )
+            if ( $error_reason->{reason} =~
+                /Limit[ ]of[ ]total[ ]fields[ ]\[ (\d*) \]/msx )
             {
                 $current_limit = $1;
             }
@@ -109,7 +108,7 @@ sub send_report {
             # check current field limit
             if ( $current_limit >= 10000 ) {
                 croak
-                    "field limit error but field limit is already at max 5000 or more";
+"field limit error but field limit is already at max 5000 or more";
             }
 
             # if we successfully increased the field limit
@@ -122,20 +121,20 @@ sub send_report {
         }
 
         croak "Failed submission: $response->{status} $response->{reason}";
-        };
+      };
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-        or push_error(
+      or push_error(
         'Successful submission, but status was not the expected \'201 Created\''
-        );
+      );
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
         if ($VERBOSE) {
             print "your report can be seen at: "
-                . $es_conf->{'node'}
-                . $response->{'headers'}{'location'} . "\n";
+              . $es_conf->{'node'}
+              . $response->{'headers'}{'location'} . "\n";
         }
     }
     else {
@@ -154,8 +153,8 @@ sub user_config {
         my @lines = <$fh>;
         close $fh;
 
-        my @known_options
-            = qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info);
+        my @known_options =
+          qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info);
 
         foreach my $line (@lines) {
             chomp $line;
@@ -165,9 +164,9 @@ sub user_config {
                 next;
             }
 
-           # split the line on the colon
-           # left side becomes a key, right side a value
-           # then, unless it's a new config, check that it's a known option...
+            # split the line on the colon
+            # left side becomes a key, right side a value
+            # then, unless it's a new config, check that it's a known option...
             elsif ($line) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
                 if ( !$args ) {
@@ -176,7 +175,7 @@ sub user_config {
                     }
                     else {
                         die
-                            "Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
+"Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
                     }
                 }
             }
@@ -187,7 +186,7 @@ sub user_config {
             for my $option (@known_options) {
                 if ( !exists $hash{$option} ) {
                     die
-                        "Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
+"Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
                 }
             }
         }
@@ -207,7 +206,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-            "To generate a new configuration file use 'funtoo-report --update-config' \n\n";
+"To generate a new configuration file use 'funtoo-report --update-config' \n\n";
         exit;
     }
 
@@ -238,31 +237,31 @@ sub update_config {
 
     # let's ask the user about each report setting
 
-    $new_config{'kernel-info'}
-        = get_y_or_n('Report information about your active kernel?');
+    $new_config{'kernel-info'} =
+      get_y_or_n('Report information about your active kernel?');
 
-    $new_config{'boot-dir-info'}
-        = get_y_or_n('Report available kernels in /boot ?');
+    $new_config{'boot-dir-info'} =
+      get_y_or_n('Report available kernels in /boot ?');
 
-    $new_config{'installed-pkgs'}
-        = get_y_or_n('Report all packages installed on the system?');
+    $new_config{'installed-pkgs'} =
+      get_y_or_n('Report all packages installed on the system?');
 
-    $new_config{'profile-info'}
-        = get_y_or_n('Report the output of "epro show-json"?');
+    $new_config{'profile-info'} =
+      get_y_or_n('Report the output of "epro show-json"?');
 
-    $new_config{'kit-info'}
-        = get_y_or_n('Report the output of "ego kit show"?');
+    $new_config{'kit-info'} =
+      get_y_or_n('Report the output of "ego kit show"?');
 
-    $new_config{'hardware-info'}
-        = get_y_or_n('Report information about your hardware and drivers?');
+    $new_config{'hardware-info'} =
+      get_y_or_n('Report information about your hardware and drivers?');
 
     # let's create or replace the configuration file
     my $timestamp = localtime;
     print "Creating or replacing $config_file\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
-        or croak "Could not open $config_file: $ERRNO\n";
+      or croak "Could not open $config_file: $ERRNO\n";
     printf {$fh} "# Generated on %s for v%s of funtoo-report\n", $timestamp,
-        $VERSION;
+      $VERSION;
     foreach my $key ( sort keys %new_config ) {
         print {$fh} "$key:$new_config{$key}\n";
     }
@@ -275,13 +274,13 @@ sub update_config {
 ##
 sub add_uuid {
 
-    my $arg = shift;
+    my $arg        = shift;
     my $start_time = gettimeofday;
 
     # lets just get a random identifier from the system or die trying
     open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-        or croak
-        "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
+      or croak
+      "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
     my $UUID = <$ufh>;
     chomp $UUID;
     close $ufh;
@@ -297,11 +296,12 @@ sub add_uuid {
         # since we got here because a UUID isn't present in the config
         # open the config file and append the UUID properly into the file
         open( my $cfh, '>>', $config_file )
-            or croak "Unable to append to $config_file: $ERRNO\n";
+          or croak "Unable to append to $config_file: $ERRNO\n";
         print {$cfh} "UUID:$UUID\n";
         close $cfh;
     }
-    $timers{'add_uuid'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'add_uuid'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return $UUID;
 }
 
@@ -317,7 +317,7 @@ sub version {
 ##
 sub timer {
     my $total;
-    foreach my $key (keys %timers){
+    foreach my $key ( keys %timers ) {
         $total += $timers{$key};
     }
     $timers{'total'} = $total;
@@ -353,7 +353,7 @@ sub report_time {
 
     );
     exists $formats{$format}
-        or do { push_error('Unable to determine the time'); return };
+      or do { push_error('Unable to determine the time'); return };
     return $formats{$format};
 }
 
@@ -395,7 +395,8 @@ sub get_hardware_info {
     # fetching chassis info
     $hash{'chassis'} = get_chassis_info();
 
-    $timers{'get_hardware_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_hardware_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -406,15 +407,14 @@ sub get_hardware_info {
 ## of making calls to external tools
 ##
 sub get_net_info {
-    my $start_time = gettimeofday;
+    my $start_time    = gettimeofday;
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-        or
-        do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
+      or do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
     while ( my $file = readdir $dh ) {
 
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
@@ -445,10 +445,10 @@ sub get_net_info {
         if ( -e $vendor_id_file ) {
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $vendor_id_file: $ERRNO");
                 next;
-                };
+              };
             $vendor_id = <$fh>;
             close $fh;
             chomp $vendor_id;
@@ -457,10 +457,10 @@ sub get_net_info {
             # Get the device ID (PCI)
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $device_id_file: $ERRNO");
                 next;
-                };
+              };
             $device_id = <$fh>;
             close $fh;
             chomp $device_id;
@@ -473,10 +473,10 @@ sub get_net_info {
             $vendor_id_file = "/sys/class/net/$device/device/uevent";
             $id_file        = $usb_ids;
             open my $fh, '<', $vendor_id_file
-                or do {
+              or do {
                 push_error("Unable to open file $vendor_id_file: $ERRNO");
                 next;
-                };
+              };
             while (<$fh>) {
                 if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
                     $vendor_id = sprintf '%04s', $1;
@@ -492,10 +492,10 @@ sub get_net_info {
 
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
-            or do { push_error("Unable to open file $id_file $ERRNO"); next };
+          or do { push_error("Unable to open file $id_file $ERRNO"); next };
 
-     # Devices can share device IDs but not "underneath" a vendor ID, so we'll
-     # want to get the first result under the vendor
+       # Devices can share device IDs but not "underneath" a vendor ID, so we'll
+       # want to get the first result under the vendor
         my $seen = 0;
 
         while (<$fh>) {
@@ -518,7 +518,8 @@ sub get_net_info {
             driver => $driver,
         };
     }
-    $timers{'get_net_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_net_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -530,12 +531,13 @@ sub get_net_info {
 sub get_filesystem_info {
     my %hash;
     my $start_time = gettimeofday;
-    my $lsblk
-        = `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
+    my $lsblk =
+      `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
     my $lsblk_decoded = decode_json($lsblk);
 
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
-    $timers{'get_filesystem_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_filesystem_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -590,7 +592,8 @@ sub get_cpu_info {
         return;
     }
     $hash{"processors"} = $proc_count;
-    $timers{'get_cpu_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_cpu_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -599,6 +602,7 @@ sub get_cpu_info {
 ##
 sub get_mem_info {
     my $start_time = gettimeofday;
+
     # pulling relevant info from /proc/meminfo
     my %hash = (
         MemTotal     => undef,
@@ -617,7 +621,7 @@ sub get_mem_info {
 
             # get the key and the first numeric value
             my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
-                or next;
+              or next;
 
             # if there's a hash bucket waiting for this value, add it
             exists $hash{$key} or next;
@@ -631,7 +635,8 @@ sub get_mem_info {
         push_error("Could not open file $mem_file: $ERRNO");
         return;
     }
-    $timers{'get_mem_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_mem_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -640,8 +645,8 @@ sub get_mem_info {
 ##
 sub get_chassis_info {
     my %hash;
-    my $folder = "/sys/class/dmi/id/";
-    my @id_files = ( 'chassis_type', 'chassis_vendor', 'product_name' );
+    my $folder     = "/sys/class/dmi/id/";
+    my @id_files   = ( 'chassis_type', 'chassis_vendor', 'product_name' );
     my $start_time = gettimeofday;
 
     my @possible_id = (
@@ -701,7 +706,8 @@ sub get_chassis_info {
             $hash{$file} = $possible_id[0];
         }
     }
-    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_boot_dir_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 
 }
@@ -712,6 +718,7 @@ sub get_chassis_info {
 ##
 sub get_profile_info {
     my $start_time = gettimeofday;
+
     # execute 'epro show-json' and capture its output
     my $epro = 'epro show-json';
     if ( my $json_from_epro = `$epro` ) {
@@ -731,7 +738,8 @@ sub get_profile_info {
                 }
             }
         }
-        $timers{'get_profile_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+        $timers{'get_profile_info'} =
+          sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
         return \%sorted;
     }
     else {
@@ -749,7 +757,7 @@ sub get_profile_info {
 sub get_kit_info {
 
     my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
-    my $ego_conf = "/etc/ego.conf";
+    my $ego_conf  = "/etc/ego.conf";
     my %ego_conf_hash;
     my $meta_data;
     my %hash;
@@ -771,17 +779,18 @@ sub get_kit_info {
     if ( open( my $fh, '<:encoding(UTF-8)', $ego_conf ) ) {
         my @lines = <$fh>;
         close $fh;
-        my $last_section; # contains the last ini style section marker during iteration
+        my $last_section
+          ;    # contains the last ini style section marker during iteration
 
         foreach my $line (@lines) {
             chomp $line;
 
             # skip comments and empty lines
-            if ($line =~ /^\#/msx){next;}
-            if ($line =~ /^\s*$/msx){next;}
+            if ( $line =~ /^\#/msx )   { next; }
+            if ( $line =~ /^\s*$/msx ) { next; }
 
             # looking for section tag
-            if ( $line =~ /\[(\w*)\]/msx){
+            if ( $line =~ /\[(\w*)\]/msx ) {
                 $last_section = $1;
             }
 
@@ -805,16 +814,20 @@ sub get_kit_info {
     # where a version is specified in the world section of ego.conf
     # we will first fill out the hash table with the specified defs
     # found in the meta.json file's release_defs section
-    if ( exists $ego_conf_hash{'global'}{'release'} ){
+    if ( exists $ego_conf_hash{'global'}{'release'} ) {
 
         # checking that the version found in ego.conf is defined in
         # the metadata.json file under release_defs
-        if ( exists $meta_data->{'release_defs'}{ $ego_conf_hash{'global'}{'release'} } ) {
+        if (
+            exists $meta_data->{'release_defs'}
+            { $ego_conf_hash{'global'}{'release'} } )
+        {
             my $version = $ego_conf_hash{'global'}{'release'};
 
             # since it exists, lets load the hash first with the values given in
             # the release_defs section of the meta file
-            foreach my $kit (keys %{ $meta_data->{'release_defs'}{$version} } ){
+            foreach my $kit ( keys %{ $meta_data->{'release_defs'}{$version} } )
+            {
                 $hash{$kit} = $meta_data->{'release_defs'}{$version}{$kit}[0];
             }
         }
@@ -822,9 +835,9 @@ sub get_kit_info {
 
     # if a version is not specified in ego.conf [world] section
     # we load the hash with the defaults
-    else{
+    else {
         foreach my $key ( keys %hash ) {
-            if ( ! defined $hash{$key} ) {
+            if ( !defined $hash{$key} ) {
                 $hash{$key} = $meta_data->{kit_settings}{$key}{default};
             }
         }
@@ -833,16 +846,16 @@ sub get_kit_info {
     # lastly we will look at the [kits] section of ego.conf and if
     # anything has been defined here, we will override the current
     # value in the hash with this value.
-    if (exists $ego_conf_hash{'kits'}){
-        for my $key (keys %{ $ego_conf_hash{'kits'} }){
-                $hash{$key} = $ego_conf_hash{'kits'}{$key};
+    if ( exists $ego_conf_hash{'kits'} ) {
+        for my $key ( keys %{ $ego_conf_hash{'kits'} } ) {
+            $hash{$key} = $ego_conf_hash{'kits'}{$key};
         }
     }
 
-    $timers{'get_kit_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_kit_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
-
 
 ##
 ## fetching kernel information from /proc/sys/kernel
@@ -862,7 +875,8 @@ sub get_kernel_info {
             return;
         }
     }
-    $timers{'get_kernel_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_kernel_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -894,7 +908,8 @@ sub get_boot_dir_info {
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
-    $timers{'get_boot_dir_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_boot_dir_info'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -911,17 +926,17 @@ sub get_all_installed_pkg {
 
     # Get a list of the world packages
     open my $fh, '<', $world_file
-        or do { push_error("Unable to open dir $world_file: $ERRNO"); };
+      or do { push_error("Unable to open dir $world_file: $ERRNO"); };
     @world = <$fh>;
     close $fh;
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
-        or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
+      or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
             opendir my $dh2, "$db_dir/$cat"
-                or do { push_error("Unable to open dir $cat: $ERRNO"); next };
+              or do { push_error("Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
@@ -931,11 +946,11 @@ sub get_all_installed_pkg {
         }
     }
 
-   # Create the world and miscellaneous hashes. Do so using List::Util's "any"
-   # since grep doesn't short-circuit after a successful match.
+    # Create the world and miscellaneous hashes. Do so using List::Util's "any"
+    # since grep doesn't short-circuit after a successful match.
     for my $line (@all) {
         my ( $pkg, $version ) = $line =~ /(.*?)-(\d.*)/xms;
-        if ( any {/\Q$pkg\E/xms} @world ) {
+        if ( any { /\Q$pkg\E/xms } @world ) {
             push @{ $hash{pkgs}{world}{$pkg} }, $version;
 
             # Add a separate world-info section to make it easier to handle
@@ -948,7 +963,8 @@ sub get_all_installed_pkg {
     }
     $hash{'pkg-count-world'} = scalar @world;
     $hash{'pkg-count-total'} = scalar @all;
-    $timers{'get_all_installed_pkg'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_all_installed_pkg'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -959,7 +975,7 @@ sub get_all_installed_pkg {
 sub get_lspci {
     my %hash;
     my $start_time = gettimeofday;
-    my $lspci = 'lspci -kmmvvv';
+    my $lspci      = 'lspci -kmmvvv';
     if ( my $lspci_output = `$lspci` ) {
         my @hw_item_section = split( /^\n/msx, $lspci_output );
 
@@ -988,7 +1004,8 @@ sub get_lspci {
         push_error("Could not retrieve output from $lspci: $ERRNO");
         return;
     }
-    $timers{'get_lspci'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
+    $timers{'get_lspci'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -1051,13 +1068,13 @@ sub fs_recurse {
             # capture fstype as key and size as value, renaming nulls
             if ( defined $item->{fstype} ) {
 
-                $hash_ref->{fstypes}{ $item->{fstype} }{'size'}
-                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
+                $hash_ref->{fstypes}{ $item->{fstype} }{'size'} +=
+                  sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
                 $hash_ref->{fstypes}{ $item->{fstype} }{'count'} += 1;
             }
             else {
-                $hash_ref->{fstypes}{'unreported'}{'size'}
-                    += sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
+                $hash_ref->{fstypes}{'unreported'}{'size'} +=
+                  sprintf( "%.2f", ( $item->{size} / 1024**3 ) );
                 $hash_ref->{fstypes}{'unreported'}{'count'} += 1;
             }
         }
@@ -1068,9 +1085,9 @@ sub fs_recurse {
 # when a submission error is about the field limit
 # it will attempt to tell ES to increase the field limit by 1000
 sub fix_es_limit {
-    my $old_limit = shift;
-    my $es_url    = shift;
-    my $debug     = shift;
+    my $old_limit  = shift;
+    my $es_url     = shift;
+    my $debug      = shift;
     my $start_time = gettimeofday;
 
     # create a json object to encode the message
@@ -1100,7 +1117,8 @@ sub fix_es_limit {
     if ($debug) {
         print $new_response->{content} . "\n";
     }
-    $timers{'fix_es_limit'} = sprintf("%.4f", (gettimeofday - $start_time)*1000);
+    $timers{'fix_es_limit'} =
+      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 );
 
     if ( $new_response->{success} ) {
         return 1;
