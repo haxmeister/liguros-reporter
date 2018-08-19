@@ -749,21 +749,18 @@ sub get_profile_info {
 sub get_kit_info {
 
     my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
-    my $meta_data;
     my $ego_conf = "/etc/ego.conf";
+    my %ego_conf_hash;
+    my $meta_data;
     my %hash;
     my $start_time = gettimeofday;
+
     # decode and store meta file datastructure into $meta_data
     if ( open( my $fh, '<:encoding(UTF-8)', $meta_file ) ) {
         my @lines = <$fh>;
         close $fh;
         my $data = join( '', @lines );
         $meta_data = decode_json($data);
-
-        # let's define our hash keys from the array found in this file
-        foreach my $key ( @{ $meta_data->{"kit_order"} } ) {
-            $hash{$key} = undef;
-        }
     }
     else {
         push_error("Cannot open file $meta_file: $ERRNO");
@@ -774,17 +771,28 @@ sub get_kit_info {
     if ( open( my $fh, '<:encoding(UTF-8)', $ego_conf ) ) {
         my @lines = <$fh>;
         close $fh;
+        my $last_section; # contains the last ini style section marker during iteration
+
         foreach my $line (@lines) {
             chomp $line;
+
+            # skip comments and empty lines
+            if ($line =~ /^\#/msx){next;}
+            if ($line =~ /^\s*$/msx){next;}
+
+            # looking for section tag
+            if ( $line =~ /\[(\w*)\]/msx){
+                $last_section = $1;
+            }
+
+            # looking for key = value pair
             if ( $line =~ /^\w/msx ) {
                 my ( $kit, $value ) = split( /\s*=\s*/msx, $line );
                 chomp $kit;
                 chomp $value;
 
-                # if the kit has been named in the meta data structure
-                # we will plug that value into it
-                if ( exists $hash{$kit} ) {
-                    $hash{$kit} = $value;
+                if ($last_section) {
+                    $ego_conf_hash{$last_section}{$kit} = $value;
                 }
             }
         }
@@ -794,16 +802,47 @@ sub get_kit_info {
         return;
     }
 
-    # now let's finish filling out our hash with default settings
-    # anywhere it is undef
-    foreach my $key ( keys %hash ) {
-        if ( !defined $hash{$key} ) {
-            $hash{$key} = $meta_data->{kit_settings}{$key}{default};
+    # where a version is specified in the world section of ego.conf
+    # we will first fill out the hash table with the specified defs
+    # found in the meta.json file's release_defs section
+    if ( exists $ego_conf_hash{'global'}{'release'} ){
+
+        # checking that the version found in ego.conf is defined in
+        # the metadata.json file under release_defs
+        if ( exists $meta_data->{'release_defs'}{ $ego_conf_hash{'global'}{'release'} } ) {
+            my $version = $ego_conf_hash{'global'}{'release'};
+
+            # since it exists, lets load the hash first with the values given in
+            # the release_defs section of the meta file
+            foreach my $kit (keys %{ $meta_data->{'release_defs'}{$version} } ){
+                $hash{$kit} = $meta_data->{'release_defs'}{$version}{$kit}[0];
+            }
         }
     }
+
+    # if a version is not specified in ego.conf [world] section
+    # we load the hash with the defaults
+    else{
+        foreach my $key ( keys %hash ) {
+            if ( ! defined $hash{$key} ) {
+                $hash{$key} = $meta_data->{kit_settings}{$key}{default};
+            }
+        }
+    }
+
+    # lastly we will look at the [kits] section of ego.conf and if
+    # anything has been defined here, we will override the current
+    # value in the hash with this value.
+    if (exists $ego_conf_hash{'kits'}){
+        for my $key (keys %{ $ego_conf_hash{'kits'} }){
+                $hash{$key} = $ego_conf_hash{'kits'}{$key};
+        }
+    }
+
     $timers{'get_kit_info'} = sprintf("%.4f", (gettimeofday - $start_time)*1000)+0;
     return \%hash;
 }
+
 
 ##
 ## fetching kernel information from /proc/sys/kernel
