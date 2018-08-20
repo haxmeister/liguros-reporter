@@ -1,5 +1,10 @@
 Revision history for Funtoo-Report
 
+3.2.0 2018-08-19
+
+Changes:
+  - added support for releases in ego.conf
+
 3.1.0 2018-04-29
 
 Changes:
