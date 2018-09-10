@@ -1,12 +1,19 @@
 Revision history for Funtoo-Report
 
-3.2.0 2018-08-19
+3.2.1	2018-09-10
+================
+Changes:
+  - bumping to 3.2.1 due to missed Changelog file update
 
+
+3.2.0	2018-08-19
+================
 Changes:
   - added support for releases in ego.conf
 
-3.1.0 2018-04-29
 
+3.1.0	2018-04-29
+================
 Changes:
   - added bash-completion for the tool
   - added zsh-completion for the tool
@@ -15,8 +22,9 @@ Changes:
   - added config check logic, that will check configuration file for errors
   - allowing to autofix Field Limit up to 10k
 
-3.0.0	2018-04-19
 
+3.0.0	2018-04-19
+==================
 Breaking changes:
   - changing subcommands to options (eg. send => --send|-s)
 
@@ -35,18 +43,22 @@ Bug fixes:
 
 
 2.0.1	2018-03-21
+==================
   Bug fixes:
     - Switch to HTTPS URL, add Makefile.PL depend spec
 
-2.0.0	2018-03-17
 
+2.0.0	2018-03-17
+==================
  - Normalized error-handling
  - Removing old instance of autodie
  - Changed error-reporting to a flattened array
  - Added line numbers to @errors
  - Relocating errors to the funtoo-report hash
 
+
 1.4	2018-03-17
+==================
   Breaking changes:
     - moving /etc/report.conf => /etc/funtoo-report.conf
     - cpu-info, mem-info, chassis-info, filesystem-info, networking-info combined into hardware-info (backend)
@@ -80,7 +92,9 @@ Bug fixes:
   Bug fixes:
     - lots of small bugfixes in readme and comments
 
+
 1.3	2018-02-17
+==================
   Breaking changes:
     - changing the timestamp format (breaking change from the backend view)
     - changing _type from user to report (backend)
@@ -91,7 +105,9 @@ Bug fixes:
   Bug fixes:
     - fix typo in glibc version reporting
 
+
 1.2	2018-02-14
+==================
   Breaking changes:
     - changing layout of modules modules/Report.pm => lib/Funtoo/Report.pm
     - renaming report file to funtoo-report
@@ -99,7 +115,9 @@ Bug fixes:
   Changes:
     - adding basic MANIFEST and Makefile.PL
 
+
 1.1	2018-01-23
+==================
   - ability to show json data structure that would be submitted to the Elasticsearch instance
   - a unique UUID random identifier is generated according to RFC4122
   - timestamp is recorded as part of report
