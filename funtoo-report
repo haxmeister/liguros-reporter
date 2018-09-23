@@ -20,6 +20,7 @@ use English qw(-no_match_vars);                 #core
 use Getopt::Long qw(:config no_ignore_case);    #core
 use JSON;                                       #cpan
 use Funtoo::Report;                             #GIT
+use Funtoo::Scrape;                             #GIT
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
 
@@ -147,6 +148,14 @@ sub report_from_config {
 
     ## adding timers to report
     $hash{'execution-timers'} = Funtoo::Report::timer();
+
+    ## adding portage configs to report
+    my $scraped_files = Funtoo::Scrape->new({'paths' => [
+                                        '/etc/portage/package.use',
+                                        '/etc/portage/make.conf',
+                                        '/etc/make.conf',
+                                        ]});
+    $hash{'portage-conf'} = $scraped_files->get_all_files();
 
     return %hash;
 }
