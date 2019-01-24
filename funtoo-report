@@ -23,7 +23,7 @@ use Funtoo::Report;                             #GIT
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.2.1-dev';
 
 my %es_config = (
     node  => 'https://es.host.funtoo.org:9200',
@@ -37,6 +37,7 @@ if ( !@ARGV ) {
 }
 my $debug = 0;
 GetOptions(
+	'bug-report|b'    => \&Funtoo::Report::bug_report,
     'config|c=s'      => \$Funtoo::Report::config_file,
     'update-config|u' => \my $update_config,
     'list-config|l'   => \my $list_config,

@@ -42,22 +42,12 @@ sub send_report {
             'Refusing to submit report with blank UUID; check your config');
         croak;
       };
-
-    # if this is a development version we send to the fundev index
-    # otherwise to the funtoo index
-    if ( $VERSION =~ /-/msx ) {
-        $url =
-"$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
-        $settings_url =
-          "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
-    }
-    else {
-        $url =
-"$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
-        $settings_url =
-          "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
-    }
-
+	
+	# lets set where the data is sent, could be development version
+	# or not.. or possibly a bug report, depending on the es_conf hash
+	# that we were sent
+	($url, $settings_url) = @{set_es_index($es_conf, $url, $settings_url)};
+ print "url: $url,\nsettings url: $settings_url,\n";
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
 
@@ -144,7 +134,7 @@ sub send_report {
 
 ##
 ## finds the config file in and loads its contents into a hash and returns it
-##
+## 
 sub user_config {
     my $args = shift;
     my %hash;
@@ -1008,7 +998,22 @@ sub get_lspci {
       sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
-
+sub bug_report{
+	my %bug_report;
+	my %config = user_config;
+	
+	my %es_config_bugreport = (
+		node  => 'https://es.host.funtoo.org:9200',
+		type  => 'bug',
+		index => Funtoo::Report::report_time('short'),
+	);
+	$bug_report{'funtoo-report'}{UUID} = $config{UUID};
+	print "\n Preparing a bug report...";
+	
+	$bug_report{'some data'} = "This is some random text for the purpose of determining if the function is working correctly";
+	
+	send_report(\%bug_report, \%es_config_bugreport, 0);
+}
 ###########################################
 ############ misc functions ###############
 
@@ -1126,6 +1131,40 @@ sub fix_es_limit {
     else {
         return 0;
     }
+}
+
+sub set_es_index{
+	my ($es_hashref, $url_ref, $settings_url_ref) = @_;
+	
+	if ($es_hashref->{type} eq 'report'){
+		# if this is a development version we send to the fundev index
+		# otherwise to the funtoo index
+		if($VERSION =~ /-/msx){
+			$url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+			$settings_url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/_settings";
+		} 
+		else{
+			$url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+			$settings_url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/_settings";
+		}
+	
+	}
+	# must be a bug report!
+	else{
+		# if this is a development version we send to the fundev index
+		# otherwise to the funtoo index
+		if($VERSION =~ /-/msx){
+			$url_ref = "$es_hashref->{'node'}/bugsdev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+			$settings_url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/_settings";
+		} 
+		else{
+			$url_ref = "$es_hashref->{'node'}/bugtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+			$settings_url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/_settings";
+		}
+	}
+	#print "url: $url_ref,\nsettings url: $settings_url_ref,\n"; 
+	my @settings = ($url_ref, $settings_url_ref);
+	return \@settings;
 }
 1;
 
