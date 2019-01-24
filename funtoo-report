@@ -37,7 +37,7 @@ if ( !@ARGV ) {
 }
 my $debug = 0;
 GetOptions(
-	'bug-report|b'    => \&Funtoo::Report::bug_report,
+    'bug-report|b'    => \&Funtoo::Report::bug_report,
     'config|c=s'      => \$Funtoo::Report::config_file,
     'update-config|u' => \my $update_config,
     'list-config|l'   => \my $list_config,
@@ -48,7 +48,7 @@ GetOptions(
     'help|h'          => \&pod2usage,
     'version|V'       => sub {
         printf "funtoo-report: %s\nFuntoo::Report: %s\n", $VERSION,
-            Funtoo::Report::version();
+          Funtoo::Report::version();
         exit;
     },
 ) or pod2usage;
@@ -93,7 +93,7 @@ if ($send) {
 
 ## let's read the config file and generate the report
 sub report_from_config {
-    my %config = Funtoo::Report::user_config();  # fetch/parse the user config
+    my %config = Funtoo::Report::user_config();    # fetch/parse the user config
     my %hash;
 
     # look for a UUID in the config file and
@@ -163,6 +163,7 @@ funtoo-report - An anonymous Funtoo data reporting tool
 =head1 USAGE
 
     funtoo-report
+    -b, --bug-report    launched by emerge hooks, sends a bug report 
     -c, --config        Specify path to config file
     -u, --update-config Interactively updates the config file
     -l, --list-config   Lists the current configuration file's settings

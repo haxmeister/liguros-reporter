@@ -15,7 +15,7 @@ use Term::ANSIColor;                 #core
 use Time::Piece;                     #core
 use Time::HiRes qw(gettimeofday);    #core
 
-our $VERSION = '3.2.1';
+our $VERSION = '3.2.1-dev';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -42,12 +42,14 @@ sub send_report {
             'Refusing to submit report with blank UUID; check your config');
         croak;
       };
-	
-	# lets set where the data is sent, could be development version
-	# or not.. or possibly a bug report, depending on the es_conf hash
-	# that we were sent
-	($url, $settings_url) = @{set_es_index($es_conf, $url, $settings_url)};
- print "url: $url,\nsettings url: $settings_url,\n";
+
+    # lets set where the data is sent, could be development version
+    # or not.. or possibly a bug report, depending on the es_conf hash
+    # that we were sent
+    ( $url, $settings_url ) =
+      @{ set_es_index( $es_conf, $url, $settings_url ) };
+    print "url: $url,\nsettings url: $settings_url,\n";
+
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
 
@@ -134,7 +136,7 @@ sub send_report {
 
 ##
 ## finds the config file in and loads its contents into a hash and returns it
-## 
+##
 sub user_config {
     my $args = shift;
     my %hash;
@@ -998,21 +1000,57 @@ sub get_lspci {
       sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
-sub bug_report{
-	my %bug_report;
-	my %config = user_config;
-	
-	my %es_config_bugreport = (
-		node  => 'https://es.host.funtoo.org:9200',
-		type  => 'bug',
-		index => Funtoo::Report::report_time('short'),
-	);
-	$bug_report{'funtoo-report'}{UUID} = $config{UUID};
-	print "\n Preparing a bug report...";
-	
-	$bug_report{'some data'} = "This is some random text for the purpose of determining if the function is working correctly";
-	
-	send_report(\%bug_report, \%es_config_bugreport, 0);
+##
+## gathers data and sends a bug report to the bug report ES
+##
+sub bug_report {
+    my %bug_report;
+    my %config = user_config;
+
+    # we make a special config to send to the send_report function
+    # so that it is sent to the correct place
+    my %es_config_bugreport = (
+        node  => 'https://es.host.funtoo.org:9200',
+        type  => 'bug',
+        index => Funtoo::Report::report_time('short'),
+    );
+
+    # lets capture the UUID
+    $bug_report{'funtoo-report'}{UUID} = $config{UUID};
+    print "\nPreparing a bug report...\n";
+
+    ## fetch env vars that are inherited from emerge
+    my $bug_env = '';
+    foreach my $key_var (%ENV) {
+        if ( defined $ENV{$key_var} ) {
+            $bug_env = $bug_env . "$key_var = $ENV{$key_var}\n";
+
+        }
+    }
+
+    print "Fetching ego kit...";
+    my $ego_kit = `ego kit`;
+    print "Done\n";
+
+    print "Fetching ego profile...";
+    my $ego_profile = `ego profile`;
+    print "Done\n";
+
+    print "Fetching emerge info...";
+    my $emerge_info = `emerge --info`;
+    print "Done\n";
+
+    print "Fetching build.log...";
+    my $build_log = `cat $ENV{TEMP}/build.log`;
+    print "Done\n";
+
+    $bug_report{'Environment_vars'} = $bug_env;
+    $bug_report{'Ego Kit'}          = $ego_kit;
+    $bug_report{'Ego Profile'}      = $ego_profile;
+    $bug_report{'timestamp'}        = report_time('long');
+    $bug_report{'build.log'}        = $build_log;
+
+    send_report( \%bug_report, \%es_config_bugreport, 0 );
 }
 ###########################################
 ############ misc functions ###############
@@ -1133,38 +1171,54 @@ sub fix_es_limit {
     }
 }
 
-sub set_es_index{
-	my ($es_hashref, $url_ref, $settings_url_ref) = @_;
-	
-	if ($es_hashref->{type} eq 'report'){
-		# if this is a development version we send to the fundev index
-		# otherwise to the funtoo index
-		if($VERSION =~ /-/msx){
-			$url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
-			$settings_url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/_settings";
-		} 
-		else{
-			$url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
-			$settings_url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/_settings";
-		}
-	
-	}
-	# must be a bug report!
-	else{
-		# if this is a development version we send to the fundev index
-		# otherwise to the funtoo index
-		if($VERSION =~ /-/msx){
-			$url_ref = "$es_hashref->{'node'}/bugsdev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
-			$settings_url_ref = "$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/_settings";
-		} 
-		else{
-			$url_ref = "$es_hashref->{'node'}/bugtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
-			$settings_url_ref = "$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/_settings";
-		}
-	}
-	#print "url: $url_ref,\nsettings url: $settings_url_ref,\n"; 
-	my @settings = ($url_ref, $settings_url_ref);
-	return \@settings;
+#
+# This function will set the index that a report is sent to
+# it can be a dev report or a regular report
+# also could be a statistical report or a bug report
+#
+sub set_es_index {
+    my ( $es_hashref, $url_ref, $settings_url_ref ) = @_;
+
+    if ( $es_hashref->{type} eq 'report' ) {
+
+        # if this is a development version we send to the fundev index
+        # otherwise to the funtoo index
+        if ( $VERSION =~ /-/msx ) {
+            $url_ref =
+"$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+            $settings_url_ref =
+"$es_hashref->{'node'}/fundev-$VERSION-$es_hashref->{'index'}/_settings";
+        }
+        else {
+            $url_ref =
+"$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+            $settings_url_ref =
+"$es_hashref->{'node'}/funtoo-$VERSION-$es_hashref->{'index'}/_settings";
+        }
+
+    }
+
+    # must be a bug report!
+    else {
+        # if this is a development version we send to the fundev index
+        # otherwise to the funtoo index
+        if ( $VERSION =~ /-/msx ) {
+            $url_ref =
+"$es_hashref->{'node'}/bugdev-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+            $settings_url_ref =
+"$es_hashref->{'node'}/bugdev-$VERSION-$es_hashref->{'index'}/_settings";
+        }
+        else {
+            $url_ref =
+"$es_hashref->{'node'}/bugtoo-$VERSION-$es_hashref->{'index'}/$es_hashref->{'type'}";
+            $settings_url_ref =
+"$es_hashref->{'node'}/bugtoo-$VERSION-$es_hashref->{'index'}/_settings";
+        }
+    }
+
+    #print "url: $url_ref,\nsettings url: $settings_url_ref,\n";
+    my @settings = ( $url_ref, $settings_url_ref );
+    return \@settings;
 }
 1;
 
@@ -1335,6 +1389,16 @@ Returns $VERSION.
 =item C<timer>
 
 Returns a hash containing the results of all timers and the total time.
+
+=item C<set_es_index>
+
+Determines what elasticsearch index and url to send a bug or statistical
+report too. Returns a list containing 2 fully formed URLs for this purpose
+
+=item C<bug_report>
+
+Intended to be executed by an emerge hook on build failures. Gathers
+information to be added to a bug report and passes it to the send_report function
 
 =back
 
