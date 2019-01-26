@@ -112,6 +112,9 @@ installed-pkgs:y
 
 # To report hardware info as is typical from lspci
 hardware-info:y
+
+# To report build failures and send associated logs
+bug-report:y
 ```
 
 ### Shell completions

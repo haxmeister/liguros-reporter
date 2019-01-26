@@ -145,7 +145,7 @@ sub user_config {
         close $fh;
 
         my @known_options =
-          qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info);
+          qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info bug-report);
 
         foreach my $line (@lines) {
             chomp $line;
@@ -245,6 +245,9 @@ sub update_config {
 
     $new_config{'hardware-info'} =
       get_y_or_n('Report information about your hardware and drivers?');
+      
+    $new_config{'bug-report'} =
+	  get_y_or_n('Report build failure bug reports? Contains emerge --info, build.log, the ENV and such'); 
 
     # let's create or replace the configuration file
     my $timestamp = localtime;
@@ -1007,6 +1010,10 @@ sub bug_report {
     my %bug_report;
     my %config = user_config;
 
+	# if the user's config is set to not send bug reports
+	# we can jump out here and let emerge move on
+	$config{'bug-report'} eq 'y' or die "Skipping bug report because /etc/funtoo-report.conf bug-report=n\nYou can change this with: 'funtoo-report --update-config' and selecting 'y' for reporting build failures\n";
+	
     # we make a special config to send to the send_report function
     # so that it is sent to the correct place
     my %es_config_bugreport = (
