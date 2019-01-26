@@ -15,7 +15,7 @@ use Term::ANSIColor;                 #core
 use Time::Piece;                     #core
 use Time::HiRes qw(gettimeofday);    #core
 
-our $VERSION = '3.2.1-dev';
+our $VERSION = '4.0.0-beta';
 
 ### getting some initialization done:
 our $config_file = '/etc/funtoo-report.conf';
@@ -1028,6 +1028,12 @@ sub bug_report {
         }
     }
 
+    # Store CATEGORY and PACKAGE into a variable
+    my $catpkg = "$ENV{CATEGORY}/$ENV{PN}";
+    # Extract release info from /etc/ego.conf (FIXME)
+    my $release_version = `grep release /etc/ego.conf |cut -f2 -d"="`;
+
+
     print "Fetching ego kit...";
     my $ego_kit = `ego kit`;
     print "Done\n";
@@ -1041,14 +1047,16 @@ sub bug_report {
     print "Done\n";
 
     print "Fetching build.log...";
-    my $build_log = `cat $ENV{TEMP}/build.log`;
+    my $build_log = `cat $ENV{TEMP}/build.log`; # FIXME
     print "Done\n";
 
+    $bug_report{'catpkg'}           = $catpkg;
     $bug_report{'Environment_vars'} = $bug_env;
     $bug_report{'Ego Kit'}          = $ego_kit;
     $bug_report{'Ego Profile'}      = $ego_profile;
     $bug_report{'timestamp'}        = report_time('long');
     $bug_report{'build.log'}        = $build_log;
+    $bug_report{'release'}          = $release_version;
 
     send_report( \%bug_report, \%es_config_bugreport, 0 );
 }
@@ -1232,7 +1240,7 @@ Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
 
 =head1 VERSION
 
-Version 3.2.1
+Version 4.0.0-beta
 
 =head1 DESCRIPTION
 

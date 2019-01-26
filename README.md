@@ -1,4 +1,4 @@
-# Funtoo-Report - v3.2.1 ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=master "Build test badge")
+# Funtoo-Report - v4.0.0-beta ![CI build test badge](https://api.travis-ci.org/haxmeister/funtoo-reporter.svg?branch=feature/bugreports "Build test badge")
 
 ###### Anonymous reporting tool for Funtoo Linux
 
@@ -19,15 +19,16 @@ system files. Use the method most appropriate on your system**
 Funtoo anonymous data reporting tool usage:
 
 funtoo-report
-              -c, --config        Specify path to config file
-              -u, --update-config Interactively updates the config file
-              -l, --list-config   Lists the current configuration file's settings
-              -j, --show-json     Shows the JSON report
-              -s, --send          Sends the JSON report
-              -d, --debug         Enables additional debug output
-              -v, --verbose       Enables non-error output when sending
-              -h, --help          Display this help text
-              -V, --version       Prints the version and exits
+        -b, --bug-report    launched by emerge hooks, sends a bug report 
+        -c, --config        Specify path to config file
+        -u, --update-config Interactively updates the config file
+        -l, --list-config   Lists the current configuration file's settings
+        -j, --show-json     Shows the JSON report
+        -s, --send          Sends the JSON report
+        -d, --debug         Enables additional debug output
+        -v, --verbose       Enables non-error output when sending
+        -h, --help          Display this help text
+        -V, --version       Prints the version and exits
 
 Output can be omitted by modifying the config file (default `/etc/funtoo-report.conf`):
 ```
