@@ -37,7 +37,7 @@ if ( !@ARGV ) {
 }
 my $debug = 0;
 GetOptions(
-    'bug-report|b'    => \&Funtoo::Report::bug_report,
+    'bug-report|b'    => \my $bug_report,
     'config|c=s'      => \$Funtoo::Report::config_file,
     'update-config|u' => \my $update_config,
     'list-config|l'   => \my $list_config,
@@ -89,6 +89,10 @@ if ($send) {
     # get the entire report
     my %report = report_from_config();
     Funtoo::Report::send_report( \%report, \%es_config, $debug );
+}
+
+if ($bug_report){
+	 Funtoo::Report::bug_report($debug)
 }
 
 ## let's read the config file and generate the report

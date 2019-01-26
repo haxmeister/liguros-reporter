@@ -48,7 +48,7 @@ sub send_report {
     # that we were sent
     ( $url, $settings_url ) =
       @{ set_es_index( $es_conf, $url, $settings_url ) };
-    
+
     # generate a json object that we can use to convert to json
     my $json = JSON->new->allow_nonref;
 
@@ -1003,7 +1003,7 @@ sub get_lspci {
 ## gathers data and sends a bug report to the bug report ES
 ##
 sub bug_report {
-	my $debug = shift;
+    my $debug = shift;
     my %bug_report;
     my %config = user_config;
 
@@ -1030,10 +1030,9 @@ sub bug_report {
 
     # Store CATEGORY and PACKAGE into a variable
     my $catpkg = "$ENV{CATEGORY}/$ENV{PN}";
-    
+
     # Extract release info from /etc/ego.conf (FIXME)
     my $release_version = `grep release /etc/ego.conf |cut -f2 -d"="`;
-
 
     print "Fetching ego kit...";
     my $ego_kit = `ego kit`;
@@ -1048,7 +1047,7 @@ sub bug_report {
     print "Done\n";
 
     print "Fetching build.log...";
-    my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") }; 
+    my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") };
     print "Done\n";
 
     $bug_report{'catpkg'}           = $catpkg;
@@ -1087,20 +1086,20 @@ sub get_y_or_n {
 }
 
 ## Accepts a string that is a file path
-## retrieves the contents of the file and returns 
+## retrieves the contents of the file and returns
 ## it as a reference to scalar
-sub slurp_file{
-	my $file_path = shift;
-	my $file_contents;
-	
-	if ( open(my $fh, '<', $file_path) ){
-		my @lines = <$fh>;
-		$file_contents = join ('', @lines);
-	}
-	else{
-		$file_contents = "Unable to retrieve $file_path\n";
-	}
-	return \$file_contents;
+sub slurp_file {
+    my $file_path = shift;
+    my $file_contents;
+
+    if ( open( my $fh, '<', $file_path ) ) {
+        my @lines = <$fh>;
+        $file_contents = join( '', @lines );
+    }
+    else {
+        $file_contents = "Unable to retrieve $file_path\n";
+    }
+    return \$file_contents;
 }
 ## Accepts reportable errors, puts them
 ## into an array, and prints the error to
