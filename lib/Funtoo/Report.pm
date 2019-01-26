@@ -1003,6 +1003,7 @@ sub get_lspci {
 ## gathers data and sends a bug report to the bug report ES
 ##
 sub bug_report {
+	my $debug = shift;
     my %bug_report;
     my %config = user_config;
 
@@ -1058,7 +1059,7 @@ sub bug_report {
     $bug_report{'build.log'}        = $build_log;
     $bug_report{'release'}          = $release_version;
 
-    send_report( \%bug_report, \%es_config_bugreport, 0 );
+    send_report( \%bug_report, \%es_config_bugreport, $debug );
 }
 ###########################################
 ############ misc functions ###############
