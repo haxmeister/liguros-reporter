@@ -1059,7 +1059,7 @@ sub bug_report {
     print "Done\n";
     
     print "Fetching /var/cache/edb/mtimedb for dep state";
-    my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') }
+    my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') };
 
     $bug_report{'catpkg'}           = $catpkg;
     $bug_report{'Environment_vars'} = $bug_env;
