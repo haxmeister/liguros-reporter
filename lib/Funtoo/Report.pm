@@ -134,18 +134,18 @@ sub send_report {
 }
 
 ##
-## finds the config file in and loads its contents into a hash and returns it
+## finds the config file and loads its contents into a hash and returns it
 ##
 sub user_config {
     my $args = shift;
     my %hash;
     my $start_time = gettimeofday;
+    my @known_options =
+      qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info bug-report);
+
     if ( open( my $fh, '<:encoding(UTF-8)', $config_file ) ) {
         my @lines = <$fh>;
         close $fh;
-
-        my @known_options =
-          qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info bug-report);
 
         foreach my $line (@lines) {
             chomp $line;
@@ -158,21 +158,21 @@ sub user_config {
             # split the line on the colon
             # left side becomes a key, right side a value
             # then, unless it's a new config, check that it's a known option...
-            elsif ($line) {
+            if ($line) {
                 my ( $key, $value ) = split /\s*:\s*/msx, $line;
-                if ( !$args ) {
-                    if ( any { $_ eq $key } @known_options ) {
-                        $hash{$key} = $value;
-                    }
-                    else {
-                        die
+
+                if ( any { $_ eq $key } @known_options ) {
+                    $hash{$key} = $value;
+                }
+                else {
+                    die
 "Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
-                    }
                 }
             }
+
         }
 
-        # ...and that all the options are present
+        # ...and check that all the options are present
         if ( !$args ) {
             for my $option (@known_options) {
                 if ( !exists $hash{$option} ) {
@@ -182,16 +182,8 @@ sub user_config {
             }
         }
     }
-    elsif ( $args and ( $args eq 'new' ) ) {
-
-        # if we arrived here due to update-config() and there isn't
-        # a config file then we return a UUID without editing the file
-        $hash{'UUID'} = 'none';
-        return;
-    }
     else {
-        # if we arrived here from the command line and there is no
-        # config file then tell the user what to do
+        # there is no config file, tell the user what to do
         print color( 'red', 'bold' );
         print "\nWarning!";
         print color('reset');
@@ -210,21 +202,11 @@ sub user_config {
 ## versions, etc.
 sub update_config {
 
-    # check for existing config
-    my %old_config = user_config('new');
+    # check for existing UUID
+    my $UUID = get_uuid();
     my %new_config;
 
-    # see if we picked up a current UUID from the old config
-    if ( $old_config{'UUID'} ) {
-
-        #since it's there we will add it to the new config file
-        $new_config{'UUID'} = $old_config{'UUID'};
-    }
-    else {
-
-        # since there is no previous UUID we will go get a new one
-        $new_config{'UUID'} = add_uuid('new');
-    }
+    $new_config{'UUID'} = $UUID;
 
     # let's ask the user about each report setting
 
@@ -245,9 +227,11 @@ sub update_config {
 
     $new_config{'hardware-info'} =
       get_y_or_n('Report information about your hardware and drivers?');
-      
+
     $new_config{'bug-report'} =
-	  get_y_or_n('Report build failure bug reports? Contains emerge --info, build.log, the ENV and such'); 
+      get_y_or_n(
+'Report build failure bug reports? Contains emerge --info, build.log, the ENV and such'
+      );
 
     # let's create or replace the configuration file
     my $timestamp = localtime;
@@ -264,36 +248,46 @@ sub update_config {
 }
 
 ##
-## adds a uuid to the config file and/or returns it as a string
+## Returns an old UUID if it is there or a new UUID
 ##
-sub add_uuid {
-
-    my $arg        = shift;
+sub get_uuid {
+    my $req        = shift;
     my $start_time = gettimeofday;
+    my $UUID;
 
-    # lets just get a random identifier from the system or die trying
-    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-      or croak
-      "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-    my $UUID = <$ufh>;
-    chomp $UUID;
-    close $ufh;
+    # check for old UUID
+    if ( open( my $cfh, '<', $config_file ) ) {
+        foreach my $line (<$cfh>) {
+            if ( $line =~ /^UUID:\w*/msx ) {
+                my $key;
+                ( $key, $UUID ) = split( /:/msx, $line );
+                chomp $UUID;
 
-    # if we recieved the 'new' argument then we just want to return
-    # the UUID without modifying the file. i.e. we came here from the
-    # update-config function
-    if ( $arg and ( $arg eq 'new' ) ) {
-        return $UUID;
-    }
-    else {
+                if ( !$UUID ) {
 
-        # since we got here because a UUID isn't present in the config
-        # open the config file and append the UUID properly into the file
-        open( my $cfh, '>>', $config_file )
-          or croak "Unable to append to $config_file: $ERRNO\n";
-        print {$cfh} "UUID:$UUID\n";
+                 # if the UUID line just matched UUID: but actually has no value
+                    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
+                      or croak
+"Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
+                    $UUID = <$ufh>;
+                    chomp $UUID;
+                    close $ufh;
+                }
+
+            }
+        }
         close $cfh;
     }
+    else {
+        # there's no old UUID so we make a new one
+        open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
+          or croak
+"Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
+        $UUID = <$ufh>;
+        chomp $UUID;
+        close $ufh;
+    }
+
     $timers{'add_uuid'} =
       sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return $UUID;
@@ -1008,12 +1002,13 @@ sub get_lspci {
 sub bug_report {
     my $debug = shift;
     my %bug_report;
-    my %config = user_config;
+    my %config = user_config();
 
-	# if the user's config is set to not send bug reports
-	# we can jump out here and let emerge move on
-	$config{'bug-report'} eq 'y' or die "Skipping bug report because /etc/funtoo-report.conf bug-report=n\nYou can change this with: 'funtoo-report --update-config' and selecting 'y' for reporting build failures\n";
-	
+    # if the user's config is set to not send bug reports
+    # we can jump out here and let emerge move on
+    $config{'bug-report'} eq 'y'
+      or die
+"Skipping bug report because /etc/funtoo-report.conf bug-report=n\nYou can change this with: 'funtoo-report --update-config' and selecting 'y' for reporting build failures\n";
 
     # we make a special config to send to the send_report function
     # so that it is sent to the correct place
@@ -1057,7 +1052,7 @@ sub bug_report {
     print "Fetching build.log...";
     my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") };
     print "Done\n";
-    
+
     print "Fetching /var/cache/edb/mtimedb for dep state";
     my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') };
 
@@ -1068,7 +1063,7 @@ sub bug_report {
     $bug_report{'timestamp'}        = report_time('long');
     $bug_report{'build.log'}        = $build_log;
     $bug_report{'release'}          = $release_version;
-	$bug_report{'mtimedb'}          = $mtimedb;
+    $bug_report{'mtimedb'}          = $mtimedb;
     send_report( \%bug_report, \%es_config_bugreport, $debug );
 }
 ###########################################
