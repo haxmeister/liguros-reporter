@@ -1057,6 +1057,9 @@ sub bug_report {
     print "Fetching build.log...";
     my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") };
     print "Done\n";
+    
+    print "Fetching /var/cache/edb/mtimedb for dep state";
+    my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') }
 
     $bug_report{'catpkg'}           = $catpkg;
     $bug_report{'Environment_vars'} = $bug_env;
@@ -1065,7 +1068,7 @@ sub bug_report {
     $bug_report{'timestamp'}        = report_time('long');
     $bug_report{'build.log'}        = $build_log;
     $bug_report{'release'}          = $release_version;
-
+	$bug_report{'mtimedb'}          = $mtimedb;
     send_report( \%bug_report, \%es_config_bugreport, $debug );
 }
 ###########################################
