@@ -95,7 +95,7 @@ if ($bug_report){
 	# if the user has launched funtoo-reporter with the -b option from
 	# the terminal, we will exit and explain that it is intended to be 
 	# launched by an emerge hook
-	defined $ENV{PN} or die "funtoo-report bug reporting option is intended to be launched by an emerge hook\n";
+	defined $ENV{PN} or die "funtoo-report bug reporting option is intended to be launched only by an emerge hook\n";
 	
 	 Funtoo::Report::bug_report($debug)
 }
