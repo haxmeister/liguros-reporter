@@ -1014,6 +1014,7 @@ sub bug_report {
 	# we can jump out here and let emerge move on
 	$config{'bug-report'} eq 'y' or die "Skipping bug report because /etc/funtoo-report.conf bug-report=n\nYou can change this with: 'funtoo-report --update-config' and selecting 'y' for reporting build failures\n";
 	
+
     # we make a special config to send to the send_report function
     # so that it is sent to the correct place
     my %es_config_bugreport = (
