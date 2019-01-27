@@ -1052,8 +1052,8 @@ sub bug_report {
     print "Fetching build.log...";
     my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") };
     print "Done\n";
-
-    print "Fetching /var/cache/edb/mtimedb for dep state";
+    
+    print "Fetching /var/cache/edb/mtimedb for dep state\n";
     my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') };
 
     $bug_report{'catpkg'}           = $catpkg;
