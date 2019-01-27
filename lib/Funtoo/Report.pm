@@ -204,6 +204,7 @@ sub update_config {
 
     # check for existing UUID
     my $UUID = get_uuid();
+    print "recieved $UUID\n";
     my %new_config;
 
     $new_config{'UUID'} = $UUID;
@@ -259,37 +260,27 @@ sub get_uuid {
     if ( open( my $cfh, '<', $config_file ) ) {
         foreach my $line (<$cfh>) {
             if ( $line =~ /^UUID:\w*/msx ) {
+                print "found in file...$line\n";
                 my $key;
-                ( $key, $UUID ) = split( /:/msx, $line );
+                ( $key, $UUID ) = split( /:/, $line );
+                print "we split out key-$key and value-$UUID\n";
                 chomp $UUID;
-
-                if ( !$UUID ) {
-
-                 # if the UUID line just matched UUID: but actually has no value
-                    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-                      or croak
-"Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-                    $UUID = <$ufh>;
-                    chomp $UUID;
-                    close $ufh;
-                }
-
             }
         }
         close $cfh;
     }
-    else {
-        # there's no old UUID so we make a new one
-        open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-          or croak
-"Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-        $UUID = <$ufh>;
-        chomp $UUID;
-        close $ufh;
+
+    # there's no old UUID so we get a new one
+    if ( !$UUID ) {
+        print "matched nonword chars\n";
+        $UUID = generate_uuid();
+        print "it is not defined so we fetched $UUID\n";
     }
 
     $timers{'add_uuid'} =
       sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
+
+    print "about to return $UUID\n";
     return $UUID;
 }
 
@@ -1052,7 +1043,7 @@ sub bug_report {
     print "Fetching build.log...";
     my $build_log = ${ slurp_file("$ENV{TEMP}/build.log") };
     print "Done\n";
-    
+
     print "Fetching /var/cache/edb/mtimedb for dep state\n";
     my $mtimedb = ${ slurp_file('/var/cache/edb/mtimedb') };
 
@@ -1069,6 +1060,18 @@ sub bug_report {
 ###########################################
 ############ misc functions ###############
 
+sub generate_uuid {
+    my $id;
+
+    # there's no old UUID so we make a new one
+    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
+      or croak
+      "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
+    $id = <$ufh>;
+    chomp $id;
+    close $ufh;
+    return $id;
+}
 ## accepts a string that is the question
 ## returns y or n or continues to prompt user
 ## until they answer correctly
