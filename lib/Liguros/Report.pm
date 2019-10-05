@@ -1,7 +1,7 @@
-package Funtoo::Report;
+package Liguros::Report;
 
 ### Authors : Joshua S. Day (haxmeister), Tom Ryder, ShadowM00n
-### purpose : functions for retrieving and sending data on funtoo linux
+### purpose : functions for retrieving and sending data on liguros linux
 
 use 5.014;
 use strict;
@@ -18,7 +18,7 @@ use Time::HiRes qw(gettimeofday);    #core
 our $VERSION = '3.2.2';
 
 ### getting some initialization done:
-our $config_file = '/etc/funtoo-report.conf';
+our $config_file = '/etc/liguros-report.conf';
 our $VERBOSE;
 my @errors;                          # for any errors that don't cause a die
 my %timers;
@@ -36,7 +36,7 @@ sub send_report {
     $debug //= 0;
 
     # refuse to send a report with an unset, undefined, or empty UUID
-    length $rep->{'funtoo-report'}{UUID}
+    length $rep->{'liguros-report'}{UUID}
       or do {
         push_error(
             'Refusing to submit report with blank UUID; check your config');
@@ -44,7 +44,7 @@ sub send_report {
       };
 
     # if this is a development version we send to the fundev index
-    # otherwise to the funtoo index
+    # otherwise to the liguros index
     if ( $VERSION =~ /-/msx ) {
         $url =
 "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
@@ -53,9 +53,9 @@ sub send_report {
     }
     else {
         $url =
-"$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+"$es_conf->{'node'}/liguros-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url =
-          "$es_conf->{'node'}/funtoo-$VERSION-$es_conf->{'index'}/_settings";
+          "$es_conf->{'node'}/liguros-$VERSION-$es_conf->{'index'}/_settings";
     }
 
     # generate a json object that we can use to convert to json
@@ -206,7 +206,7 @@ sub user_config {
         print color('reset');
         print "\nCould not open the configuration file at $config_file \n";
         print
-"To generate a new configuration file use 'funtoo-report --update-config' \n\n";
+"To generate a new configuration file use 'liguros-report --update-config' \n\n";
         exit;
     }
 
@@ -260,7 +260,7 @@ sub update_config {
     print "Creating or replacing $config_file\n";
     open( my $fh, '>:encoding(UTF-8)', $config_file )
       or croak "Could not open $config_file: $ERRNO\n";
-    printf {$fh} "# Generated on %s for v%s of funtoo-report\n", $timestamp,
+    printf {$fh} "# Generated on %s for v%s of liguros-report\n", $timestamp,
       $VERSION;
     foreach my $key ( sort keys %new_config ) {
         print {$fh} "$key:$new_config{$key}\n";
@@ -332,7 +332,7 @@ sub errors {
 }
 
 ## returns a long date string for the report body or
-## returns a string that is like 'funtoo-year.week' that is
+## returns a string that is like 'liguros-year.week' that is
 ## suitable for elasticsearch historical data management
 ##
 ## with special date formatting by request
@@ -1135,7 +1135,7 @@ __END__
 
 =head1 NAME
 
-Funtoo::Report - Functions for retrieving and sending data on Funtoo Linux
+Liguros::Report - Functions for retrieving and sending data on Liguros Linux
 
 =head1 VERSION
 
@@ -1143,24 +1143,24 @@ Version 3.2.2
 
 =head1 DESCRIPTION
 
-This module contains functions to generate the sections of a report for Funtoo
+This module contains functions to generate the sections of a report for Liguros
 Linux, build the whole report, and send it to an ElasticSearch server.
 
-You almost certainly want to drive this using the C<funtoo-report> script,
+You almost certainly want to drive this using the C<liguros-report> script,
 rather than importing it yourself.
 
 =head1 SYNOPSIS
 
-    use Funtoo::Report;
+    use Liguros::Report;
     ...
-    my %report = Funtoo::Report::report_from_config;
+    my %report = Liguros::Report::report_from_config;
     ...
     my %es_config = (
-        node  => 'https://es.host.funtoo.org:9200',
-        index => Funtoo::Report::report_time('short'),
+        node  => 'https://es.host.liguros.org:9200',
+        index => Liguros::Report::report_time('short'),
         type  => 'report'
     );
-    Funtoo::Report::send_report(\%report, \%es_config, $debug);
+    Liguros::Report::send_report(\%report, \%es_config, $debug);
 
 =head1 SUBROUTINES/METHODS
 
@@ -1268,7 +1268,7 @@ error to STDERR. See also L</errors>.
 =item C<report_time>
 
 Returns a long date string for the report body or a string that is like
-"funtoo-year.week" that is suitable for ElasticSearch historical data
+"liguros-year.week" that is suitable for ElasticSearch historical data
 management. Accepts "long" or "short" as input, which determines the output.
 
 =item C<send_report>
@@ -1280,7 +1280,7 @@ server. Uses L</push_errors> for error reporting.
 
 Retrieves the UUID from the config file if present, and then prompts the user
 as it generates settings for a new config file via L</get_y_or_n>. Inserts a
-comment containing a timestamp and the version of funtoo-report used to create
+comment containing a timestamp and the version of liguros-report used to create
 the configuration. Can exit with failure if unable to read the config file.
 
 =item C<user_config>
@@ -1306,9 +1306,9 @@ should hopefully be at least partly self-explanatory.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-The configuration file is required and can be generated with C<funtoo-report>'s
+The configuration file is required and can be generated with C<liguros-report>'s
 C<--update-config> option (recommended). Its default location is
-C</etc/funtoo-report.conf>.
+C</etc/liguros-report.conf>.
 
 =head1 DEPENDENCIES
 
@@ -1358,16 +1358,16 @@ L<Time::Piece>
 
 =head1 INCOMPATIBILITIES
 
-This module is almost certainly only useful on a Funtoo computer.
+This module is almost certainly only useful on a Liguros computer.
 
 =head1 BUGS AND LIMITATIONS
 
 Definitely. To report bugs or make feature requests, please raise an issue on
-GitHub at L<https://github.com/haxmeister/funtoo-reporter>.
+GitHub at L<https://github.com/haxmeister/liguros-reporter>.
 
 =head1 AUTHOR
 
-The Funtoo::Report development team:
+The Liguros::Report development team:
 
 =over 4
 

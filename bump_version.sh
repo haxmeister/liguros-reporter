@@ -3,8 +3,8 @@
 # bump-version.sh - update the versions in our project
 
 path=$(cd "$(dirname "$0")" && pwd)
-file_names='funtoo-report
-lib/Funtoo/Report.pm
+file_names='liguros-report
+lib/Liguros/Report.pm
 README.md'
 version=
 major=0
@@ -41,12 +41,12 @@ write_version() {
         do
             echo "Bumping $file ..."
 
-            # This line searches for our $VERSION in funtoo-report and in Report.pm
+            # This line searches for our $VERSION in liguros-report and in Report.pm
             sed -i -e "s/^our \$VERSION = '\([0-9]\+[.]\)\{2\}[0-9].*/our \$VERSION = '$major$minor$patch$stage';/" "$path/$file"
             # This line searches for Version x.y.z found in Report.pm in POD
             sed -i -e "s/^Version \([0-9]\+[.]\)\{2\}[0-9].*/Version $major$minor$patch$stage/" "$path/$file"
             # This line searches for version number in README.md
-            sed -i -e "s/^# Funtoo-Report - v\([0-9]\+[.]\)\{2\}[0-9].*!/# Funtoo-Report - v$major$minor$patch$stage !/" "$path/$file"
+            sed -i -e "s/^# Liguros-Report - v\([0-9]\+[.]\)\{2\}[0-9].*!/# Liguros-Report - v$major$minor$patch$stage !/" "$path/$file"
 
         done
     }
@@ -91,7 +91,7 @@ write_version() {
         *) usage ;;
     esac
 
-    echo "Funtoo::Report updating $version -> $major$minor$patch$stage"
+    echo "Liguros::Report updating $version -> $major$minor$patch$stage"
     echo '**************************************'
 
     write_version

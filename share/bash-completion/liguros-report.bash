@@ -2,7 +2,7 @@
 # bashdefault requires Bash >=3.0
 [ -n "$BASH_VERSINFO" ] || return
 (( BASH_VERSINFO[0] >= 3 )) || return
-_funtoo-report() {
+_liguros-report() {
     COMPREPLY=( $(compgen -W '
         --config
         --update-config
@@ -15,4 +15,4 @@ _funtoo-report() {
         --version
     ' -- "$2" ) )
 }
-complete -F _funtoo-report -o bashdefault -o default funtoo-report
+complete -F _liguros-report -o bashdefault -o default liguros-report

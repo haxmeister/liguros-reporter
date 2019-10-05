@@ -1,6 +1,6 @@
-#compdef funtoo-report
+#compdef liguros-report
 
-_funtoo-report(){
+_liguros-report(){
 	local -a opt_args
 	opt_args=(
 		"--config:Specify path to config file" "-c:Specify path to config file"
@@ -14,11 +14,11 @@ _funtoo-report(){
 		"--version:Prints the version and exits" "-V:Prints the version and exits"
 	)
 
-	_describe -t options "funtoo-report options" opt_args -V1
+	_describe -t options "liguros-report options" opt_args -V1
 
 }
 
-_funtoo-report "$@"
+_liguros-report "$@"
 
 
 #--config         -c  -- Specify path to config file

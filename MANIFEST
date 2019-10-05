@@ -2,7 +2,7 @@ Changes
 Makefile.PL
 MANIFEST
 README.md
-funtoo-report
-lib/Funtoo/Report.pm
-share/bash-completion/funtoo-report.bash
+liguros-report
+lib/Liguros/Report.pm
+share/bash-completion/liguros-report.bash
 LICENSE

@@ -3,9 +3,9 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 WriteMakefile(
-    NAME             => 'Funtoo::Report',
-    VERSION_FROM     => 'lib/Funtoo/Report.pm',
-    EXE_FILES        => ['funtoo-report'],
+    NAME             => 'Liguros::Report',
+    VERSION_FROM     => 'lib/Liguros/Report.pm',
+    EXE_FILES        => ['liguros-report'],
     MIN_PERL_VERSION => '5.014',
     PREREQ_PM        => {
         'Carp'            => 0,
