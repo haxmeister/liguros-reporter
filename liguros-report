@@ -23,6 +23,7 @@ use Liguros::Report;                             #GIT
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
 
+
 our $VERSION = '3.2.2';
 
 my %es_config = (
@@ -145,8 +146,6 @@ sub report_from_config {
     #
     $hash{'liguros-report'}{'errors'} = Liguros::Report::errors();
 
-    ## adding timers to report
-    $hash{'execution-timers'} = Liguros::Report::timer();
 
     return %hash;
 }

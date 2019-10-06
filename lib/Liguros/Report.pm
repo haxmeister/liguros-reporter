@@ -13,7 +13,9 @@ use JSON;                            #cpan
 use List::Util qw(any);              #core
 use Term::ANSIColor;                 #core
 use Time::Piece;                     #core
-use Time::HiRes qw(gettimeofday);    #core
+use Liguros::CPUinfo;
+use Liguros::MEMinfo;
+use Liguros::CHASSISinfo;
 
 our $VERSION = '3.2.2';
 
@@ -21,7 +23,10 @@ our $VERSION = '3.2.2';
 our $config_file = '/etc/liguros-report.conf';
 our $VERBOSE;
 my @errors;                          # for any errors that don't cause a die
-my %timers;
+
+my $cpu     = Liguros::CPUinfo->new;
+my $memory  = Liguros::MEMinfo->new;
+my $chassis = Liguros::CHASSISinfo->new;
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -30,7 +35,6 @@ sub send_report {
     my ( $rep, $es_conf, $debug ) = @_;
     my $url;
     my $settings_url;
-    my $start_time = gettimeofday;
 
     # if we weren't told whether to show debugging output, don't
     $debug //= 0;
@@ -114,7 +118,7 @@ sub send_report {
             # if we successfully increased the field limit
             # then we can call send_report again and start over
             if ( fix_es_limit( $current_limit, $settings_url, $debug ) ) {
-                $timers{'total'} += $timers{'fix_es_limit'};
+               
                 send_report( $rep, $es_conf, $debug );
                 exit;
             }
@@ -148,7 +152,6 @@ sub send_report {
 sub user_config {
     my $args = shift;
     my %hash;
-    my $start_time = gettimeofday;
     if ( open( my $fh, '<:encoding(UTF-8)', $config_file ) ) {
         my @lines = <$fh>;
         close $fh;
@@ -275,7 +278,6 @@ sub update_config {
 sub add_uuid {
 
     my $arg        = shift;
-    my $start_time = gettimeofday;
 
     # lets just get a random identifier from the system or die trying
     open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
@@ -300,8 +302,7 @@ sub add_uuid {
         print {$cfh} "UUID:$UUID\n";
         close $cfh;
     }
-    $timers{'add_uuid'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
+
     return $UUID;
 }
 
@@ -312,17 +313,6 @@ sub version {
     return $VERSION;
 }
 
-##
-## returns hash of times and also a total of them all
-##
-sub timer {
-    my $total;
-    foreach my $key ( keys %timers ) {
-        $total += $timers{$key};
-    }
-    $timers{'total'} = $total;
-    return \%timers;
-}
 
 ##
 ## reporting errors
@@ -363,7 +353,6 @@ sub report_time {
 ##
 sub get_hardware_info {
     my %hash;
-    my $start_time = gettimeofday;
     my %lspci = ( 'PCI-Device' => get_lspci() );
 
     for my $device ( keys %{ $lspci{'PCI-Device'} } ) {
@@ -387,16 +376,14 @@ sub get_hardware_info {
     $hash{'filesystem'} = get_filesystem_info();
 
     # fetching cpu info
-    $hash{'cpu'} = get_cpu_info();
+    $hash{'cpu'} = $cpu->all_data;
 
     # fetching memory info
-    $hash{'memory'} = get_mem_info();
+    $hash{'memory'} = $memory->all_data;
 
     # fetching chassis info
-    $hash{'chassis'} = get_chassis_info();
+    $hash{'chassis'} = $chassis->all_data;
 
-    $timers{'get_hardware_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -407,7 +394,6 @@ sub get_hardware_info {
 ## of making calls to external tools
 ##
 sub get_net_info {
-    my $start_time    = gettimeofday;
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
@@ -518,8 +504,6 @@ sub get_net_info {
             driver => $driver,
         };
     }
-    $timers{'get_net_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -530,194 +514,20 @@ sub get_net_info {
 ##
 sub get_filesystem_info {
     my %hash;
-    my $start_time = gettimeofday;
     my $lsblk =
       `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
     my $lsblk_decoded = decode_json($lsblk);
 
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
-    $timers{'get_filesystem_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
-##
-## fetching lines from /proc/cpuinfo
-##
-sub get_cpu_info {
-
-    my $cpu_file = '/proc/cpuinfo';
-    my %hash;
-    my @cpu_file_contents;
-    my $proc_count = 0;
-    my $start_time = gettimeofday;
-
-    if ( open( my $fh, '<:encoding(UTF-8)', $cpu_file ) ) {
-        @cpu_file_contents = <$fh>;
-        close $fh;
-
-        foreach my $row (@cpu_file_contents) {
-            chomp $row;
-            if ($row) {
-
-                # let's split each line on the colon, left is the key
-                # right is the value
-                my ( $key, $value ) = split /\s*:\s*/msx, $row;
-
-                # now we will just look for the values we want and
-                # add them to the hash
-                if ( $key eq 'model name' ) {
-                    $hash{$key} = $value;
-                }
-                elsif ( $key eq 'flags' ) {
-                    my @cpu_flags = split / /, $value;
-                    $hash{$key} = \@cpu_flags;
-                }
-                elsif ( $key eq 'cpu MHz' ) {
-                    $hash{$key} = $value * 1;
-                }
-                elsif ( $key eq 'processor' ) {
-
-                    # counting lines that are labeled 'processor' which
-                    # should give us a number that users expect to see
-                    # including logical and physical cores
-                    $proc_count = $proc_count + 1;
-                }
-            }
-        }
-    }
-
-    else {
-        push_error("Could not open file $cpu_file: $ERRNO");
-        return;
-    }
-    $hash{"processors"} = $proc_count;
-    $timers{'get_cpu_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
-    return \%hash;
-}
-
-##
-## fetching a few lines from /proc/meminfo
-##
-sub get_mem_info {
-    my $start_time = gettimeofday;
-
-    # pulling relevant info from /proc/meminfo
-    my %hash = (
-        MemTotal     => undef,
-        MemFree      => undef,
-        MemAvailable => undef,
-        SwapTotal    => undef,
-        SwapFree     => undef,
-    );
-    my $mem_file = '/proc/meminfo';
-    my @mem_file_contents;
-    if ( open( my $fh, '<:encoding(UTF-8)', $mem_file ) ) {
-        @mem_file_contents = <$fh>;
-        close $fh;
-
-        foreach my $row (@mem_file_contents) {
-
-            # get the key and the first numeric value
-            my ( $key, $value ) = $row =~ m/ (\S+) : \s* (\d+) /msx
-              or next;
-
-            # if there's a hash bucket waiting for this value, add it
-            exists $hash{$key} or next;
-
-            # Convert the size from KB to GB
-            $hash{$key} = sprintf '%.2f', ($value) / ( 1024**2 );
-            $hash{$key} += 0;
-        }
-    }
-    else {
-        push_error("Could not open file $mem_file: $ERRNO");
-        return;
-    }
-    $timers{'get_mem_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
-    return \%hash;
-}
-
-##
-## fetch information about the system chassis
-##
-sub get_chassis_info {
-    my %hash;
-    my $folder     = "/sys/class/dmi/id/";
-    my @id_files   = ( 'chassis_type', 'chassis_vendor', 'product_name' );
-    my $start_time = gettimeofday;
-
-    my @possible_id = (
-        'N/A',
-        'Other',
-        'Unknown',
-        'Desktop',
-        'Low Profile Desktop',
-        'Pizza Box',
-        'Mini Tower',
-        'Tower',
-        'Portable',
-        'Laptop',
-        'Notebook',
-        'Hand Held',
-        'Docking Station',
-        'All in One',
-        'Sub Notebook',
-        'Space-Saving',
-        'Lunch Box',
-        'Main Server Chassis',
-        'Expansion Chassis',
-        'SubChassis',
-        'Bus Expansion Chassis',
-        'Peripheral Chassis',
-        'RAID Chassis',
-        'Rack Mount Chassis',
-        'Sealed-Case PC',
-        'Multi-system Chassis',
-        'Compact PCI',
-        'Advanced TCA',
-        'Blade',
-        'Blade Enclosure',
-        'Tablet',
-        'Convertible',
-        'Detachable',
-        'IoT Gateway',
-        'Embedded PC',
-        'Mini PC',
-        'Stick PC'
-    );
-
-    for my $file (@id_files) {
-        if ( open( my $fh, '<', "$folder$file" ) ) {
-            my $content = <$fh>;
-            chomp $content;
-            if ( $file eq "chassis_type" ) {
-                $hash{$file} = $possible_id[$content];
-            }
-            else {
-                $hash{$file} = $content;
-            }
-            close $fh;
-        }
-        else {
-            push_error("Unable to open $folder$file: $ERRNO");
-            $hash{$file} = $possible_id[0];
-        }
-    }
-    $timers{'get_boot_dir_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
-    return \%hash;
-
-}
 
 ##
 ## fetching active profiles
 ## reconstruct output of epro show-json command
 ##
 sub get_profile_info {
-    my $start_time = gettimeofday;
 
     # execute 'epro show-json' and capture its output
     my $epro = 'epro show-json';
@@ -738,8 +548,6 @@ sub get_profile_info {
                 }
             }
         }
-        $timers{'get_profile_info'} =
-          sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
         return \%sorted;
     }
     else {
@@ -761,7 +569,6 @@ sub get_kit_info {
     my %ego_conf_hash;
     my $meta_data;
     my %hash;
-    my $start_time = gettimeofday;
 
     # decode and store meta file datastructure into $meta_data
     if ( open( my $fh, '<:encoding(UTF-8)', $meta_file ) ) {
@@ -851,9 +658,6 @@ sub get_kit_info {
             $hash{$key} = $ego_conf_hash{'kits'}{$key};
         }
     }
-
-    $timers{'get_kit_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -864,7 +668,7 @@ sub get_kernel_info {
 
     my @keys = qw( osrelease ostype version );
     my %hash;
-    my $start_time = gettimeofday;
+
     for my $fn (@keys) {
         if ( open my $fh, '<:encoding(UTF-8)', "/proc/sys/kernel/$fn" ) {
             chomp( $hash{$fn} = <$fh> );
@@ -875,8 +679,6 @@ sub get_kernel_info {
             return;
         }
     }
-    $timers{'get_kernel_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -887,7 +689,6 @@ sub get_boot_dir_info {
     my %hash;
     my $boot_dir = "/boot";
     my @kernel_list;
-    my $start_time = gettimeofday;
 
     # pulling list of kernels in /boot
     if ( opendir( my $dh, $boot_dir ) ) {
@@ -908,8 +709,6 @@ sub get_boot_dir_info {
         return \%hash;
     }
     $hash{'available kernels'} = \@kernel_list;
-    $timers{'get_boot_dir_info'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -922,7 +721,6 @@ sub get_all_installed_pkg {
     my @world;
     my $db_dir     = '/var/db/pkg';
     my $world_file = '/var/lib/portage/world';
-    my $start_time = gettimeofday;
 
     # Get a list of the world packages
     open my $fh, '<', $world_file
@@ -963,8 +761,6 @@ sub get_all_installed_pkg {
     }
     $hash{'pkg-count-world'} = scalar @world;
     $hash{'pkg-count-total'} = scalar @all;
-    $timers{'get_all_installed_pkg'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -974,7 +770,6 @@ sub get_all_installed_pkg {
 ##
 sub get_lspci {
     my %hash;
-    my $start_time = gettimeofday;
     my $lspci      = 'lspci -kmmvvv';
     if ( my $lspci_output = `$lspci` ) {
         my @hw_item_section = split( /^\n/msx, $lspci_output );
@@ -1004,8 +799,6 @@ sub get_lspci {
         push_error("Could not retrieve output from $lspci: $ERRNO");
         return;
     }
-    $timers{'get_lspci'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 ) + 0;
     return \%hash;
 }
 
@@ -1088,7 +881,6 @@ sub fix_es_limit {
     my $old_limit  = shift;
     my $es_url     = shift;
     my $debug      = shift;
-    my $start_time = gettimeofday;
 
     # create a json object to encode the message
     my $new_json = JSON->new->allow_nonref;
@@ -1117,8 +909,6 @@ sub fix_es_limit {
     if ($debug) {
         print $new_response->{content} . "\n";
     }
-    $timers{'fix_es_limit'} =
-      sprintf( "%.4f", ( gettimeofday - $start_time ) * 1000 );
 
     if ( $new_response->{success} ) {
         return 1;
