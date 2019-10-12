@@ -3,9 +3,8 @@ package Liguros::Report;
 ### Authors : Joshua S. Day (haxmeister), Tom Ryder, ShadowM00n
 ### purpose : functions for retrieving and sending data on liguros linux
 
-use 5.014;
-use strict;
-use warnings;
+use 5.20.0;
+use Moose;
 use Carp;                            #core
 use English qw(-no_match_vars);      #core
 use HTTP::Tiny;                      #core
@@ -19,26 +18,30 @@ use Liguros::Report_Config;
 use Liguros::CPUinfo;
 use Liguros::Lspci;
 
-
+has 'VERSION' =>(
+	is => 'ro',
+);
+has 'VERBOSE' =>(
+	is => 'rw',
+	default => 0,
+);
 
 ### getting some initialization done:
 
-our $VERSION = '3.2.2';
-our $VERBOSE;
 my @errors;
 my $cpu     = Liguros::CPUinfo->new;
 my $memory  = Liguros::MEMinfo->new;
 my $chassis = Liguros::CHASSISinfo->new;
 my $json    = JSON->new->allow_nonref;
-my $config  = Liguros::Report_Config->new;
 my $lspci   = Liguros::Lspci->new;
+
 
 
 ##
 ## generates report, creates user agent, and sends to elastic search
 ##
 sub send_report {
-    my ( $rep, $es_conf, $debug ) = @_;
+    my ( $self, $rep, $es_conf, $debug ) = @_;
     my $url;
     my $settings_url;
 
@@ -55,17 +58,17 @@ sub send_report {
 
     # if this is a development version we send to the fundev index
     # otherwise to the liguros index
-    if ( $VERSION =~ /-/msx ) {
+    if ( $self->{VERSION} =~ /-/msx ) {
         $url =
-"$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+"$es_conf->{'node'}/fundev-$self->{VERSION}-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url =
-          "$es_conf->{'node'}/fundev-$VERSION-$es_conf->{'index'}/_settings";
+          "$es_conf->{'node'}/fundev-$self->{VERSION}-$es_conf->{'index'}/_settings";
     }
     else {
         $url =
-"$es_conf->{'node'}/liguros-$VERSION-$es_conf->{'index'}/$es_conf->{'type'}";
+"$es_conf->{'node'}/liguros-$self->{VERSION}-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url =
-          "$es_conf->{'node'}/liguros-$VERSION-$es_conf->{'index'}/_settings";
+          "$es_conf->{'node'}/liguros-$self->{VERSION}-$es_conf->{'index'}/_settings";
     }
 
 
@@ -79,7 +82,7 @@ sub send_report {
     );
 
     # create a new HTTP object
-    my $agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $agent = sprintf '%s/%s', __PACKAGE__, $self->{VERSION};
     my $http = HTTP::Tiny->new( agent => $agent );
 
     # send report and capture the response from ES
@@ -141,7 +144,7 @@ sub send_report {
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        if ($VERBOSE) {
+        if ($self->{VERBOSE}) {
             print "your report can be seen at: "
               . $es_conf->{'node'}
               . $response->{'headers'}{'location'} . "\n";
@@ -157,7 +160,8 @@ sub send_report {
 ## reporting version number
 ##
 sub version {
-    return $VERSION;
+	my $self = shift;
+    return $self->{VERSION};
 }
 
 
@@ -174,6 +178,7 @@ sub errors {
 ##
 ## with special date formatting by request
 sub report_time {
+	my $self      = shift;
     my $format    = shift;
     my $t         = gmtime;
     my $short_fmt = $t->date;
@@ -498,26 +503,6 @@ sub get_kit_info {
     return \%hash;
 }
 
-##
-## fetching kernel information from /proc/sys/kernel
-##
-sub get_kernel_info {
-
-    my @keys = qw( osrelease ostype version );
-    my %hash;
-
-    for my $fn (@keys) {
-        if ( open my $fh, '<:encoding(UTF-8)', "/proc/sys/kernel/$fn" ) {
-            chomp( $hash{$fn} = <$fh> );
-            close $fh;
-        }
-        else {
-            push_error("Could not open file $fn: $ERRNO");
-            return;
-        }
-    }
-    return \%hash;
-}
 
 ##
 ## finding kernel files in boot
@@ -679,13 +664,14 @@ sub fs_recurse {
 # when a submission error is about the field limit
 # it will attempt to tell ES to increase the field limit by 1000
 sub fix_es_limit {
+	my $self       = shift;
     my $old_limit  = shift;
     my $es_url     = shift;
     my $debug      = shift;
 
 
     # create a new HTTP object
-    my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
+    my $new_agent = sprintf '%s/%s', __PACKAGE__, $self->{VERSION};
     my $new_http = HTTP::Tiny->new( agent => $new_agent );
 
     # determine the new field limit

@@ -21,24 +21,21 @@ use Getopt::Long qw(:config no_ignore_case);    #core
 use JSON;                                       #cpan
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
-use Liguros::MEMinfo;
-use Liguros::CHASSISinfo;
 use Liguros::Report_Config;
-use Liguros::CPUinfo;
 use Liguros::Report;
+use Liguros::KernelInfo;
 
-our $VERSION = '3.2.2';
+my $VERSION = '1.0';
 
-my $config  = Liguros::Report_Config->new;
-my $json    = JSON->new->allow_nonref;
-
-
-
+my $config     = Liguros::Report_Config->new;
+my $json       = JSON->new->allow_nonref;
+my $kernel     = Liguros::KernelInfo->new;
+my $report_lib = Liguros::Report->new;
 
 
 my %es_config = (
     node  => 'https://es.host.liguros.org:9200',
-    index => Liguros::Report::report_time('short'),
+    index => $report_lib->report_time('short'),
     type  => 'report',
 );
 
@@ -49,17 +46,16 @@ if ( !@ARGV ) {
 }
 my $debug = 0;
 GetOptions(
-    'config|c=s'      => \$Liguros::Report::config_file,
+    'config|c=s'      => \$report_lib->{config_file},
     'update-config|u' => \my $update_config,
     'list-config|l'   => \my $list_config,
     'show-json|j'     => \my $show_json,
     'send|s'          => \my $send,
-    #'verbose|v'       => sub { $Liguros::Report::VERBOSE = 1 },
+    'verbose|v'       => sub { $report_lib->{VERBOSE} = 1 },
     'debug|d'         => \$debug,
     'help|h'          => \&pod2usage,
     'version|V'       => sub {
-        printf "liguros-report: %s\nLiguros::Report: %s\n", $VERSION,
-            Liguros::Report::version();
+        say "liguros-report: ".$VERSION."Report.pm:".$report_lib->{VERSION};
         exit;
     },
 ) or pod2usage;
@@ -70,12 +66,12 @@ if (@ARGV) {
 
 # Handle options
 if ($update_config) {
-    Liguros::Report::update_config();
+    $report_lib->update_config();
 }
 
 if ($list_config) {
-    my %config = Liguros::Report::user_config();
-    print "Current configuration of $Liguros::Report::config_file:\n\n";
+    my %config = $report_lib->user_config();
+    print "Current configuration of $config->{config_location}\n\n";
     for my $key ( sort keys %config ) {
         print "$key: $config{$key}\n";
     }
@@ -85,10 +81,7 @@ if ($show_json) {
 
     # get the entire report
     my %report = report_from_config();
-
-    # generate a json object that we can use to convert to json
-    my $json = JSON->new->allow_nonref;
-
+   
     # send the report to the json object to be encoded to json
     # and print the results with proper indents (pretty)
     my $json_pretty = $json->pretty->encode( \%report );
@@ -99,52 +92,40 @@ if ($send) {
 
     # get the entire report
     my %report = report_from_config();
-    Liguros::Report::send_report( \%report, \%es_config, $debug );
+    $report_lib->send_report( \%report, \%es_config, $debug );
 }
 
 ## let's read the config file and generate the report
 sub report_from_config {
 	my %final_report;
+	
 	$config->load_config();
 	
+	if ($config->{kernel_info}    eq 'y'){
+		$final_report{'kernel_info'}{'osrelease'}  = $kernel->{osrelease};
+		$final_report{'kernel_info'}{'ostype'}     = $kernel->{ostype};
+		$final_report{'kernel_info'}{'version'}    = $kernel->{version};
+	}
+	if ($config->{profile_info}   eq 'y'){
+		$final_report{profile_info}   = $report_lib->get_profile_info;
+	}
+	if ($config->{installed_pkgs} eq 'y'){
+		$final_report{installed_pkgs} = $report_lib->get_all_installed_pkg;
+	}
+	if ($config->{hardware_info}  eq 'y'){
+		$final_report{hardware_info}  = $report_lib->get_hardware_info;
+	}
+	if ($config->{kit_info}       eq 'y'){
+		$final_report{kit_info}       = $report_lib->get_kit_info;
+	}
+	if ($config->{boot_dir_info}  eq 'y'){
+		$final_report{boot_dir_info}  = $report_lib->get_boot_dir_info;
+	}
 	
-   my %sections = (
-        'boot_dir_info'  => \&Liguros::Report::get_boot_dir_info,
-        'kernel_info'    => \&Liguros::Report::get_kernel_info,
-        'kit_info'       => \&Liguros::Report::get_kit_info,
-        'profile_info'   => \&Liguros::Report::get_profile_info,
-        'installed_pkgs' => \&Liguros::Report::get_all_installed_pkg,
-        'hardware_info'  => \&Liguros::Report::get_hardware_info,
-
-    );
-
-    # check each key and see if it's in the config file
-    for my $item ( sort keys %sections ) {
-        exists $config->{$item} or next;
-
-        # does the key have a 'y' in the config?
-        $config->{$item} eq 'y' or next;
-
-        # if so, call the function and add the returned
-        # hash table to the report
-        $final_report{$item} = $sections{$item}->();
-    }
-
-    ## adding UUID to the body of the report
-    #
-    $final_report{'liguros-report'}{'UUID'} = $config->{'UUID'};
-
-    ## adding timestamp to report
-    #
-    $final_report{'timestamp'} = Liguros::Report::report_time('long');
-
-    ## adding version number to report
-    #
-    $final_report{'liguros-report'}{'version'} = Liguros::Report::version();
-
-    ## adding any non fatal errors to the report
-    #
-    $final_report{'liguros-report'}{'errors'} = Liguros::Report::errors();
+    $final_report{'liguros-report'}{'UUID'}    = $config->{'UUID'};
+    $final_report{'timestamp'}                 = $report_lib->report_time('long');
+    $final_report{'liguros-report'}{'version'} = $report_lib->version();
+    $final_report{'liguros-report'}{'errors'}  = $report_lib->errors();
 
 
     return %final_report;
