@@ -19,18 +19,29 @@ use warnings;                                   #core
 use English qw(-no_match_vars);                 #core
 use Getopt::Long qw(:config no_ignore_case);    #core
 use JSON;                                       #cpan
-use Liguros::Report;                             #GIT
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
-
+use Liguros::MEMinfo;
+use Liguros::CHASSISinfo;
+use Liguros::Report_Config;
+use Liguros::CPUinfo;
+use Liguros::Report;
 
 our $VERSION = '3.2.2';
+
+my $config  = Liguros::Report_Config->new;
+my $json    = JSON->new->allow_nonref;
+
+
+
+
 
 my %es_config = (
     node  => 'https://es.host.liguros.org:9200',
     index => Liguros::Report::report_time('short'),
     type  => 'report',
 );
+
 
 # parse options
 if ( !@ARGV ) {
@@ -43,7 +54,7 @@ GetOptions(
     'list-config|l'   => \my $list_config,
     'show-json|j'     => \my $show_json,
     'send|s'          => \my $send,
-    'verbose|v'       => sub { $Liguros::Report::VERBOSE = 1 },
+    #'verbose|v'       => sub { $Liguros::Report::VERBOSE = 1 },
     'debug|d'         => \$debug,
     'help|h'          => \&pod2usage,
     'version|V'       => sub {
@@ -93,61 +104,50 @@ if ($send) {
 
 ## let's read the config file and generate the report
 sub report_from_config {
-    my %config = Liguros::Report::user_config();  # fetch/parse the user config
-    my %hash;
-
-    # look for a UUID in the config file and
-    # if it's not there, add one
-    if ( exists $config{'UUID'} ) {
-        $es_config{'id'} = $config{'UUID'};
-    }
-    else {
-        $es_config{'id'} = Liguros::Report::add_uuid();
-    }
-
-    # let's load a hash with the possible config file options as keys
-    # and the values will be a pointer to the function that generates
-    # the associated information
-    my %sections = (
-        'boot-dir-info'  => \&Liguros::Report::get_boot_dir_info,
-        'kernel-info'    => \&Liguros::Report::get_kernel_info,
-        'kit-info'       => \&Liguros::Report::get_kit_info,
-        'profile-info'   => \&Liguros::Report::get_profile_info,
-        'installed-pkgs' => \&Liguros::Report::get_all_installed_pkg,
-        'hardware-info'  => \&Liguros::Report::get_hardware_info,
+	my %final_report;
+	$config->load_config();
+	
+	
+   my %sections = (
+        'boot_dir_info'  => \&Liguros::Report::get_boot_dir_info,
+        'kernel_info'    => \&Liguros::Report::get_kernel_info,
+        'kit_info'       => \&Liguros::Report::get_kit_info,
+        'profile_info'   => \&Liguros::Report::get_profile_info,
+        'installed_pkgs' => \&Liguros::Report::get_all_installed_pkg,
+        'hardware_info'  => \&Liguros::Report::get_hardware_info,
 
     );
 
     # check each key and see if it's in the config file
-    for my $report ( sort keys %sections ) {
-        exists $config{$report} or next;
+    for my $item ( sort keys %sections ) {
+        exists $config->{$item} or next;
 
         # does the key have a 'y' in the config?
-        $config{$report} eq 'y' or next;
+        $config->{$item} eq 'y' or next;
 
         # if so, call the function and add the returned
         # hash table to the report
-        $hash{$report} = $sections{$report}->();
+        $final_report{$item} = $sections{$item}->();
     }
 
     ## adding UUID to the body of the report
     #
-    $hash{'liguros-report'}{'UUID'} = $config{'UUID'};
+    $final_report{'liguros-report'}{'UUID'} = $config->{'UUID'};
 
     ## adding timestamp to report
     #
-    $hash{'timestamp'} = Liguros::Report::report_time('long');
+    $final_report{'timestamp'} = Liguros::Report::report_time('long');
 
     ## adding version number to report
     #
-    $hash{'liguros-report'}{'version'} = Liguros::Report::version();
+    $final_report{'liguros-report'}{'version'} = Liguros::Report::version();
 
     ## adding any non fatal errors to the report
     #
-    $hash{'liguros-report'}{'errors'} = Liguros::Report::errors();
+    $final_report{'liguros-report'}{'errors'} = Liguros::Report::errors();
 
 
-    return %hash;
+    return %final_report;
 }
 
 __END__

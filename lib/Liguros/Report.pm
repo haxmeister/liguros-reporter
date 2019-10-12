@@ -13,20 +13,26 @@ use JSON;                            #cpan
 use List::Util qw(any);              #core
 use Term::ANSIColor;                 #core
 use Time::Piece;                     #core
-use Liguros::CPUinfo;
 use Liguros::MEMinfo;
 use Liguros::CHASSISinfo;
+use Liguros::Report_Config;
+use Liguros::CPUinfo;
+use Liguros::Lspci;
 
-our $VERSION = '3.2.2';
+
 
 ### getting some initialization done:
-our $config_file = '/etc/liguros-report.conf';
-our $VERBOSE;
-my @errors;                          # for any errors that don't cause a die
 
+our $VERSION = '3.2.2';
+our $VERBOSE;
+my @errors;
 my $cpu     = Liguros::CPUinfo->new;
 my $memory  = Liguros::MEMinfo->new;
 my $chassis = Liguros::CHASSISinfo->new;
+my $json    = JSON->new->allow_nonref;
+my $config  = Liguros::Report_Config->new;
+my $lspci   = Liguros::Lspci->new;
+
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -62,8 +68,8 @@ sub send_report {
           "$es_conf->{'node'}/liguros-$VERSION-$es_conf->{'index'}/_settings";
     }
 
-    # generate a json object that we can use to convert to json
-    my $json = JSON->new->allow_nonref;
+
+
 
     # load the report options for the http post
     my %header = ( "Content-Type" => "application/json" );
@@ -146,165 +152,6 @@ sub send_report {
     }
 }
 
-##
-## finds the config file in and loads its contents into a hash and returns it
-##
-sub user_config {
-    my $args = shift;
-    my %hash;
-    if ( open( my $fh, '<:encoding(UTF-8)', $config_file ) ) {
-        my @lines = <$fh>;
-        close $fh;
-
-        my @known_options =
-          qw(UUID boot-dir-info hardware-info installed-pkgs kernel-info kit-info profile-info);
-
-        foreach my $line (@lines) {
-            chomp $line;
-
-            # skip lines that start with '#'
-            if ( $line =~ /^\#/msx ) {
-                next;
-            }
-
-            # split the line on the colon
-            # left side becomes a key, right side a value
-            # then, unless it's a new config, check that it's a known option...
-            elsif ($line) {
-                my ( $key, $value ) = split /\s*:\s*/msx, $line;
-                if ( !$args ) {
-                    if ( any { $_ eq $key } @known_options ) {
-                        $hash{$key} = $value;
-                    }
-                    else {
-                        die
-"Invalid configuration detected in '$config_file': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
-                    }
-                }
-            }
-        }
-
-        # ...and that all the options are present
-        if ( !$args ) {
-            for my $option (@known_options) {
-                if ( !exists $hash{$option} ) {
-                    die
-"Missing essential configuration option ($option) in '$config_file'. Consider running '$PROGRAM_NAME --update-config.\n";
-                }
-            }
-        }
-    }
-    elsif ( $args and ( $args eq 'new' ) ) {
-
-        # if we arrived here due to update-config() and there isn't
-        # a config file then we return a UUID without editing the file
-        $hash{'UUID'} = 'none';
-        return;
-    }
-    else {
-        # if we arrived here from the command line and there is no
-        # config file then tell the user what to do
-        print color( 'red', 'bold' );
-        print "\nWarning!";
-        print color('reset');
-        print "\nCould not open the configuration file at $config_file \n";
-        print
-"To generate a new configuration file use 'liguros-report --update-config' \n\n";
-        exit;
-    }
-
-    return %hash;
-}
-
-## retrieves UUID from the config file if present and then
-## prompts user as it generates settings for a new config file
-## ensures all new possibilities are in the config file from previous
-## versions, etc.
-sub update_config {
-
-    # check for existing config
-    my %old_config = user_config('new');
-    my %new_config;
-
-    # see if we picked up a current UUID from the old config
-    if ( $old_config{'UUID'} ) {
-
-        #since it's there we will add it to the new config file
-        $new_config{'UUID'} = $old_config{'UUID'};
-    }
-    else {
-
-        # since there is no previous UUID we will go get a new one
-        $new_config{'UUID'} = add_uuid('new');
-    }
-
-    # let's ask the user about each report setting
-
-    $new_config{'kernel-info'} =
-      get_y_or_n('Report information about your active kernel?');
-
-    $new_config{'boot-dir-info'} =
-      get_y_or_n('Report available kernels in /boot ?');
-
-    $new_config{'installed-pkgs'} =
-      get_y_or_n('Report all packages installed on the system?');
-
-    $new_config{'profile-info'} =
-      get_y_or_n('Report the output of "epro show-json"?');
-
-    $new_config{'kit-info'} =
-      get_y_or_n('Report the output of "ego kit show"?');
-
-    $new_config{'hardware-info'} =
-      get_y_or_n('Report information about your hardware and drivers?');
-
-    # let's create or replace the configuration file
-    my $timestamp = localtime;
-    print "Creating or replacing $config_file\n";
-    open( my $fh, '>:encoding(UTF-8)', $config_file )
-      or croak "Could not open $config_file: $ERRNO\n";
-    printf {$fh} "# Generated on %s for v%s of liguros-report\n", $timestamp,
-      $VERSION;
-    foreach my $key ( sort keys %new_config ) {
-        print {$fh} "$key:$new_config{$key}\n";
-    }
-    close $fh;
-
-}
-
-##
-## adds a uuid to the config file and/or returns it as a string
-##
-sub add_uuid {
-
-    my $arg        = shift;
-
-    # lets just get a random identifier from the system or die trying
-    open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
-      or croak
-      "Cannot open /proc/sys/kernel/random/uuid to generate a UUID: $ERRNO\n";
-    my $UUID = <$ufh>;
-    chomp $UUID;
-    close $ufh;
-
-    # if we recieved the 'new' argument then we just want to return
-    # the UUID without modifying the file. i.e. we came here from the
-    # update-config function
-    if ( $arg and ( $arg eq 'new' ) ) {
-        return $UUID;
-    }
-    else {
-
-        # since we got here because a UUID isn't present in the config
-        # open the config file and append the UUID properly into the file
-        open( my $cfh, '>>', $config_file )
-          or croak "Unable to append to $config_file: $ERRNO\n";
-        print {$cfh} "UUID:$UUID\n";
-        close $cfh;
-    }
-
-    return $UUID;
-}
 
 ##
 ## reporting version number
@@ -353,35 +200,25 @@ sub report_time {
 ##
 sub get_hardware_info {
     my %hash;
-    my %lspci = ( 'PCI-Device' => get_lspci() );
-
-    for my $device ( keys %{ $lspci{'PCI-Device'} } ) {
+    
+    for my $device ( keys %{ $lspci->{lspci_data}{'PCI-Device'} } ) {
 
         # fetching sound info from data structure
-        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
-            $hash{'audio'}{$device} = \%{ $lspci{'PCI-Device'}{$device} };
+        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
+            $hash{'audio'}{$device} = \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
 
         }
 
         # fetching video cards
-        if ( $lspci{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
-            $hash{'video'}{$device} = \%{ $lspci{'PCI-Device'}{$device} };
+        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
+            $hash{'video'}{$device} = \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
         }
     }
 
-    # fetching networking devices
     $hash{'networking'} = get_net_info();
-
-    # fetching block devices
     $hash{'filesystem'} = get_filesystem_info();
-
-    # fetching cpu info
     $hash{'cpu'} = $cpu->all_data;
-
-    # fetching memory info
     $hash{'memory'} = $memory->all_data;
-
-    # fetching chassis info
     $hash{'chassis'} = $chassis->all_data;
 
     return \%hash;
@@ -764,43 +601,7 @@ sub get_all_installed_pkg {
     return \%hash;
 }
 
-##
-## parsing output from lspci -kmmvvv and putting it in a useable data
-## structure for use elswhere
-##
-sub get_lspci {
-    my %hash;
-    my $lspci      = 'lspci -kmmvvv';
-    if ( my $lspci_output = `$lspci` ) {
-        my @hw_item_section = split( /^\n/msx, $lspci_output );
 
-        my %item;
-        for (@hw_item_section) {
-            chomp;    # $hw_item;
-            my @hw_item_lines = split(/\n/msx);
-
-            for (@hw_item_lines) {
-                chomp;
-                s/\[\]|\{\}/[ ]/msx;
-                my ( $key, $value ) = split(':\s');
-                chomp $key;
-                chomp $value;
-                $item{$key} = $value;
-            }
-
-            foreach my $key_item ( keys %item ) {
-                unless ( $key_item eq 'Slot' ) {
-                    $hash{ $item{'Slot'} }{$key_item} = $item{$key_item};
-                }
-            }
-        }
-    }
-    else {
-        push_error("Could not retrieve output from $lspci: $ERRNO");
-        return;
-    }
-    return \%hash;
-}
 
 ###########################################
 ############ misc functions ###############
@@ -882,8 +683,6 @@ sub fix_es_limit {
     my $es_url     = shift;
     my $debug      = shift;
 
-    # create a json object to encode the message
-    my $new_json = JSON->new->allow_nonref;
 
     # create a new HTTP object
     my $new_agent = sprintf '%s/%s', __PACKAGE__, $VERSION;
