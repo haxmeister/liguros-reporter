@@ -46,33 +46,33 @@ has 'kit_info' => (
 );
 
 has 'cpu_info' => (
-	is => 'ro',
-	default => 'n',
+    is      => 'ro',
+    default => 'n',
 );
 has 'file_systems_info' => (
-	is => 'ro',
-	default => 'n',
+    is      => 'ro',
+    default => 'n',
 );
 has 'cpu_info' => (
-	is => 'ro',
-	default => 'n',
+    is      => 'ro',
+    default => 'n',
 );
-has 'networking_devices' =>(
-	is => 'ro',
-	default => 'n',
+has 'networking_devices' => (
+    is      => 'ro',
+    default => 'n',
 );
 has 'memory_info' => (
-	is => 'ro',
-	default => 'n',
+    is      => 'ro',
+    default => 'n',
 );
 has 'chassis_info' => (
-	is => 'ro',
-	default => 'n',
+    is      => 'ro',
+    default => 'n',
 );
 has 'errors' => (
-	is => 'ro',
-	isa => 'ArrayRef',
-	default => sub{[]},
+    is      => 'ro',
+    isa     => 'ArrayRef',
+    default => sub { [] },
 );
 
 sub generate_new_UUID {
@@ -93,9 +93,9 @@ sub save_config {
 sub load_config {
     my $self = shift;
 
-    $self->config_exists or die 
-       "No configuration file has been detected at ". $self->config_location . "\n";
-    
+    $self->config_exists
+      or die "No configuration file has been detected at "
+      . $self->config_location . "\n";
 
     open( my $fh, '<', $self->config_location )
       or croak "Cannot open Config file at " . $self->config_location . "\n";
@@ -120,31 +120,31 @@ sub load_config {
             }
         }
     }
-	
-	$self->{UUID} or $self->{UUID} = $self->generate_new_UUID();
+
+    $self->{UUID} or $self->{UUID} = $self->generate_new_UUID();
 }
 
 sub prompt_user {
     my $self = shift;
 }
-sub list_options{
-	my $self = shift;
-	my %options;
-	
-	$options{kernel_info}    = $self->{kernel_info};
+
+sub list_options {
+    my $self = shift;
+    my %options;
+
+    $options{kernel_info}    = $self->{kernel_info};
     $options{boot_dir_info}  = $self->{boot_dir_info};
     $options{installed_pkgs} = $self->{installed_pkgs};
     $options{profile_info}   = $self->{profile_info};
     $options{kit_info}       = $self->{kit_info};
     $options{hardware_info}  = $self->{hardware_info};
-    	
-	return \%options;
-	}
+
+    return \%options;
+}
 
 sub BUILD {
     my $self = shift;
     $self->{config_exists} = -e $self->config_location;
-
 
 }
 

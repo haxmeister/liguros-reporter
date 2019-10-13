@@ -1,15 +1,15 @@
 package Liguros::CPUinfo;
 
-use Moose;                           #CPAN
-use JSON;                            #core
-use Carp;                            #core
-use English qw(-no_match_vars);      #core
+use Moose;                         #CPAN
+use JSON;                          #core
+use Carp;                          #core
+use English qw(-no_match_vars);    #core
 
 has 'all_data' => (
-	is => 'ro',
-	isa => 'HashRef',
+    is  => 'ro',
+    isa => 'HashRef',
 );
-	
+
 has 'cpu_file' => (
     is      => 'ro',
     default => '/proc/cpuinfo',
@@ -21,19 +21,13 @@ has 'errors' => (
     default => sub { [] }
 );
 
-has 'model'      => ( 
-	is => 'ro', 
-);
-has 'MHz'        => ( 
-	is => 'ro', 
-);
-has 'processors' => ( 
-	is => 'ro', 
-);
+has 'model'      => ( is => 'ro', );
+has 'MHz'        => ( is => 'ro', );
+has 'processors' => ( is => 'ro', );
 has 'flags'      => (
-    is  => 'ro',
-    isa => 'ArrayRef',
-    default => sub{[]},
+    is      => 'ro',
+    isa     => 'ArrayRef',
+    default => sub { [] },
 );
 
 my %data;
@@ -49,7 +43,10 @@ sub BUILD {
         push( @{ $self->errors }, 0 );
     }
     else {
-		push( @{ $self->errors }, "Could not open file".$self->cpu_file.": $ERRNO");
+        push(
+            @{ $self->errors },
+            "Could not open file" . $self->cpu_file . ": $ERRNO"
+        );
         return;
     }
 
@@ -74,7 +71,7 @@ sub BUILD {
             }
         }
     }
-    
+
     $data{processors} = $proc_count;
 
     $self->{processors} = $data{processors};
@@ -83,6 +80,5 @@ sub BUILD {
     $self->{model}      = $data{model};
     $self->{all_data}   = \%data;
 }
-
 
 1;

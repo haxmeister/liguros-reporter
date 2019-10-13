@@ -11,35 +11,35 @@ has all_data => (
 );
 
 has mem_file => (
-    is => 'ro',
+    is      => 'ro',
     default => '/proc/meminfo',
 );
 
 has errors => (
-    is => 'ro',
-    isa => 'ArrayRef',
+    is      => 'ro',
+    isa     => 'ArrayRef',
     default => sub { [] },
 );
 
-has MemTotal => ( 
-	is => 'ro', 
-	isa => 'Int',
+has MemTotal => (
+    is  => 'ro',
+    isa => 'Int',
 );
-has MemFree => ( 
-	is => 'ro', 
-	isa => 'Int',
+has MemFree => (
+    is  => 'ro',
+    isa => 'Int',
 );
-has MemAvailable => ( 
-	is => 'ro', 
-	isa => 'Int',
+has MemAvailable => (
+    is  => 'ro',
+    isa => 'Int',
 );
-has SwapTotal => ( 
-	is => 'ro', 
-	isa => 'Int',
+has SwapTotal => (
+    is  => 'ro',
+    isa => 'Int',
 );
-has SwapFree => ( 
-	is => 'ro', 
-	isa => 'Int',
+has SwapFree => (
+    is  => 'ro',
+    isa => 'Int',
 );
 
 my %data = (
@@ -81,6 +81,5 @@ sub BUILD {
     $self->{SwapFree}     = $data{SwapFree};
     $self->{all_data}     = \%data;
 }
-
 
 1;

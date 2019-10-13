@@ -5,13 +5,13 @@ package Liguros::Report;
 
 use 5.20.0;
 use Moose;
-use Carp;                            #core
-use English qw(-no_match_vars);      #core
-use HTTP::Tiny;                      #core
-use JSON;                            #cpan
-use List::Util qw(any);              #core
-use Term::ANSIColor;                 #core
-use Time::Piece;                     #core
+use Carp;                          #core
+use English qw(-no_match_vars);    #core
+use HTTP::Tiny;                    #core
+use JSON;                          #cpan
+use List::Util qw(any);            #core
+use Term::ANSIColor;               #core
+use Time::Piece;                   #core
 use Liguros::MEMinfo;
 use Liguros::CHASSISinfo;
 use Liguros::Report_Config;
@@ -19,67 +19,67 @@ use Liguros::CPUinfo;
 use Liguros::Lspci;
 use Liguros::KernelInfo;
 
-has 'VERSION' =>(
-	is => 'ro',
-	default => '1.0',
+has 'VERSION' => (
+    is      => 'ro',
+    default => '1.0',
 );
-has 'VERBOSE' =>(
-	is => 'rw',
-	default => 0,
+has 'VERBOSE' => (
+    is      => 'rw',
+    default => 0,
 );
-has 'errors' =>(
-	is => 'ro',
-	isa => 'ArrayRef',
-	default => sub{[]},
+has 'errors' => (
+    is      => 'ro',
+    isa     => 'ArrayRef',
+    default => sub { [] },
 );
 has 'CPU' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_cpu',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_cpu',
 );
 
 has 'Memory' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_memory',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_memory',
 );
 has 'Chassis' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_chassis',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_chassis',
 );
 has 'Net_devices' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_net_dev',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_net_dev',
 );
 has 'Kernel' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_kernel',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_kernel',
 );
 has 'Profiles' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_profiles',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_profiles',
 );
 has 'Block_dev' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_block_dev',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_block_dev',
 );
 has 'Kits' => (
-	is => 'ro',
-	isa => 'HashRef',
-	lazy => '1',
-	builder =>'_kits',
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_kits',
 );
 
 my $cpu     = Liguros::CPUinfo->new;
@@ -88,7 +88,6 @@ my $chassis = Liguros::CHASSISinfo->new;
 my $json    = JSON->new->allow_nonref;
 my $lspci   = Liguros::Lspci->new;
 my $kernel  = Liguros::KernelInfo->new;
-
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -104,8 +103,10 @@ sub send_report {
     # refuse to send a report with an unset, undefined, or empty UUID
     length $rep->{'liguros-report'}{UUID}
       or do {
-        push( @{$self->{errors}}, 
-            'Refusing to submit report with blank UUID; check your config');
+        push(
+            @{ $self->{errors} },
+            'Refusing to submit report with blank UUID; check your config'
+        );
         croak;
       };
 
@@ -115,20 +116,17 @@ sub send_report {
         $url =
 "$es_conf->{'node'}/fundev-$self->{VERSION}-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url =
-          "$es_conf->{'node'}/fundev-$self->{VERSION}-$es_conf->{'index'}/_settings";
+"$es_conf->{'node'}/fundev-$self->{VERSION}-$es_conf->{'index'}/_settings";
     }
     else {
         $url =
 "$es_conf->{'node'}/liguros-$self->{VERSION}-$es_conf->{'index'}/$es_conf->{'type'}";
         $settings_url =
-          "$es_conf->{'node'}/liguros-$self->{VERSION}-$es_conf->{'index'}/_settings";
+"$es_conf->{'node'}/liguros-$self->{VERSION}-$es_conf->{'index'}/_settings";
     }
 
-
-
-
     # load the report options for the http post
-    my %header = ( "Content-Type" => "application/json" );
+    my %header  = ( "Content-Type" => "application/json" );
     my %options = (
         'content' => $json->pretty->encode($rep),
         'headers' => \%header
@@ -180,7 +178,7 @@ sub send_report {
             # if we successfully increased the field limit
             # then we can call send_report again and start over
             if ( fix_es_limit( $current_limit, $settings_url, $debug ) ) {
-               
+
                 send_report( $rep, $es_conf, $debug );
                 exit;
             }
@@ -191,23 +189,23 @@ sub send_report {
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-      or push( @{$self->{errors}}, 
+      or push(
+        @{ $self->{errors} },
         'Successful submission, but status was not the expected \'201 Created\''
       );
 
     # print location redirection if there was one, warn if not
     if ( defined $response->{headers}{location} ) {
-        if ($self->{VERBOSE}) {
+        if ( $self->{VERBOSE} ) {
             print "your report can be seen at: "
               . $es_conf->{'node'}
               . $response->{'headers'}{'location'} . "\n";
         }
     }
     else {
-        push( @{$self->{errors}}, 'Expected location for created resource');
+        push( @{ $self->{errors} }, 'Expected location for created resource' );
     }
 }
-
 
 ## returns a long date string for the report body or
 ## returns a string that is like 'liguros-year.week' that is
@@ -215,7 +213,7 @@ sub send_report {
 ##
 ## with special date formatting by request
 sub report_time {
-	my $self      = shift;
+    my $self      = shift;
     my $format    = shift;
     my $t         = gmtime;
     my $short_fmt = $t->date;
@@ -232,7 +230,10 @@ sub report_time {
 
     );
     exists $formats{$format}
-      or do { push( @{$self->{errors}}, 'Unable to determine the time'); return };
+      or do {
+        push( @{ $self->{errors} }, 'Unable to determine the time' );
+        return;
+      };
     return $formats{$format};
 }
 
@@ -241,58 +242,71 @@ sub report_time {
 ## derived from lspci -kmmvvv and other functions
 ##
 sub get_hardware_info {
-	my $self = shift;
+    my $self = shift;
     my %hash;
-    
+
     for my $device ( keys %{ $lspci->{lspci_data}{'PCI-Device'} } ) {
 
         # fetching sound info from data structure
-        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~ /Audio|audio/msx ) {
-            $hash{'audio'}{$device} = \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
+        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~
+            /Audio|audio/msx )
+        {
+            $hash{'audio'}{$device} =
+              \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
 
         }
 
         # fetching video cards
-        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~ /VGA|vga/msx ) {
-            $hash{'video'}{$device} = \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
+        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~
+            /VGA|vga/msx )
+        {
+            $hash{'video'}{$device} =
+              \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
         }
     }
 
     $hash{'networking'} = $self->get_net_info();
-    #$hash{'filesystem'} = $self->{Block_dev};
-    $hash{'cpu'} = $cpu->all_data;
-    $hash{'memory'} = $memory->all_data;
 
+    #$hash{'filesystem'} = $self->{Block_dev};
+    $hash{'cpu'}    = $cpu->all_data;
+    $hash{'memory'} = $memory->all_data;
 
     return \%hash;
 }
 
+sub _cpu {
+    my $self = shift;
+    my %data;
 
-sub _cpu{
-	my $self = shift;
-	my %data;
-	
-	$data{processors} = $cpu->processors;
-	$data{flags} = $cpu->flags;
-	$data{MHz} = $cpu->MHz;
-	$data{model} = $cpu->model;
-	
-	return \%data;
+    $data{processors} = $cpu->processors;
+    $data{flags}      = $cpu->flags;
+    $data{MHz}        = $cpu->MHz;
+    $data{model}      = $cpu->model;
+
+    return \%data;
 
 }
-sub _memory{};
-sub _chassis{    
-	return $chassis->all_data;
+sub _memory { }
+
+sub _chassis {
+    return $chassis->all_data;
 }
-sub _net_dev{
-	my $self = shift;
+
+sub _net_dev {
+    my $self          = shift;
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-      or do { push( @{$self->{errors}}, "Unable to open dir $interface_dir: $ERRNO"); return };
+      or do {
+        push(
+            @{ $self->{errors} },
+            "Unable to open dir $interface_dir: $ERRNO"
+        );
+        return;
+      };
     while ( my $file = readdir $dh ) {
 
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
@@ -324,7 +338,10 @@ sub _net_dev{
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
               or do {
-                 push( @{$self->{errors}}, "Unable to open file $vendor_id_file: $ERRNO");
+                push(
+                    @{ $self->{errors} },
+                    "Unable to open file $vendor_id_file: $ERRNO"
+                );
                 next;
               };
             $vendor_id = <$fh>;
@@ -336,7 +353,10 @@ sub _net_dev{
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
               or do {
-                 push( @{$self->{errors}}, "Unable to open file $device_id_file: $ERRNO");
+                push(
+                    @{ $self->{errors} },
+                    "Unable to open file $device_id_file: $ERRNO"
+                );
                 next;
               };
             $device_id = <$fh>;
@@ -352,7 +372,10 @@ sub _net_dev{
             $id_file        = $usb_ids;
             open my $fh, '<', $vendor_id_file
               or do {
-                push( @{$self->{errors}}, "Unable to open file $vendor_id_file: $ERRNO");
+                push(
+                    @{ $self->{errors} },
+                    "Unable to open file $vendor_id_file: $ERRNO"
+                );
                 next;
               };
             while (<$fh>) {
@@ -370,7 +393,10 @@ sub _net_dev{
 
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
-          or do { push( @{$self->{errors}}, "Unable to open file $id_file $ERRNO"); next };
+          or do {
+            push( @{ $self->{errors} }, "Unable to open file $id_file $ERRNO" );
+            next;
+          };
 
        # Devices can share device IDs but not "underneath" a vendor ID, so we'll
        # want to get the first result under the vendor
@@ -399,18 +425,19 @@ sub _net_dev{
     return \%hash;
 }
 
-sub _kernel{
-	my $self = shift;
-	my %info;
-	
-	$info{'osrelease'}  = $kernel->osrelease;
-	$info{'ostype'}     = $kernel->ostype;
-	$info{'version'}    = $kernel->version;
-	$info{'kernels_found'} = $kernel->Kernels_found;
+sub _kernel {
+    my $self = shift;
+    my %info;
 
-	return \%info;
+    $info{'osrelease'}     = $kernel->osrelease;
+    $info{'ostype'}        = $kernel->ostype;
+    $info{'version'}       = $kernel->version;
+    $info{'kernels_found'} = $kernel->Kernels_found;
+
+    return \%info;
 }
-sub _profiles{}
+sub _profiles { }
+
 sub _block_dev {
     my $self = shift;
     my %hash;
@@ -421,14 +448,14 @@ sub _block_dev {
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
 }
-sub _kits{say"kits builder";}
+sub _kits { say "kits builder"; }
 
 ##
 ## fetching active profiles
 ## reconstruct output of epro show-json command
 ##
 sub get_profile_info {
-	my $self = shift;
+    my $self = shift;
 
     # execute 'epro show-json' and capture its output
     my $epro = 'epro show-json';
@@ -452,7 +479,10 @@ sub get_profile_info {
         return \%sorted;
     }
     else {
-        push( @{$self->{errors}}, "Unable to retrieve output from $epro: $ERRNO");
+        push(
+            @{ $self->{errors} },
+            "Unable to retrieve output from $epro: $ERRNO"
+        );
         return;
     }
 }
@@ -464,7 +494,7 @@ sub get_profile_info {
 ## that shows only the "active" kit
 ##
 sub get_kit_info {
-	my $self = shift;
+    my $self = shift;
 
     my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
     my $ego_conf  = "/etc/ego.conf";
@@ -480,7 +510,7 @@ sub get_kit_info {
         $meta_data = decode_json($data);
     }
     else {
-        push( @{$self->{errors}}, "Cannot open file $meta_file: $ERRNO");
+        push( @{ $self->{errors} }, "Cannot open file $meta_file: $ERRNO" );
         return;
     }
 
@@ -516,7 +546,7 @@ sub get_kit_info {
         }
     }
     else {
-        push( @{$self->{errors}}, "Cannot open file $ego_conf: $ERRNO");
+        push( @{ $self->{errors} }, "Cannot open file $ego_conf: $ERRNO" );
         return;
     }
 
@@ -563,13 +593,11 @@ sub get_kit_info {
     return \%hash;
 }
 
-
-
 ##
 ## getting the full list of installed packages
 ##
 sub get_all_installed_pkg {
-	my $self = shift;
+    my $self = shift;
     my %hash;
     my @all;
     my @world;
@@ -577,21 +605,27 @@ sub get_all_installed_pkg {
     my $world_file = '/var/lib/portage/world';
 
     # Get a list of the world packages
-    if (open (my $fh, '<', $world_file)){
-		@world = <$fh>;
-		close $fh;
-	}else{
-		push( @{$self->{errors}}, "Unable to open dir $world_file: $ERRNO");
+    if ( open( my $fh, '<', $world_file ) ) {
+        @world = <$fh>;
+        close $fh;
     }
-    
+    else {
+        push( @{ $self->{errors} }, "Unable to open dir $world_file: $ERRNO" );
+    }
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
-      or do { push( @{$self->{errors}}, "Unable to open dir $db_dir: $ERRNO"); return };
+      or do {
+        push( @{ $self->{errors} }, "Unable to open dir $db_dir: $ERRNO" );
+        return;
+      };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
             opendir my $dh2, "$db_dir/$cat"
-              or do { push( @{$self->{errors}}, "Unable to open dir $cat: $ERRNO"); next };
+              or do {
+                push( @{ $self->{errors} }, "Unable to open dir $cat: $ERRNO" );
+                next;
+              };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
@@ -621,8 +655,6 @@ sub get_all_installed_pkg {
     return \%hash;
 }
 
-
-
 ###########################################
 ############ misc functions ###############
 
@@ -647,8 +679,6 @@ sub get_y_or_n {
         return 'n';
     }
 }
-
-
 
 ## recursively crawls lsblk json output tree and modifies
 ## the hash in-place whose reference is sent by the caller
@@ -689,11 +719,10 @@ sub fs_recurse {
 # when a submission error is about the field limit
 # it will attempt to tell ES to increase the field limit by 1000
 sub fix_es_limit {
-	my $self       = shift;
-    my $old_limit  = shift;
-    my $es_url     = shift;
-    my $debug      = shift;
-
+    my $self      = shift;
+    my $old_limit = shift;
+    my $es_url    = shift;
+    my $debug     = shift;
 
     # create a new HTTP object
     my $new_agent = sprintf '%s/%s', __PACKAGE__, $self->{VERSION};
@@ -707,7 +736,7 @@ sub fix_es_limit {
     }
 
     # creating new http options
-    my %new_header = ( "Content-Type" => "application/json" );
+    my %new_header  = ( "Content-Type" => "application/json" );
     my %new_options = (
         'content' => "{\"index.mapping.total_fields.limit\" : $new_limit}",
         'headers' => \%new_header
