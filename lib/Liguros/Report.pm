@@ -17,24 +17,77 @@ use Liguros::CHASSISinfo;
 use Liguros::Report_Config;
 use Liguros::CPUinfo;
 use Liguros::Lspci;
+use Liguros::KernelInfo;
 
 has 'VERSION' =>(
 	is => 'ro',
+	default => '1.0',
 );
 has 'VERBOSE' =>(
 	is => 'rw',
 	default => 0,
 );
+has 'errors' =>(
+	is => 'ro',
+	isa => 'ArrayRef',
+	default => sub{[]},
+);
+has 'CPU' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_cpu',
+);
 
-### getting some initialization done:
+has 'Memory' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_memory',
+);
+has 'Chassis' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_chassis',
+);
+has 'Net_devices' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_net_dev',
+);
+has 'Kernel' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_kernel',
+);
+has 'Profiles' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_profiles',
+);
+has 'Block_dev' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_block_dev',
+);
+has 'Kits' => (
+	is => 'ro',
+	isa => 'HashRef',
+	lazy => '1',
+	builder =>'_kits',
+);
 
-my @errors;
 my $cpu     = Liguros::CPUinfo->new;
 my $memory  = Liguros::MEMinfo->new;
 my $chassis = Liguros::CHASSISinfo->new;
 my $json    = JSON->new->allow_nonref;
 my $lspci   = Liguros::Lspci->new;
-
+my $kernel  = Liguros::KernelInfo->new;
 
 
 ##
@@ -51,7 +104,7 @@ sub send_report {
     # refuse to send a report with an unset, undefined, or empty UUID
     length $rep->{'liguros-report'}{UUID}
       or do {
-        push_error(
+        push( @{$self->{errors}}, 
             'Refusing to submit report with blank UUID; check your config');
         croak;
       };
@@ -138,7 +191,7 @@ sub send_report {
 
     # warn if the response code wasn't 201 (Created)
     $response->{status} == 201
-      or push_error(
+      or push( @{$self->{errors}}, 
         'Successful submission, but status was not the expected \'201 Created\''
       );
 
@@ -151,26 +204,10 @@ sub send_report {
         }
     }
     else {
-        push_error('Expected location for created resource');
+        push( @{$self->{errors}}, 'Expected location for created resource');
     }
 }
 
-
-##
-## reporting version number
-##
-sub version {
-	my $self = shift;
-    return $self->{VERSION};
-}
-
-
-##
-## reporting errors
-##
-sub errors {
-    return \@errors;
-}
 
 ## returns a long date string for the report body or
 ## returns a string that is like 'liguros-year.week' that is
@@ -195,7 +232,7 @@ sub report_time {
 
     );
     exists $formats{$format}
-      or do { push_error('Unable to determine the time'); return };
+      or do { push( @{$self->{errors}}, 'Unable to determine the time'); return };
     return $formats{$format};
 }
 
@@ -204,6 +241,7 @@ sub report_time {
 ## derived from lspci -kmmvvv and other functions
 ##
 sub get_hardware_info {
+	my $self = shift;
     my %hash;
     
     for my $device ( keys %{ $lspci->{lspci_data}{'PCI-Device'} } ) {
@@ -220,29 +258,41 @@ sub get_hardware_info {
         }
     }
 
-    $hash{'networking'} = get_net_info();
-    $hash{'filesystem'} = get_filesystem_info();
+    $hash{'networking'} = $self->get_net_info();
+    #$hash{'filesystem'} = $self->{Block_dev};
     $hash{'cpu'} = $cpu->all_data;
     $hash{'memory'} = $memory->all_data;
-    $hash{'chassis'} = $chassis->all_data;
+
 
     return \%hash;
 }
 
-##
-## returns a hash ref containing networking device info
-## by ShadowM00n
-## this function goes directly to the source instead
-## of making calls to external tools
-##
-sub get_net_info {
+
+sub _cpu{
+	my $self = shift;
+	my %data;
+	
+	$data{processors} = $cpu->processors;
+	$data{flags} = $cpu->flags;
+	$data{MHz} = $cpu->MHz;
+	$data{model} = $cpu->model;
+	
+	return \%data;
+
+}
+sub _memory{};
+sub _chassis{    
+	return $chassis->all_data;
+}
+sub _net_dev{
+	my $self = shift;
     my $interface_dir = '/sys/class/net';
     my $pci_ids       = '/usr/share/misc/pci.ids';
     my $usb_ids       = '/usr/share/misc/usb.ids';
     my %hash;
     my @interfaces;
     opendir my $dh, $interface_dir
-      or do { push_error("Unable to open dir $interface_dir: $ERRNO"); return };
+      or do { push( @{$self->{errors}}, "Unable to open dir $interface_dir: $ERRNO"); return };
     while ( my $file = readdir $dh ) {
 
         if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
@@ -274,7 +324,7 @@ sub get_net_info {
             $id_file = $pci_ids;
             open my $fh, '<', $vendor_id_file
               or do {
-                push_error("Unable to open file $vendor_id_file: $ERRNO");
+                 push( @{$self->{errors}}, "Unable to open file $vendor_id_file: $ERRNO");
                 next;
               };
             $vendor_id = <$fh>;
@@ -286,7 +336,7 @@ sub get_net_info {
             my $device_id_file = "/sys/class/net/$device/device/device";
             open $fh, '<', $device_id_file
               or do {
-                push_error("Unable to open file $device_id_file: $ERRNO");
+                 push( @{$self->{errors}}, "Unable to open file $device_id_file: $ERRNO");
                 next;
               };
             $device_id = <$fh>;
@@ -302,7 +352,7 @@ sub get_net_info {
             $id_file        = $usb_ids;
             open my $fh, '<', $vendor_id_file
               or do {
-                push_error("Unable to open file $vendor_id_file: $ERRNO");
+                push( @{$self->{errors}}, "Unable to open file $vendor_id_file: $ERRNO");
                 next;
               };
             while (<$fh>) {
@@ -320,7 +370,7 @@ sub get_net_info {
 
         ## no critic [RequireBriefOpen]
         open my $fh, '<', $id_file
-          or do { push_error("Unable to open file $id_file $ERRNO"); next };
+          or do { push( @{$self->{errors}}, "Unable to open file $id_file $ERRNO"); next };
 
        # Devices can share device IDs but not "underneath" a vendor ID, so we'll
        # want to get the first result under the vendor
@@ -349,12 +399,20 @@ sub get_net_info {
     return \%hash;
 }
 
-##
-## fetching lsblk output
-## reconstructing the output to show a more flattened list
-## with only info that actually has value as a statistic
-##
-sub get_filesystem_info {
+sub _kernel{
+	my $self = shift;
+	my %info;
+	
+	$info{'osrelease'}  = $kernel->osrelease;
+	$info{'ostype'}     = $kernel->ostype;
+	$info{'version'}    = $kernel->version;
+	$info{'kernels_found'} = $kernel->Kernels_found;
+
+	return \%info;
+}
+sub _profiles{}
+sub _block_dev {
+    my $self = shift;
     my %hash;
     my $lsblk =
       `lsblk --bytes --json -o NAME,FSTYPE,SIZE,PARTTYPE,TRAN,HOTPLUG`;
@@ -363,13 +421,14 @@ sub get_filesystem_info {
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
 }
-
+sub _kits{say"kits builder";}
 
 ##
 ## fetching active profiles
 ## reconstruct output of epro show-json command
 ##
 sub get_profile_info {
+	my $self = shift;
 
     # execute 'epro show-json' and capture its output
     my $epro = 'epro show-json';
@@ -393,7 +452,7 @@ sub get_profile_info {
         return \%sorted;
     }
     else {
-        push_error("Unable to retrieve output from $epro: $ERRNO");
+        push( @{$self->{errors}}, "Unable to retrieve output from $epro: $ERRNO");
         return;
     }
 }
@@ -405,6 +464,7 @@ sub get_profile_info {
 ## that shows only the "active" kit
 ##
 sub get_kit_info {
+	my $self = shift;
 
     my $meta_file = "/var/git/meta-repo/metadata/kit-info.json";
     my $ego_conf  = "/etc/ego.conf";
@@ -420,7 +480,7 @@ sub get_kit_info {
         $meta_data = decode_json($data);
     }
     else {
-        push_error("Cannot open file $meta_file: $ERRNO");
+        push( @{$self->{errors}}, "Cannot open file $meta_file: $ERRNO");
         return;
     }
 
@@ -456,7 +516,7 @@ sub get_kit_info {
         }
     }
     else {
-        push_error("Cannot open file $ego_conf: $ERRNO");
+        push( @{$self->{errors}}, "Cannot open file $ego_conf: $ERRNO");
         return;
     }
 
@@ -504,40 +564,12 @@ sub get_kit_info {
 }
 
 
-##
-## finding kernel files in boot
-##
-sub get_boot_dir_info {
-    my %hash;
-    my $boot_dir = "/boot";
-    my @kernel_list;
-
-    # pulling list of kernels in /boot
-    if ( opendir( my $dh, $boot_dir ) ) {
-        foreach my $file ( readdir($dh) ) {
-            next unless ( -f "$boot_dir/$file" );    #only want files
-            chomp $file;
-
-            # let's grab the names of any files that start with
-            # kernel, vmlinuz or bzImage
-            if ( $file =~ m/^kernel|^vmlinuz|^bzImage/msx ) {
-                push @kernel_list, $file;
-            }
-        }
-        closedir($dh);
-    }
-    else {
-        push_error("Cannot open directory $boot_dir, $ERRNO");
-        return \%hash;
-    }
-    $hash{'available kernels'} = \@kernel_list;
-    return \%hash;
-}
 
 ##
 ## getting the full list of installed packages
 ##
 sub get_all_installed_pkg {
+	my $self = shift;
     my %hash;
     my @all;
     my @world;
@@ -545,18 +577,21 @@ sub get_all_installed_pkg {
     my $world_file = '/var/lib/portage/world';
 
     # Get a list of the world packages
-    open my $fh, '<', $world_file
-      or do { push_error("Unable to open dir $world_file: $ERRNO"); };
-    @world = <$fh>;
-    close $fh;
+    if (open (my $fh, '<', $world_file)){
+		@world = <$fh>;
+		close $fh;
+	}else{
+		push( @{$self->{errors}}, "Unable to open dir $world_file: $ERRNO");
+    }
+    
 
     # Get a list of all the packages, skipping those half-merged
     opendir my $dh, $db_dir
-      or do { push_error("Unable to open dir $db_dir: $ERRNO"); return };
+      or do { push( @{$self->{errors}}, "Unable to open dir $db_dir: $ERRNO"); return };
     while ( my $cat = readdir $dh ) {
         if ( -d "$db_dir/$cat" && $cat !~ /^[.]{1,2}$/xms ) {
             opendir my $dh2, "$db_dir/$cat"
-              or do { push_error("Unable to open dir $cat: $ERRNO"); next };
+              or do { push( @{$self->{errors}}, "Unable to open dir $cat: $ERRNO"); next };
             while ( my $pkg = readdir $dh2 ) {
                 next if $pkg =~ m/ \A -MERGING- /msx;
                 if ( -d "$db_dir/$cat/$pkg" && $pkg !~ /^[.]{1,2}$/xms ) {
@@ -613,17 +648,7 @@ sub get_y_or_n {
     }
 }
 
-## Accepts reportable errors, puts them
-## into an array, and prints the error to
-## *STDERR
-sub push_error {
-    my $error_message = shift;
-    my $parent        = ( caller 1 )[3];
-    my $line          = ( caller 0 )[2];
-    print {*STDERR} "$parent: $error_message at line $line\n";
-    push @errors, "$parent: $error_message at line $line";
-    return;
-}
+
 
 ## recursively crawls lsblk json output tree and modifies
 ## the hash in-place whose reference is sent by the caller

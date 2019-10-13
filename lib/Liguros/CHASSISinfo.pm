@@ -5,14 +5,18 @@ use JSON;                          #core
 use Carp;                          #core
 use English qw(-no_match_vars);    #core
 
-has errors => (is => 'ro',
-			   isa => 'ArrayRef',
-			   default => sub{[]},);
+has errors => (
+	is => 'ro',
+	isa => 'ArrayRef',
+	default => sub{[]},
+);
 has chassis_type  => ( is => 'ro', );
 has product_name  => ( is => 'ro',);
 has chassis_vendor=> (is => 'ro',);
-has all_data      => (is => 'ro',
-					  isa => 'HashRef',);
+has all_data      => (
+	is => 'ro',
+	isa => 'HashRef',
+);
 
 my %data;
 my $content;

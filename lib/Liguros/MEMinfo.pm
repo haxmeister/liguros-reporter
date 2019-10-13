@@ -11,21 +11,36 @@ has all_data => (
 );
 
 has mem_file => (
-    is      => 'ro',
+    is => 'ro',
     default => '/proc/meminfo',
 );
 
-has 'errors' => (
-    is      => 'ro',
-    isa     => 'ArrayRef',
-    default => sub { [] }
+has errors => (
+    is => 'ro',
+    isa => 'ArrayRef',
+    default => sub { [] },
 );
 
-has MemTotal     => ( is => 'ro', );
-has MemFree      => ( is => 'ro', );
-has MemAvailable => ( is => 'ro', );
-has SwapTotal    => ( is => 'ro', );
-has SwapFree     => ( is => 'ro', );
+has MemTotal => ( 
+	is => 'ro', 
+	isa => 'Int',
+);
+has MemFree => ( 
+	is => 'ro', 
+	isa => 'Int',
+);
+has MemAvailable => ( 
+	is => 'ro', 
+	isa => 'Int',
+);
+has SwapTotal => ( 
+	is => 'ro', 
+	isa => 'Int',
+);
+has SwapFree => ( 
+	is => 'ro', 
+	isa => 'Int',
+);
 
 my %data = (
     MemTotal     => undef,
@@ -42,7 +57,6 @@ sub BUILD {
     if ( open( my $fh, '<:encoding(UTF-8)', $self->mem_file ) ) {
         @mem_file_contents = <$fh>;
         close $fh;
-        push( @{ $self->errors }, 0 );
     }
     else {
         push(

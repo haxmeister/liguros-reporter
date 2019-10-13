@@ -21,12 +21,19 @@ has 'errors' => (
     default => sub { [] }
 );
 
-has 'model'      => ( is => 'ro', );
-has 'MHz'        => ( is => 'ro', );
-has 'processors' => ( is => 'ro', );
+has 'model'      => ( 
+	is => 'ro', 
+);
+has 'MHz'        => ( 
+	is => 'ro', 
+);
+has 'processors' => ( 
+	is => 'ro', 
+);
 has 'flags'      => (
     is  => 'ro',
     isa => 'ArrayRef',
+    default => sub{[]},
 );
 
 my %data;

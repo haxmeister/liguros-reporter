@@ -45,9 +45,34 @@ has 'kit_info' => (
     default => 'n',
 );
 
-has 'hardware_info' => (
-    is      => 'ro',
-    default => 'n',
+has 'cpu_info' => (
+	is => 'ro',
+	default => 'n',
+);
+has 'file_systems_info' => (
+	is => 'ro',
+	default => 'n',
+);
+has 'cpu_info' => (
+	is => 'ro',
+	default => 'n',
+);
+has 'networking_devices' =>(
+	is => 'ro',
+	default => 'n',
+);
+has 'memory_info' => (
+	is => 'ro',
+	default => 'n',
+);
+has 'chassis_info' => (
+	is => 'ro',
+	default => 'n',
+);
+has 'errors' => (
+	is => 'ro',
+	isa => 'ArrayRef',
+	default => sub{[]},
 );
 
 sub generate_new_UUID {

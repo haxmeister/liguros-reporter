@@ -10,8 +10,15 @@ package main;
 ## from liguros repository:
 ## dev-perl/JSON-2.900.0
 ##
-## also from Github
-## The accompanying "Report.pm" module
+## also from Github:
+##
+## Report.pm module
+## MEMinfo.pm module
+## CHASSISinfo.pm module
+## CPUinfo.pm module
+## KernelInfo.pm module
+## Lspci.pm Module
+## Report_Config.pm Module
 
 use 5.014;
 use strict;                                     #core
@@ -23,13 +30,13 @@ use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
 use Liguros::Report_Config;
 use Liguros::Report;
-use Liguros::KernelInfo;
+#use Liguros::KernelInfo;
 
 my $VERSION = '1.0';
 
 my $config     = Liguros::Report_Config->new;
 my $json       = JSON->new->allow_nonref;
-my $kernel     = Liguros::KernelInfo->new;
+#my $kernel     = Liguros::KernelInfo->new;
 my $report_lib = Liguros::Report->new;
 
 
@@ -79,18 +86,13 @@ if ($list_config) {
 
 if ($show_json) {
 
-    # get the entire report
     my %report = report_from_config();
-   
-    # send the report to the json object to be encoded to json
-    # and print the results with proper indents (pretty)
     my $json_pretty = $json->pretty->encode( \%report );
     print $json_pretty;
 }
 
 if ($send) {
 
-    # get the entire report
     my %report = report_from_config();
     $report_lib->send_report( \%report, \%es_config, $debug );
 }
@@ -102,9 +104,7 @@ sub report_from_config {
 	$config->load_config();
 	
 	if ($config->{kernel_info}    eq 'y'){
-		$final_report{'kernel_info'}{'osrelease'}  = $kernel->{osrelease};
-		$final_report{'kernel_info'}{'ostype'}     = $kernel->{ostype};
-		$final_report{'kernel_info'}{'version'}    = $kernel->{version};
+		$final_report{'kernel_info'} = $report_lib->Kernel;
 	}
 	if ($config->{profile_info}   eq 'y'){
 		$final_report{profile_info}   = $report_lib->get_profile_info;
@@ -112,21 +112,29 @@ sub report_from_config {
 	if ($config->{installed_pkgs} eq 'y'){
 		$final_report{installed_pkgs} = $report_lib->get_all_installed_pkg;
 	}
-	if ($config->{hardware_info}  eq 'y'){
-		$final_report{hardware_info}  = $report_lib->get_hardware_info;
+	if ($config->{chassis_info} eq 'y'){
+		$final_report{chassis} = $report_lib->Chassis;
 	}
+	if ($config->{networking_devices} eq 'y'){
+		$final_report{networking} = $report_lib->Net_devices;
+	}
+	if ($config->{file_systems_info} eq 'y'){
+		$final_report{filesystems} = $report_lib->Block_dev;
+	}
+	
+	#if ($config->{hardware_info}  eq 'y'){
+		#$final_report{hardware_info}  = $report_lib->get_hardware_info;
+		#$final_report{hardware_info}{'filesystem'} = $report_lib->Block_dev;
+		#$final_report{hardware_info}{cpu} = $report_lib->CPU;
+	#}
 	if ($config->{kit_info}       eq 'y'){
 		$final_report{kit_info}       = $report_lib->get_kit_info;
-	}
-	if ($config->{boot_dir_info}  eq 'y'){
-		$final_report{boot_dir_info}  = $report_lib->get_boot_dir_info;
 	}
 	
     $final_report{'liguros-report'}{'UUID'}    = $config->{'UUID'};
     $final_report{'timestamp'}                 = $report_lib->report_time('long');
-    $final_report{'liguros-report'}{'version'} = $report_lib->version();
-    $final_report{'liguros-report'}{'errors'}  = $report_lib->errors();
-
+    $final_report{'liguros-report'}{'version'} = $report_lib->{VERSION};
+    $final_report{'liguros-report'}{'errors'}  = $report_lib->{errors};
 
     return %final_report;
 }

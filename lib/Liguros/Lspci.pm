@@ -15,6 +15,7 @@ has 'lspci_data' => (
 has 'errors' => (
 	is      => 'ro',
 	isa     => 'ArrayRef',
+	default => sub {[]},
 );
 
 sub BUILD{
