@@ -88,6 +88,7 @@ my $chassis = Liguros::CHASSISinfo->new;
 my $json    = JSON->new->allow_nonref;
 my $lspci   = Liguros::Lspci->new;
 my $kernel  = Liguros::KernelInfo->new;
+my $config  = Liguros::Report_Config->new;
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -265,11 +266,11 @@ sub get_hardware_info {
         }
     }
 
-    $hash{'networking'} = $self->get_net_info();
+    #$hash{'networking'} = $self->get_net_info();
 
     #$hash{'filesystem'} = $self->{Block_dev};
-    $hash{'cpu'}    = $cpu->all_data;
-    $hash{'memory'} = $memory->all_data;
+    #$hash{'cpu'}    = $cpu->all_data;
+    #$hash{'memory'} = $memory->all_data;
 
     return \%hash;
 }
@@ -448,7 +449,47 @@ sub _block_dev {
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
 }
-sub _kits { say "kits builder"; }
+sub _kits { return (kits => 'builder', needs => 'written'); }
+
+sub get_final_report {
+	my $self = shift;
+    my %final_report;
+
+    $config->load_config();
+
+    if ( $config->{'kernel_info'} eq 'y' ) {
+        $final_report{'kernel_info'} = $self->Kernel;
+    }
+    if ( $config->{'profile_info'} eq 'y' ) {
+        $final_report{'profile_info'} = $self->get_profile_info;
+    }
+    if ( $config->{'installed_pkgs'} eq 'y' ) {
+        $final_report{'installed_pkgs'} = $self->get_all_installed_pkg;
+    }
+    if ( $config->{'chassis_info'} eq 'y' ) {
+        $final_report{'chassis'} = $self->Chassis;
+    }
+    if ( $config->{'networking_devices'} eq 'y' ) {
+        $final_report{'networking'} = $self->Net_devices;
+    }
+    if ( $config->{'file_systems_info'} eq 'y' ) {
+        $final_report{'filesystems'} = $self->Block_dev;
+    }
+
+    if ( $config->{'kit_info'} eq 'y' ) {
+        $final_report{'kit_info'} = $self->get_kit_info;
+    }
+    if ( $config->{'cpu_info'} eq 'y') {
+		$final_report{'cpu'} = $self->CPU;
+	}
+
+    $final_report{'liguros-report'}{'UUID'} = $config->UUID;
+    $final_report{'timestamp'} = $self->report_time('long');
+    $final_report{'liguros-report'}{'version'} = $self->VERSION;
+    $final_report{'liguros-report'}{'errors'}  = $self->errors;
+
+    return %final_report;
+}
 
 ##
 ## fetching active profiles

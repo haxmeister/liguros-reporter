@@ -28,7 +28,6 @@ use Getopt::Long qw(:config no_ignore_case);    #core
 use JSON;                                       #cpan
 use HTTP::Tiny;                                 #core
 use Pod::Usage;                                 #core
-use Liguros::Report_Config;
 use Liguros::Report;
 
 #use Liguros::KernelInfo;
@@ -89,7 +88,7 @@ if ($list_config) {
 
 if ($show_json) {
 
-    my %report      = report_from_config();
+    my %report      = $report_lib->get_final_report;
     my $json_pretty = $json->pretty->encode( \%report );
     print $json_pretty;
 }
@@ -100,42 +99,7 @@ if ($send) {
     $report_lib->send_report( \%report, \%es_config, $debug );
 }
 
-## let's read the config file and generate the report
-sub report_from_config {
-    my %final_report;
 
-    $config->load_config();
-
-    if ( $config->{'kernel_info'} eq 'y' ) {
-        $final_report{'kernel_info'} = $report_lib->Kernel;
-    }
-    if ( $config->{'profile_info'} eq 'y' ) {
-        $final_report{'profile_info'} = $report_lib->get_profile_info;
-    }
-    if ( $config->{'installed_pkgs'} eq 'y' ) {
-        $final_report{'installed_pkgs'} = $report_lib->get_all_installed_pkg;
-    }
-    if ( $config->{'chassis_info'} eq 'y' ) {
-        $final_report{'chassis'} = $report_lib->Chassis;
-    }
-    if ( $config->{'networking_devices'} eq 'y' ) {
-        $final_report{'networking'} = $report_lib->Net_devices;
-    }
-    if ( $config->{'file_systems_info'} eq 'y' ) {
-        $final_report{'filesystems'} = $report_lib->Block_dev;
-    }
-
-    if ( $config->{kit_info} eq 'y' ) {
-        $final_report{kit_info} = $report_lib->get_kit_info;
-    }
-
-    $final_report{'liguros-report'}{'UUID'} = $config->{'UUID'};
-    $final_report{'timestamp'} = $report_lib->report_time('long');
-    $final_report{'liguros-report'}{'version'} = $report_lib->{VERSION};
-    $final_report{'liguros-report'}{'errors'}  = $report_lib->{errors};
-
-    return %final_report;
-}
 
 __END__
 

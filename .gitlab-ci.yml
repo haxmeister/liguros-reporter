@@ -1,0 +1,38 @@
+default:
+  image: perl:5.30
+
+stages:
+  - test
+  - install
+  - use_test
+
+before_script:
+  - perl -v
+  - cpanm --version
+  - cpanm --quiet --installdeps --notest .
+  - cpan install List::Util
+  - cpan install Net::SSLeay
+
+test-perl-5.30:
+  stage: test
+  image: perl:5.30
+  script:
+    - perl Makefile.PL && make test
+
+test-perl-5.28.2:
+  stage: test
+  image: perl:5.28.2
+  script:
+    - perl Makefile.PL && make test
+
+install:
+  stage: install
+  script:
+    - perl Makefile.PL && make install
+
+use_test:
+  stage: use_test
+  script:
+    - perl Makefile.PL && make install
+    - find / -iname liguros-report
+    - funtoo-report -V

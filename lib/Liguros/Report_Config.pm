@@ -53,10 +53,6 @@ has 'file_systems_info' => (
     is      => 'ro',
     default => 'n',
 );
-has 'cpu_info' => (
-    is      => 'ro',
-    default => 'n',
-);
 has 'networking_devices' => (
     is      => 'ro',
     default => 'n',
