@@ -10,9 +10,6 @@ before_script:
   - perl -v
   - cpanm --version
   - cpanm --quiet --installdeps --notest .
-  - cpan install List::Util
-  - cpan install Net::SSLeay
-  - cpan install Moose
 
 test-perl-5.30:
   stage: test
