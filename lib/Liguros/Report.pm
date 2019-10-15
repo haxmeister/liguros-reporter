@@ -19,10 +19,7 @@ use Liguros::CPUinfo;
 use Liguros::Lspci;
 use Liguros::KernelInfo;
 
-has 'VERSION' => (
-    is      => 'ro',
-    default => '1.0',
-);
+my $VERSION = 1.0;
 has 'VERBOSE' => (
     is      => 'rw',
     default => 0,
@@ -485,7 +482,7 @@ sub get_final_report {
 
     $final_report{'liguros-report'}{'UUID'} = $config->UUID;
     $final_report{'timestamp'} = $self->report_time('long');
-    $final_report{'liguros-report'}{'version'} = $self->VERSION;
+    $final_report{'liguros-report'}{'version'} = $VERSION;
     $final_report{'liguros-report'}{'errors'}  = $self->errors;
 
     return %final_report;
