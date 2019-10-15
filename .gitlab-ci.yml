@@ -36,4 +36,4 @@ use_test:
   script:
     - perl Makefile.PL && make install
     - find / -iname liguros-report
-    - funtoo-report -V
+    - liguros-report -V
