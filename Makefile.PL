@@ -20,6 +20,6 @@ WriteMakefile(
         'Pod::Usage'      => 0,
         'Term::ANSIColor' => 0,
         'Time::Piece'     => 0,
-        'Moose'           => 2.2011,
+        'Moose'           => '2.2011',
     },
 );
