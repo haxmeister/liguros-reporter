@@ -74,7 +74,7 @@ sub BUILD {
         else {
             push(
                 @{ $self->errors },
-                "Could not open file" . $self->cpu_file . ": $ERRNO"
+                "Could not open file" . $folder$file . ": $ERRNO"
             );
             next;
         }
