@@ -65,7 +65,7 @@ my @possible_id = (
 sub BUILD {
     my $self = shift;
     for my $file (@id_files) {
-        if ( open( my $fh, '<', "$folder$file" ) ) {
+        if ( open( my $fh, '<', $folder.$file ) ) {
             $content = <$fh>;
             chomp $content;
             close $fh;
@@ -74,7 +74,7 @@ sub BUILD {
         else {
             push(
                 @{ $self->errors },
-                "Could not open file" . $folder$file . ": $ERRNO"
+                "Could not open file" . $folder.$file . ": $ERRNO"
             );
             next;
         }
