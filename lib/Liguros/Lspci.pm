@@ -19,7 +19,6 @@ has 'errors' => (
 
 sub BUILD {
     my $self  = shift;
-    #my $lspci = 'lspci -kmmvvv';
     my $lspci = 'lspci -mmvvv';
     my %hash;
     if ( my $lspci_output = `$lspci` ) {
@@ -37,12 +36,12 @@ sub BUILD {
                 chomp $key;
                 chomp $value;
                 $item{$key} = $value;
+               
             }
 
             foreach my $key_item ( keys %item ) {
                 unless ( $key_item eq 'Slot' ) {
-                    $self->{lspci_data}{ $item{'Slot'} }{$key_item} =
-                      $item{$key_item};
+                    $self->{lspci_data}{ $item{'Slot'} }{$key_item} = $item{$key_item};
                 }
             }
         }

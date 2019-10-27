@@ -75,8 +75,17 @@ has 'Block_dev' => (
 has 'Kits' => (
     is      => 'ro',
     isa     => 'HashRef',
-    lazy    => '1',
-    builder => '_kits',
+);
+
+has 'Audio' => (
+    is      => 'ro',
+    isa     => 'ArrayRef',
+
+);
+
+has 'Video' => (
+    is      => 'ro',
+    isa     => 'ArrayRef',
 );
 
 my $cpu     = Liguros::CPUinfo->new;
@@ -86,6 +95,15 @@ my $json    = JSON->new->allow_nonref;
 my $lspci   = Liguros::Lspci->new;
 my $kernel  = Liguros::KernelInfo->new;
 my $config  = Liguros::Report_Config->new;
+
+sub BUILD{
+	my $self = shift;
+	$self->{Audio} = load_audio();
+	$self->{Video} = load_video();
+}
+sub update_config{
+	$config->update_config();
+}
 
 ##
 ## generates report, creates user agent, and sends to elastic search
@@ -235,6 +253,34 @@ sub report_time {
     return $formats{$format};
 }
 
+sub load_video{
+	my $self = shift;
+	my @list;
+
+    for my $device ( keys %{ $lspci->{lspci_data}} ) {
+
+		# fetching video cards
+        if ( $lspci->{lspci_data}{$device}{'Class'} =~  /VGA|vga/msx ){
+            push @list, \%{ $lspci->{lspci_data}{$device} };
+        }
+    }
+    return \@list;	
+}
+
+sub load_audio{
+	my $self = shift;
+	my @list;
+	
+	for my $device ( keys %{ $lspci->{lspci_data}} ) {
+
+        # fetching sound info from data structure
+        if ( $lspci->{lspci_data}{$device}{'Class'} =~ /Audio|audio/msx ){
+			push @list , \%{ $lspci->{lspci_data}{$device} };
+        }
+    }
+    return \@list;
+}
+
 ##
 ## returns a hash ref with various hardware info that was
 ## derived from lspci -kmmvvv and other functions
@@ -243,32 +289,8 @@ sub get_hardware_info {
     my $self = shift;
     my %hash;
 
-    for my $device ( keys %{ $lspci->{lspci_data}{'PCI-Device'} } ) {
-
-        # fetching sound info from data structure
-        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~
-            /Audio|audio/msx )
-        {
-            $hash{'audio'}{$device} =
-              \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
-
-        }
-
-        # fetching video cards
-        if ( $lspci->{lspci_data}{'PCI-Device'}{$device}{'Class'} =~
-            /VGA|vga/msx )
-        {
-            $hash{'video'}{$device} =
-              \%{ $lspci->{lspci_data}{'PCI-Device'}{$device} };
-        }
-    }
-
-    #$hash{'networking'} = $self->get_net_info();
-
-    #$hash{'filesystem'} = $self->{Block_dev};
-    #$hash{'cpu'}    = $cpu->all_data;
-    #$hash{'memory'} = $memory->all_data;
-
+    $hash{'Audio'} = $self->{'Audio'};
+    $hash{'Video'} = $self->{'Video'};
     return \%hash;
 }
 

@@ -15,6 +15,11 @@ has 'config_exists' => (
     default => 0,
 );
 
+has 'CONFIG_VERSION' => (
+	is 	   => 'ro',
+	default => 0,
+);
+
 has 'UUID' => (
     is      => 'ro',
     default => 0,
@@ -76,6 +81,25 @@ has 'errors' => (
     default => sub { [] },
 );
 
+my $CURRENT_CONFIG_VERSION = 1;
+
+my @options = (
+	'kernel_info', 
+	'boot_dir_info', 
+	'installed_pkgs',
+	'profile_info', 
+	'kit_info', 
+	'cpu_info', 
+	'file_systems_info',
+	'networking_devices', 
+	'memory_info',
+	'chassis_info',
+	'hardware_info',
+	'CONFIG_VERSION',
+	'UUID',
+);
+
+
 sub generate_new_UUID {
     my $self = shift;
     open( my $ufh, '<', '/proc/sys/kernel/random/uuid' )
@@ -89,6 +113,14 @@ sub generate_new_UUID {
 
 sub save_config {
     my $self = shift;
+    
+    open( my $fh, '>', $self->config_location )
+      or croak "Cannot open Config file at " . $self->config_location . "\n";
+	
+    foreach my $item (@options){
+		print $fh "$item:".$self->{$item}."\n";
+	}
+	close $fh;	
 }
 
 sub load_config {
@@ -121,12 +153,13 @@ sub load_config {
             }
         }
     }
-
-    $self->{UUID} or $self->{UUID} = $self->generate_new_UUID();
-}
-
-sub prompt_user {
-    my $self = shift;
+	if (! $self->{UUID}){
+		$self->{UUID} = $self->generate_new_UUID();
+		$self->append_to_file ("UUID:".$self->{UUID}."\n");
+	}
+	if ((! $self->{CONFIG_VERSION}) or ($self->{CONFIG_VERSION} != $CURRENT_CONFIG_VERSION)){
+		die "Your configuration file is out of date and needs to be updated\n";
+	}
 }
 
 sub list_options {
@@ -143,17 +176,71 @@ sub list_options {
     $options{chassis_info}       = $self->{chassis_info};
     $options{networking_devices} = $self->{networking_devices};
     $options{file_systems_info}  = $self->{file_systems_info};
-       
-
     return \%options;
 }
 sub update_config{
+	my $self = shift;
+	my %questions = (
+		'kernel_info'       => "Include info about your kernel", 
+		'boot_dir_info'     => "Include info in your /boot directory", 
+		'installed_pkgs'    => "Include a list of all installed packages",
+		'profile_info'      => "Include profile info", 
+		'kit_info'          => "Include info about your kits", 
+		'cpu_info'          => "Include info about your CPU", 
+		'file_systems_info' => "Include info about your file system types",
+		'networking_devices'=> "Include info about your networking devices", 
+		'memory_info'       =>"Include info about your system's RAM",
+		'chassis_info'      =>"Include info about your system chassis",
+		'hardware_info'     =>"Include info about hardware found with LSPCI",
+	);
+	foreach my $key (keys %questions){
+		$self->{$key} = get_y_or_n($questions{$key});
+	}
+	
+	
+	if (! $self->{UUID}){
+		$self->{UUID} = $self->generate_new_UUID();
+	}
+	
+	$self->{CONFIG_VERSION} = $CURRENT_CONFIG_VERSION;
+	$self->save_config();
 
+	
+	
 }
 sub BUILD {
     my $self = shift;
     $self->{config_exists} = -e $self->config_location;
 
 }
+sub append_to_file{
+	my $self = shift;
+	my $append_line = shift;
+    open( my $fh, '>>', $self->config_location )
+      or croak "Cannot open Config file at " . $self->config_location . "\n";
+	print $fh "$append_line\n";
+    close $fh;
+}
 
+## accepts a string that is the question
+## returns y or n or continues to prompt user
+## until they answer correctly
+sub get_y_or_n {
+    my $arg = shift;
+
+    my $answer = q( );
+    while ( $answer !~ /^y(?:es)?$|^no?$|^$/ixms ) {
+
+        # ask the question, with "yes" as the implied default
+        print "$arg yes or no? [y]\n";
+        $answer = readline *STDIN;
+    }
+
+    if ( $answer =~ /^y(?:es)?$|^$/ixms ) {
+        return 'y';
+    }
+    elsif ( $answer =~ /^no?$/ixms ) {
+        return 'n';
+    }
+}
 1;
