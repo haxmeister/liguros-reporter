@@ -19,9 +19,9 @@ has 'errors' => (
 
 sub BUILD {
     my $self  = shift;
-    my $lspci = 'lspci -kmmvvv';
+    #my $lspci = 'lspci -kmmvvv';
+    my $lspci = 'lspci -mmvvv';
     my %hash;
-
     if ( my $lspci_output = `$lspci` ) {
         my @hw_item_section = split( /^\n/msx, $lspci_output );
 
