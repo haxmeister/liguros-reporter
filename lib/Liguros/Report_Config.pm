@@ -65,6 +65,11 @@ has 'chassis_info' => (
     is      => 'ro',
     default => 'n',
 );
+
+has 'hardware_info' => (
+	is      => 'ro',
+	default => 'n',
+);
 has 'errors' => (
     is      => 'ro',
     isa     => 'ArrayRef',
@@ -128,16 +133,23 @@ sub list_options {
     my $self = shift;
     my %options;
 
-    $options{kernel_info}    = $self->{kernel_info};
-    $options{boot_dir_info}  = $self->{boot_dir_info};
-    $options{installed_pkgs} = $self->{installed_pkgs};
-    $options{profile_info}   = $self->{profile_info};
-    $options{kit_info}       = $self->{kit_info};
-    $options{hardware_info}  = $self->{hardware_info};
+    $options{kernel_info}        = $self->{kernel_info};
+    $options{boot_dir_info}      = $self->{boot_dir_info};
+    $options{installed_pkgs}     = $self->{installed_pkgs};
+    $options{profile_info}       = $self->{profile_info};
+    $options{hardware_info}      = $self->{hardware_info};
+    $options{kit_info}           = $self->{kit_info};
+    $options{cpu_info}           = $self->{cpu_info};
+    $options{chassis_info}       = $self->{chassis_info};
+    $options{networking_devices} = $self->{networking_devices};
+    $options{file_systems_info}  = $self->{file_systems_info};
+       
 
     return \%options;
 }
+sub update_config{
 
+}
 sub BUILD {
     my $self = shift;
     $self->{config_exists} = -e $self->config_location;

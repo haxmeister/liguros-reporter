@@ -479,6 +479,9 @@ sub get_final_report {
     if ( $config->{'cpu_info'} eq 'y') {
 		$final_report{'cpu'} = $self->CPU;
 	}
+	if ( $config->{'hardware_info'} eq 'y'){
+		$final_report {'hardware_info'} = $self->get_hardware_info;
+	}
 
     $final_report{'liguros-report'}{'UUID'} = $config->UUID;
     $final_report{'timestamp'} = $self->report_time('long');
