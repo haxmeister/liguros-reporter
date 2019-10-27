@@ -75,6 +75,8 @@ has 'Block_dev' => (
 has 'Kits' => (
     is      => 'ro',
     isa     => 'HashRef',
+    lazy    => '1',
+    builder => '_kits',
 );
 
 has 'Audio' => (
@@ -720,28 +722,6 @@ sub get_all_installed_pkg {
 
 ###########################################
 ############ misc functions ###############
-
-## accepts a string that is the question
-## returns y or n or continues to prompt user
-## until they answer correctly
-sub get_y_or_n {
-    my $arg = shift;
-
-    my $answer = q( );
-    while ( $answer !~ /^y(?:es)?$|^no?$|^$/ixms ) {
-
-        # ask the question, with "yes" as the implied default
-        print "$arg yes or no? [y]\n";
-        $answer = readline *STDIN;
-    }
-
-    if ( $answer =~ /^y(?:es)?$|^$/ixms ) {
-        return 'y';
-    }
-    elsif ( $answer =~ /^no?$/ixms ) {
-        return 'n';
-    }
-}
 
 ## recursively crawls lsblk json output tree and modifies
 ## the hash in-place whose reference is sent by the caller
