@@ -50,9 +50,7 @@ has 'Chassis' => (
 );
 has 'Net_devices' => (
     is      => 'ro',
-    isa     => 'HashRef',
-    lazy    => '1',
-    builder => '_net_dev',
+    isa     => 'ArrayRef',
 );
 has 'Kernel' => (
     is      => 'ro',
@@ -100,8 +98,9 @@ my $config  = Liguros::Report_Config->new;
 
 sub BUILD{
 	my $self = shift;
-	$self->{Audio} = load_audio();
-	$self->{Video} = load_video();
+	$self->{Audio}       = load_audio();
+	$self->{Video}       = load_video();
+	$self->{Net_devices} = load_net_devices();
 }
 sub update_config{
 	$config->update_config();
@@ -314,137 +313,18 @@ sub _chassis {
     return $chassis->all_data;
 }
 
-sub _net_dev {
-    my $self          = shift;
-    my $interface_dir = '/sys/class/net';
-    my $pci_ids       = '/usr/share/misc/pci.ids';
-    my $usb_ids       = '/usr/share/misc/usb.ids';
-    my %hash;
-    my @interfaces;
-    opendir my $dh, $interface_dir
-      or do {
-        push(
-            @{ $self->{errors} },
-            "Unable to open dir $interface_dir: $ERRNO"
-        );
-        return;
-      };
-    while ( my $file = readdir $dh ) {
+sub load_net_devices {
+    my $self  = shift;
+	my @list;
+	
+	for my $device ( keys %{ $lspci->{lspci_data}} ) {
 
-        if ( $file !~ /^[.]{1,2}$|^lo$/xms ) {
-            push @interfaces, $file;
+        # fetching sound info from data structure
+        if ( $lspci->{lspci_data}{$device}{'Class'} =~ /Network|network|Ethernet|ethernet/msx ){
+			push @list , \%{ $lspci->{lspci_data}{$device} };
         }
     }
-    closedir $dh;
-
-### @interfaces
-
-    for my $device (@interfaces) {
-        my ( $vendor_id, $device_id, $id_file );
-
-        # Ignore virtual devices
-        if ( !-d "$interface_dir/$device/device/driver/module" ) {
-            next;
-        }
-
-        # Othewise, determine the driver via the path name
-        my $driver = (
-            split /[\/]/xms,
-            readlink "$interface_dir/$device/device/driver/module"
-        )[-1];
-        ### $driver
-
-        # Get the vendor ID (PCI)
-        my $vendor_id_file = "/sys/class/net/$device/device/vendor";
-        if ( -e $vendor_id_file ) {
-            $id_file = $pci_ids;
-            open my $fh, '<', $vendor_id_file
-              or do {
-                push(
-                    @{ $self->{errors} },
-                    "Unable to open file $vendor_id_file: $ERRNO"
-                );
-                next;
-              };
-            $vendor_id = <$fh>;
-            close $fh;
-            chomp $vendor_id;
-            $vendor_id =~ s/^0x//xms;
-
-            # Get the device ID (PCI)
-            my $device_id_file = "/sys/class/net/$device/device/device";
-            open $fh, '<', $device_id_file
-              or do {
-                push(
-                    @{ $self->{errors} },
-                    "Unable to open file $device_id_file: $ERRNO"
-                );
-                next;
-              };
-            $device_id = <$fh>;
-            close $fh;
-            chomp $device_id;
-            $device_id =~ s/^0x//xms;
-
-        }
-
-        # Or get the vendor and device ID (USB)
-        else {
-            $vendor_id_file = "/sys/class/net/$device/device/uevent";
-            $id_file        = $usb_ids;
-            open my $fh, '<', $vendor_id_file
-              or do {
-                push(
-                    @{ $self->{errors} },
-                    "Unable to open file $vendor_id_file: $ERRNO"
-                );
-                next;
-              };
-            while (<$fh>) {
-                if (/^PRODUCT=(.*)[\/](.*)[\/].*/xms) {
-                    $vendor_id = sprintf '%04s', $1;
-                    $device_id = sprintf '%04s', $2;
-                    last;
-                }
-            }
-            close $fh;
-        }
-
-        # Look up the proper device name from the id file
-        my ( $vendor_name, $device_name );
-
-        ## no critic [RequireBriefOpen]
-        open my $fh, '<', $id_file
-          or do {
-            push( @{ $self->{errors} }, "Unable to open file $id_file $ERRNO" );
-            next;
-          };
-
-       # Devices can share device IDs but not "underneath" a vendor ID, so we'll
-       # want to get the first result under the vendor
-        my $seen = 0;
-
-        while (<$fh>) {
-
-            if (/^$vendor_id[ ]{2}(.*)/xms) {
-                $vendor_name = $1;
-                chomp $vendor_name;
-                $seen = 1;
-            }
-            if ( $seen == 1 && /^[\t]{1}$device_id[ ]{2}(.*)/xms ) {
-                $device_name = $1;
-                chomp $device_name;
-                last;
-            }
-        }
-        close $fh;
-        $hash{$device} = {
-            vendor => $vendor_name,
-            device => $device_name,
-            driver => $driver,
-        };
-    }
-    return \%hash;
+    return \@list;
 }
 
 sub _kernel {
