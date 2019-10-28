@@ -153,6 +153,9 @@ sub load_config {
 		$self->{UUID} = $self->generate_new_UUID();
 		$self->append_to_file ("UUID:".$self->{UUID}."\n");
 	}
+	unless ($self->CONFIG_VERSION eq $CURRENT_CONFIG_VERSION){
+		push @{$self->{errors}}, "Config file version is not current";
+	}
 }
 
 sub list_options {
@@ -206,7 +209,7 @@ sub BUILD {
 	}else{
 		die "Missing config file at ".$self->config_location."\n";
 	}
-
+	
 }
 sub append_to_file{
 	my $self = shift;
