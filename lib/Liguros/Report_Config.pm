@@ -71,7 +71,11 @@ has 'chassis_info' => (
     default => 'n',
 );
 
-has 'hardware_info' => (
+has 'audio_devices' => (
+	is      => 'ro',
+	default => 'n',
+);
+has 'video_devices' => (
 	is      => 'ro',
 	default => 'n',
 );
@@ -81,7 +85,7 @@ has 'errors' => (
     default => sub { [] },
 );
 
-my $CURRENT_CONFIG_VERSION = 1;
+my $CURRENT_CONFIG_VERSION = 2;
 
 my @options = (
 	'kernel_info', 
@@ -94,7 +98,8 @@ my @options = (
 	'networking_devices', 
 	'memory_info',
 	'chassis_info',
-	'hardware_info',
+	'audio_devices',
+	'video_devices',
 	'CONFIG_VERSION',
 	'UUID',
 );
@@ -153,7 +158,7 @@ sub load_config {
             }
         }
     }
-	if (! $self->{UUID}){
+	unless ($self->{UUID}){
 		$self->{UUID} = $self->generate_new_UUID();
 		$self->append_to_file ("UUID:".$self->{UUID}."\n");
 	}
@@ -164,19 +169,14 @@ sub load_config {
 
 sub list_options {
     my $self = shift;
-    my %options;
+    my %hash;
+    foreach my $key (@options){
+		unless (($key eq 'UUID') or ($key eq 'CONFIG_VERSION')){
+			$hash{$key} = $self->{key};
+		}
+	}
 
-    $options{kernel_info}        = $self->{kernel_info};
-    $options{boot_dir_info}      = $self->{boot_dir_info};
-    $options{installed_pkgs}     = $self->{installed_pkgs};
-    $options{profile_info}       = $self->{profile_info};
-    $options{hardware_info}      = $self->{hardware_info};
-    $options{kit_info}           = $self->{kit_info};
-    $options{cpu_info}           = $self->{cpu_info};
-    $options{chassis_info}       = $self->{chassis_info};
-    $options{networking_devices} = $self->{networking_devices};
-    $options{file_systems_info}  = $self->{file_systems_info};
-    return \%options;
+    return \%hash;
 }
 sub update_config{
 	my $self = shift;
@@ -191,14 +191,16 @@ sub update_config{
 		'networking_devices'=> "Include info about your networking devices", 
 		'memory_info'       =>"Include info about your system's RAM",
 		'chassis_info'      =>"Include info about your system chassis",
-		'hardware_info'     =>"Include info about hardware found with LSPCI",
+		'audio_devices'     =>"Include info about audio devices",
+		'video_devices'     =>"Include info about video devices",
 	);
 	foreach my $key (keys %questions){
 		$self->{$key} = get_y_or_n($questions{$key});
 	}
 	
 	
-	if (! $self->{UUID}){
+	unless ($self->{UUID}){
+		print"generating new\n";
 		$self->{UUID} = $self->generate_new_UUID();
 	}
 	
@@ -210,7 +212,12 @@ sub update_config{
 }
 sub BUILD {
     my $self = shift;
-    $self->{config_exists} = -e $self->config_location;
+    if (-e $self->config_location){
+		$self->{config_exists} = 1;
+		$self->load_config();
+	}else{
+		die "Missing config file at ".$self->config_location."\n";
+	}
 
 }
 sub append_to_file{

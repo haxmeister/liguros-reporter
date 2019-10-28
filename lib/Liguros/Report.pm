@@ -98,9 +98,9 @@ my $config  = Liguros::Report_Config->new;
 
 sub BUILD{
 	my $self = shift;
-	$self->{Audio}       = load_audio();
-	$self->{Video}       = load_video();
-	$self->{Net_devices} = load_net_devices();
+	$self->{Audio}       = _load_audio();
+	$self->{Video}       = _load_video();
+	$self->{Net_devices} = _load_net_devices();
 }
 sub update_config{
 	$config->update_config();
@@ -254,13 +254,11 @@ sub report_time {
     return $formats{$format};
 }
 
-sub load_video{
+sub _load_video{
 	my $self = shift;
 	my @list;
 
     for my $device ( keys %{ $lspci->{lspci_data}} ) {
-
-		# fetching video cards
         if ( $lspci->{lspci_data}{$device}{'Class'} =~  /VGA|vga/msx ){
             push @list, \%{ $lspci->{lspci_data}{$device} };
         }
@@ -268,7 +266,7 @@ sub load_video{
     return \@list;	
 }
 
-sub load_audio{
+sub _load_audio{
 	my $self = shift;
 	my @list;
 	
@@ -282,18 +280,6 @@ sub load_audio{
     return \@list;
 }
 
-##
-## returns a hash ref with various hardware info that was
-## derived from lspci -kmmvvv and other functions
-##
-sub get_hardware_info {
-    my $self = shift;
-    my %hash;
-
-    $hash{'Audio'} = $self->{'Audio'};
-    $hash{'Video'} = $self->{'Video'};
-    return \%hash;
-}
 
 sub _cpu {
     my $self = shift;
@@ -313,7 +299,7 @@ sub _chassis {
     return $chassis->all_data;
 }
 
-sub load_net_devices {
+sub _load_net_devices {
     my $self  = shift;
 	my @list;
 	
@@ -356,7 +342,6 @@ sub get_final_report {
 	my $self = shift;
     my %final_report;
 
-    $config->load_config();
 
     if ( $config->{'kernel_info'} eq 'y' ) {
         $final_report{'kernel_info'} = $self->Kernel;
@@ -383,8 +368,11 @@ sub get_final_report {
     if ( $config->{'cpu_info'} eq 'y') {
 		$final_report{'cpu'} = $self->CPU;
 	}
-	if ( $config->{'hardware_info'} eq 'y'){
-		$final_report {'hardware_info'} = $self->get_hardware_info;
+	if ( $config->{'video_devices'} eq 'y'){
+		$final_report {'Video'} = $self->{Video};
+	}
+	if ( $config->{'audio_devices'} eq 'y'){
+		$final_report {'Audio'} = $self->{Audio};
 	}
 
     $final_report{'liguros-report'}{'UUID'} = $config->UUID;
@@ -600,6 +588,9 @@ sub get_all_installed_pkg {
     return \%hash;
 }
 
+sub user_config{
+	return $config->list_options();
+}
 ###########################################
 ############ misc functions ###############
 
