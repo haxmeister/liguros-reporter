@@ -153,9 +153,6 @@ sub load_config {
 		$self->{UUID} = $self->generate_new_UUID();
 		$self->append_to_file ("UUID:".$self->{UUID}."\n");
 	}
-	if ((! $self->{CONFIG_VERSION}) or ($self->{CONFIG_VERSION} != $CURRENT_CONFIG_VERSION)){
-		die "Your configuration file is out of date and needs to be updated\n";
-	}
 }
 
 sub list_options {
