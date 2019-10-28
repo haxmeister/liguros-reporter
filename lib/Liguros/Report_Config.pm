@@ -151,11 +151,6 @@ sub load_config {
             if ( exists $self->{$key} ) {
                 $self->{$key} = $value;
             }
-            else {
-                die "Invalid configuration detected in "
-                  . $self->config_location
-                  . "': key '$key' is not a valid option. Consider running '$PROGRAM_NAME --update-config'.\n";
-            }
         }
     }
 	unless ($self->{UUID}){
