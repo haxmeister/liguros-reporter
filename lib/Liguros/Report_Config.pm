@@ -130,11 +130,7 @@ sub save_config {
 
 sub load_config {
     my $self = shift;
-
-    $self->config_exists
-      or die "No configuration file has been detected at "
-      . $self->config_location . "\n";
-
+    
     open( my $fh, '<', $self->config_location )
       or croak "Cannot open Config file at " . $self->config_location . "\n";
     my @lines = <$fh>;
