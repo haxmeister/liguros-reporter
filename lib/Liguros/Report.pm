@@ -19,7 +19,7 @@ use Liguros::CPUinfo;
 use Liguros::Lspci;
 use Liguros::KernelInfo;
 
-my $VERSION = 1.0;
+our $VERSION = 4.0.0;
 has 'VERBOSE' => (
     is      => 'rw',
     default => 0,
@@ -51,6 +51,8 @@ has 'Chassis' => (
 has 'Net_devices' => (
     is      => 'ro',
     isa     => 'ArrayRef',
+    lazy    => '1',
+    builder => '_load_net_devices',
 );
 has 'Kernel' => (
     is      => 'ro',
@@ -88,6 +90,7 @@ has 'Video' => (
     isa     => 'ArrayRef',
 );
 
+
 my $cpu     = Liguros::CPUinfo->new;
 my $memory  = Liguros::MEMinfo->new;
 my $chassis = Liguros::CHASSISinfo->new;
@@ -101,6 +104,7 @@ sub BUILD{
 	$self->{Audio}       = _load_audio();
 	$self->{Video}       = _load_video();
 	$self->{Net_devices} = _load_net_devices();
+	$self->{Memory}      = _memory();
 }
 sub update_config{
 	$config->update_config();
@@ -293,7 +297,9 @@ sub _cpu {
     return \%data;
 
 }
-sub _memory { }
+sub _memory { 
+	return $memory->all_data() 
+}
 
 sub _chassis {
     return $chassis->all_data;
@@ -369,10 +375,13 @@ sub get_final_report {
 		$final_report{'cpu'} = $self->CPU;
 	}
 	if ( $config->{'video_devices'} eq 'y'){
-		$final_report {'Video'} = $self->{Video};
+		$final_report{'Video'} = $self->{Video};
 	}
 	if ( $config->{'audio_devices'} eq 'y'){
-		$final_report {'Audio'} = $self->{Audio};
+		$final_report{'Audio'} = $self->{Audio};
+	}
+	if ( $config->{'memory_info'} eq 'y'){
+		$final_report{'Memory'} = $self->{Memory};
 	}
 
     $final_report{'liguros-report'}{'UUID'} = $config->UUID;

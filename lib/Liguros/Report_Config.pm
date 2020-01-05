@@ -138,7 +138,6 @@ sub load_config {
 
     foreach my $line (@lines) {
         chomp $line;
-
         # skip lines that start with '#'
         if ( $line =~ /^\#/msx ) { next; }
 
@@ -146,6 +145,7 @@ sub load_config {
             my ( $key, $value ) = split /\s*:\s*/msx, $line;
             if ( exists $self->{$key} ) {
                 $self->{$key} = $value;
+                
             }
         }
     }
@@ -163,7 +163,7 @@ sub list_options {
     my %hash;
     foreach my $key (@options){
 		unless (($key eq 'UUID') or ($key eq 'CONFIG_VERSION')){
-			$hash{$key} = $self->{key};
+			$hash{$key} = $self->{$key};
 		}
 	}
 
