@@ -5,15 +5,31 @@ use JSON;                          #core
 use Carp;                          #core
 use English qw(-no_match_vars);    #core
 
-has errors => (
+has 'VERSION' => ( 
+	is		=> 'ro',
+	isa		=> 'Str',
+	default => '4.0.0',
+);
+
+has 'errors' => (
     is      => 'ro',
     isa     => 'ArrayRef',
     default => sub { [] },
 );
-has chassis_type   => ( is => 'ro', );
-has product_name   => ( is => 'ro', );
-has chassis_vendor => ( is => 'ro', );
-has all_data       => (
+
+has 'chassis_type'   => ( 
+    is => 'ro', 
+);
+
+has 'product_name'   => ( 
+    is => 'ro', 
+);
+
+has 'chassis_vendor' => ( 
+    is => 'ro', 
+);
+
+has 'all_data'       => (
     is  => 'ro',
     isa => 'HashRef',
 );

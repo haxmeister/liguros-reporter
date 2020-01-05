@@ -6,6 +6,12 @@ use Carp;                          #core
 use English qw(-no_match_vars);    #core
 use 5.20.0;
 
+has 'VERSION' => ( 
+	is		=> 'ro',
+	isa		=> 'Str',
+	default => '4.0.0',
+);
+
 has 'lspci_data' => (
     is  => 'ro',
     isa => 'HashRef',

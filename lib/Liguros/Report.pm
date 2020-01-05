@@ -14,12 +14,18 @@ use Term::ANSIColor;               #core
 use Time::Piece;                   #core
 use Liguros::MEMinfo;
 use Liguros::CHASSISinfo;
-use Liguros::Report_Config;
 use Liguros::CPUinfo;
 use Liguros::Lspci;
 use Liguros::KernelInfo;
 
-our $VERSION = 4.0.0;
+# $VERSION = 4.0.0;
+
+has 'VERSION' => ( 
+	is		=> 'ro',
+	isa		=> 'Str',
+	default => '4.0.0',
+);
+
 has 'VERBOSE' => (
     is      => 'rw',
     default => 0,
@@ -97,17 +103,13 @@ my $chassis = Liguros::CHASSISinfo->new;
 my $json    = JSON->new->allow_nonref;
 my $lspci   = Liguros::Lspci->new;
 my $kernel  = Liguros::KernelInfo->new;
-my $config  = Liguros::Report_Config->new;
+#my $config  = Liguros::Report_Config->new;
 
 sub BUILD{
 	my $self = shift;
 	$self->{Audio}       = _load_audio();
 	$self->{Video}       = _load_video();
 	$self->{Net_devices} = _load_net_devices();
-	$self->{Memory}      = _memory();
-}
-sub update_config{
-	$config->update_config();
 }
 
 ##
@@ -284,7 +286,6 @@ sub _load_audio{
     return \@list;
 }
 
-
 sub _cpu {
     my $self = shift;
     my %data;
@@ -297,6 +298,7 @@ sub _cpu {
     return \%data;
 
 }
+
 sub _memory { 
 	return $memory->all_data() 
 }
@@ -330,7 +332,10 @@ sub _kernel {
 
     return \%info;
 }
-sub _profiles { }
+
+sub _profiles { 
+
+}
 
 sub _block_dev {
     my $self = shift;
@@ -342,10 +347,14 @@ sub _block_dev {
     fs_recurse( \@{ $lsblk_decoded->{blockdevices} }, \%hash );
     return \%hash;
 }
-sub _kits { return (kits => 'builder', needs => 'written'); }
+
+sub _kits { 
+	return (kits => 'builder', needs => 'written'); 
+}
 
 sub get_final_report {
 	my $self = shift;
+	my $config = shift;
     my %final_report;
 
 
@@ -359,34 +368,34 @@ sub get_final_report {
         $final_report{'installed_pkgs'} = $self->get_all_installed_pkg;
     }
     if ( $config->{'chassis_info'} eq 'y' ) {
-        $final_report{'chassis'} = $self->Chassis;
+        $final_report{'chassis_info'} = $self->Chassis;
     }
     if ( $config->{'networking_devices'} eq 'y' ) {
-        $final_report{'networking'} = $self->Net_devices;
+        $final_report{'networking_devices'} = $self->Net_devices;
     }
     if ( $config->{'file_systems_info'} eq 'y' ) {
-        $final_report{'filesystems'} = $self->Block_dev;
+        $final_report{'file_system_info'} = $self->Block_dev;
     }
 
     if ( $config->{'kit_info'} eq 'y' ) {
         $final_report{'kit_info'} = $self->get_kit_info;
     }
     if ( $config->{'cpu_info'} eq 'y') {
-		$final_report{'cpu'} = $self->CPU;
+		$final_report{'cpu_info'} = $self->CPU;
 	}
 	if ( $config->{'video_devices'} eq 'y'){
-		$final_report{'Video'} = $self->{Video};
+		$final_report{'video_devices'} = $self->{Video};
 	}
 	if ( $config->{'audio_devices'} eq 'y'){
-		$final_report{'Audio'} = $self->{Audio};
+		$final_report{'audio_devices'} = $self->{Audio};
 	}
 	if ( $config->{'memory_info'} eq 'y'){
-		$final_report{'Memory'} = $self->{Memory};
+		$final_report{'memory_info'} = $self->{Memory};
 	}
 
     $final_report{'liguros-report'}{'UUID'} = $config->UUID;
-    $final_report{'timestamp'} = $self->report_time('long');
-    $final_report{'liguros-report'}{'version'} = $VERSION;
+    $final_report{'liguros-report'}{'timestamp'} = $self->report_time('long');
+    $final_report{'liguros-report'}{'version'} = $self->{VERSION};
     $final_report{'liguros-report'}{'errors'}  = $self->errors;
 
     return %final_report;
@@ -597,9 +606,7 @@ sub get_all_installed_pkg {
     return \%hash;
 }
 
-sub user_config{
-	return $config->list_options();
-}
+
 ###########################################
 ############ misc functions ###############
 

@@ -6,6 +6,12 @@ use Carp;                          #core
 use English qw(-no_match_vars);    #core
 use 5.20.0;
 
+has 'VERSION' => ( 
+	is		=> 'ro',
+	isa		=> 'Str',
+	default => '4.0.0',
+);
+
 has 'osrelease' =>(
 	is     => 'ro',
     lazy    => 1,

@@ -6,8 +6,14 @@ use Carp;                          #core
 use English qw(-no_match_vars);    #core
 use 5.20.0;
 
+has 'VERSION' => ( 
+	is		=> 'ro',
+	isa		=> 'Str',
+	default => '4.0.0',
+);
+
 has 'config_location' => (
-    is      => 'ro',
+    is      => 'rw',
     default => '/etc/liguros-report.conf',
 );
 has 'config_exists' => (
@@ -207,7 +213,7 @@ sub BUILD {
 		$self->{config_exists} = 1;
 		$self->load_config();
 	}else{
-		die "Missing config file at ".$self->config_location."\n";
+        $self->{config_exists} = 0;
 	}
 	
 }

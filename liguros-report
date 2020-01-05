@@ -18,7 +18,6 @@ package main;
 ## CPUinfo.pm module
 ## KernelInfo.pm module
 ## Lspci.pm Module
-## Report_Config.pm Module
 
 use 5.014;
 use strict;                                     #core
@@ -29,15 +28,14 @@ use JSON;                                       #cpan
 use Pod::Usage;                                 #core
 use Liguros::Report;
 use Email::MIME;                                #cpan
+use Term::ANSIColor;                            #core
+use Liguros::Report_Config;
 
+our $VERSION = '1.0';
 
-my $VERSION = '1.0';
-
-#my $config = Liguros::Report_Config->new;
 my $json   = JSON->new->allow_nonref;
-
-#my $kernel     = Liguros::KernelInfo->new;
 my $report_lib = Liguros::Report->new;
+my $config  = Liguros::Report_Config->new;
 
 my %es_config = (
     node  => 'https://es.host.liguros.org:9200',
@@ -49,7 +47,9 @@ my %es_config = (
 if ( !@ARGV ) {
     pod2usage();
 }
+
 my $debug = 0;
+
 GetOptions(
     'config|c=s'      => \$report_lib->{config_file},
     'update-config|u' => \my $update_config,
@@ -60,10 +60,8 @@ GetOptions(
     'debug|d'         => \$debug,
     'help|h'          => \&pod2usage,
     'version|V'       => sub {
-        say "liguros-report: "
-          . $VERSION
-          . "Report.pm:"
-          . $report_lib->{VERSION};
+        say "liguros-report: " . $VERSION . "\n"
+          . "Report.pm: " . $report_lib->{'VERSION'};
         exit;
     },
 ) or pod2usage;
@@ -74,25 +72,29 @@ if (@ARGV) {
 
 # Handle options
 if ($update_config) {
-    $report_lib->update_config();
+    $config->update_config();
 }
 
 if ($list_config) {
-    my $config = $report_lib->user_config();
-    print "Current configuration\n\n";
-    for my $key ( sort keys %{$config} ) {
-        print "$key: ";
-        if ($config->{$key}){
-			print $config->{$key}."\n";
-		}else{
-			print "\n";
+
+	if ($config->{config_exists}){
+		print "Current configuration\n\n";
+		for my $key ( sort keys %{$config->list_options()} ) {
+			print "$key: ";
+			if ($config->{$key}){
+				print $config->{$key}."\n";
+			}else{
+				print "\n";
+			}
 		}
-    }
+	}else{
+		print"No configuration file found...\n";
+	}
 }
 
 if ($show_json) {
 
-    my %report      = $report_lib->get_final_report;
+    my %report      = $report_lib->get_final_report($config);
     my $json_pretty = $json->pretty->encode( \%report );
     print $json_pretty;
 }
